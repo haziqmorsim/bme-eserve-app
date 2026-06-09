@@ -2,6 +2,7 @@
     import '../app.css';
     import { invalidate } from '$app/navigation';
     import { onMount } from 'svelte';
+    import Chatbot from '$lib/components/Chatbot.svelte';
 
     let { data, children } = $props();
     let { session, supabase } = $derived(data);
@@ -17,3 +18,5 @@
 </script>
 
 {@render children()}
+
+<Chatbot />
