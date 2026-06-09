@@ -36,6 +36,8 @@ export interface Part {
     description: string | null;
     image_url: string | null;
     in_stock: boolean;
+    price_min: number | null;
+    price_max: number | null;
 }
 
 export interface Profile {

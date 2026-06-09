@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
             <p>From: <strong>${customerEmail ?? 'unknown'}</strong></p>
             ${quote.notes ? `<p><em>Notes:</em> ${quote.notes}</p>` : ''}
             ${itemsTable}
-            <p style="margin-top:20px">Review and approve this request in the BME e-Serve Admin page.</p>
+            <p style="margin-top:20px">Review this request in the BME e-Serve Requests page.</p>
         </div>`;
 
         try {

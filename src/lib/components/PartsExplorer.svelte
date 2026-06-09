@@ -2,6 +2,7 @@
     import type { Component, Part, Boiler } from "$lib/types";
     import { SupabaseClient } from "@supabase/supabase-js";
     import { addItem } from "$lib/stores/quote";
+    import { priceRangeLabel } from "$lib/price";
     import BoilerDiagram from "./BoilerDiagram.svelte";
 
     let { boiler, components, supabase } = $props<{boiler: Boiler; components: Component[]; supabase: SupabaseClient;}>();
@@ -68,6 +69,8 @@
             partName: p.name,
             boilerCode: boiler.code,
             componentName: compName[p.component_id] ?? '',
+            priceMin: p.price_min ?? 0,
+            priceMax: p.price_max ?? 0,
             quantity: qty[p.id] ?? 1
         });
         qty[p.id] = 1;
@@ -114,6 +117,7 @@
                             <div class="pn">{p.part_number}</div>
                             <div class="pname">{p.name} <span class="tag">{compName[p.component_id]}</span></div>
                             {#if p.description}<div class="pdesc">{p.description}</div>{/if}
+                            <div class="price">{priceRangeLabel(p.price_min, p.price_max)}</div>
                             {#if !p.in_stock}<div class="avail">made to order</div>{/if}
                         </div>
                         <div class="actions">
@@ -207,6 +211,12 @@
         font-size: 13px; 
         color: var(--bme-muted); 
         margin-top: 2px; 
+    }
+
+    .price {
+        margin-top: 6px;
+        font-weight: 700;
+        color: var(--bme-darker-blue);
     }
 
     .actions { 

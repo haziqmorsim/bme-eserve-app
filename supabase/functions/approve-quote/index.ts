@@ -81,9 +81,9 @@ Deno.serve(async (req) => {
         customerEmail,
         `Your BME e‑Serve quotation ${quote.reference} is approved`,
         `<div style="font-family:Arial,sans-serif;color:#1C2A14">
-           <h2 style="color:#2F5E18">Quotation approved ✅</h2>
+           <h2 style="color:#2F5E18">Quotation Approved</h2>
            <p>Your quotation <strong>${quote.reference}</strong> has been approved and is attached as a PDF.</p>
-           ${signed?.signedUrl ? `<p>You can also <a href="${signed.signedUrl}">download it here</a> (link valid 30 days).</p>` : ''}
+           ${signed?.signedUrl ? `<p>You can also download it <a href="${signed.signedUrl}">here</a> (link valid 30 days).</p>` : ''}
            <p>Thank you for using BME e‑Serve.</p>
          </div>`,
         [{ filename: `${quote.reference}.pdf`, content: encodeBase64(pdfBytes) }]

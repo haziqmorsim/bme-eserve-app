@@ -1,11 +1,20 @@
 <script lang="ts">
     import { quoteItems, removeItem, setQuantity, clearCart } from "$lib/stores/quote";
+    import { formatMoney } from "$lib/price";
 
     let { data } = $props();
     let notes = $state('');
     let submitting = $state(false);
     let done = $state(false);
     let errorMsg = $state('');
+
+    let totalMin = $derived($quoteItems.reduce((s, i) => s + (i.priceMin ?? 0) * i.quantity, 0));
+    let totalMax = $derived($quoteItems.reduce((s, i) => s + (i.priceMax ?? 0) * i.quantity, 0));
+
+    function lineRange(min: number | null | undefined, max: number | null | undefined, qty: number) {
+        if (min == null || max == null) return 'Price on request';
+        return `RM ${formatMoney(min * qty)} – ${formatMoney(max * qty)}`;
+    }
 
     async function submitQuote() {
         if ($quoteItems.length === 0) return;
@@ -71,7 +80,7 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Range (RM)</span><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
@@ -82,9 +91,16 @@
                 <span>
                     <input type="number" min="1" value={item.quantity} oninput={(e) => setQuantity(item.partId, + e.currentTarget.value)} />
                 </span>
+                <span class="range">{lineRange(item.priceMin, item.priceMax, item.quantity)}</span>
                 <span><button class="remove" onclick={() => removeItem(item.partId)} aria-label="Remove">✕</button></span>
             </div>
         {/each}
+
+        <div class="total">
+            <span>Estimated total</span>
+            <strong>RM {formatMoney(totalMin)} – {formatMoney(totalMax)}</strong>
+        </div>
+        <p class="indicative">Indicative range only. The final quotation will be confirmed by BME.</p>
     </div>
 
     <div class="card notes">
@@ -113,7 +129,7 @@
 
     .row {
         display: grid;
-        grid-template-columns: 2.6fr 1.2fr 1fr 40px;
+        grid-template-columns: 2.2fr 0.9fr 0.8fr 1.5fr 40px;
         align-items: center;
         gap: 12px;
         padding: 14px 0;
@@ -132,6 +148,11 @@
         text-align: center;
     }
 
+    .range {
+        font-weight: 600;
+        color: var(--bme-darker-blue);
+    }
+
     .remove {
         background: none; 
         color: var(--bme-muted); 
@@ -141,6 +162,25 @@
 
     .remove:hover {
         color: var(--bme-red);
+    }
+
+    .total {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding-top: 18px;
+        font-size: 18px;
+    }
+
+    .total strong {
+        color: var(--bme-darker-blue);
+    }
+
+    .indicative {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: var(--bme-muted);
+        text-align: right;
     }
 
     .notes { 
