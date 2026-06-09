@@ -98,7 +98,7 @@
 
         <div class="total">
             <span>Estimated total</span>
-            <strong>RM {formatMoney(totalMin)} – {formatMoney(totalMax)}</strong>
+            <strong>RM{formatMoney(totalMin)} – RM{formatMoney(totalMax)}</strong>
         </div>
         <p class="indicative">Indicative range only. The final quotation will be confirmed by BME.</p>
     </div>

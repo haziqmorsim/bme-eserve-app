@@ -7,5 +7,5 @@ export function priceRangeLabel(
     max: number | null | undefined
 ): string {
     if (min == null || max == null) return 'Price on request';
-    return `RM${formatMoney(min)} - ${formatMoney(max)}`;
+    return `RM${formatMoney(min)} - RM${formatMoney(max)}`;
 }
