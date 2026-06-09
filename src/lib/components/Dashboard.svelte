@@ -1,0 +1,68 @@
+<script lang="ts">
+    import type { Boiler } from "$lib/types";
+    let { boiler } = $props<{ boiler: Boiler }>();
+
+    const specs = $derived([
+        { label: 'Capacity', value: boiler.capacity },
+        { label: 'Pressure', value: boiler.pressure },
+        { label: 'Steam Temperature', value: boiler.steam_temperature },
+        { label: 'Fuel Type', value: boiler.fuel_type },
+        { label: 'Year Commissioned', value: boiler.year_commissioned?.toString() },
+        { label: 'Status', value: boiler.status },
+    ]);
+</script>
+
+<div>
+    <h2 class="title">{boiler.code} {#if boiler.name}- {boiler.name}{/if}</h2>
+    {#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
+
+    <div class="grid">
+        {#each specs as s}
+            {#if s.value}
+                <div class="card spec">
+                    <span class="k">{s.label}</span>
+                    <span class="v">{s.value}</span>
+                </div>
+            {/if}
+        {/each}
+    </div>
+</div>
+
+<style>
+    .title {
+        margin: 0 0 6px; 
+        font-size: 22px;
+    }
+
+    .desc {
+        color: var(--bme-muted); 
+        margin: 0 0 20px; 
+        max-width: 60ch;
+    }
+
+    .grid {
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+        gap: 14px;
+    }
+
+    .spec {
+        padding: 16px 18px; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 6px;
+    }
+
+    .k {
+        font-size: 12px; 
+        text-transform: uppercase; 
+        letter-spacing: 0.04em; 
+        color: var(--bme-muted);
+    }
+
+    .v {
+        font-size: 18px; 
+        font-weight: 700; 
+        color: var(--bme-darker-blue);
+    }
+</style>

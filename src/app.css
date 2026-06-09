@@ -1,0 +1,137 @@
+:root {
+    --bme-light-blue: #00aeef;
+    --bme-dark-blue: #004b8d;
+    --bme-darker-blue: #003a6d;
+    --bme-green: #6CB33F;
+    --bme-green-dark: #4E8C2A;
+    --bme-green-darker: #2F5E18;
+    --bme-ink: #1C2A14;
+    --bme-bg: #d0e0e5;
+    --bme-surface: #FFFFFF;
+    --bme-border: #E3E8DE;
+    --bme-muted: #737373;
+    --bme-amber: #F2A900;
+    --bme-red: #C0392B;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(28, 42, 20, 0.06), 0 4px 16px rgba(28, 42, 20, 0.06);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font);
+    color: var(--bme-ink);
+    background: #eaeff3;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--bme-dark-blue);
+    text-decoration: none;
+}
+
+h1, h2, h3 {
+    color: var(--bme-ink);
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: var(--bme-dark-blue);
+    color: #ffffff;
+    padding: 10px 18px;
+}
+
+.btn-primary:hover {
+    background: var(--bme-darker-blue);
+}
+
+.btn-primary:disabled {
+    background-color: #bc9fa6;
+    cursor: not-allowed;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--bme-darker-blue);
+    border: 1px solid var(--bme-border);
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+.btn-ghost:hover {
+    background-color: #eaeff3;
+}
+
+.card {
+    background: var(--bme-surface);
+    border: 1px solid var(--bme-border);
+    box-shadow: var(--shadow);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--bme-red);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status.pending {
+    background-color: #fff3d6;
+    color: #97700a;
+}
+
+.status.approved {
+    background-color: #e4f3d8;
+    color: #2f5e18;
+}
+
+.status.rejected {
+    background-color: #fbe3e0;
+    color: #8e261b;
+}
+
+input, textarea {
+    font-family: inherit;
+    font-size: 15px;
+    padding: 11px 13px;
+    border: 1px solid var(--bme-border);
+    border-radius: 8px;
+    width: 100%;
+    background-color: #ffffff;
+}
+
+input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--bme-dark-blue);
+    box-shadow: 0 0 0 3px rgba(63, 90, 179, 0.18);
+}

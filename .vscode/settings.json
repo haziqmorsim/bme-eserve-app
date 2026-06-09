@@ -1,0 +1,10 @@
+{
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    "deno.enable": true,
+    "deno.enablePaths": ["./supabase/functions"],
+    "deno.lint": true,
+    "[typescript]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "json.schemaDownload.enable": true
+}
