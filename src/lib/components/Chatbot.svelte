@@ -1,5 +1,6 @@
 <script lang="ts">
     import { PUBLIC_WHATSAPP_NUMBER } from "$env/static/public";
+    import { Headset } from "@lucide/svelte";
 
     type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -110,11 +111,16 @@
                 <button class="chat-send" onclick={send} disabled={loading || !input.trim()}>Send</button>
             </div>
 
-            <button class="chat-whatsapp" onclick={openWhatsapp}>Chat on WhatsApp</button>
+            <button class="chat-whatsapp" onclick={openWhatsapp}>
+                Chat on WhatsApp
+                <i class="fa-brands fa-whatsapp whatsapp-icon"></i>
+            </button>
         </div>
     {/if}
 
-    <button class="chat-launcher" onclick={() => (open = !open)} aria-label="Open assistant">{open ? '×' : 'Chat'}</button>
+    <button class="chat-launcher" onclick={() => (open = !open)} aria-label={open ? 'Close assistant' : 'Open assistant'}>
+        {#if open}×{:else}<Headset size={24} />{/if}
+    </button>
 </div>
 
 <style>
@@ -127,15 +133,15 @@
     }
 
     .chat-launcher {
-        width: 3.5rem;
-        height: 3.5rem;
+        width: 3rem;
+        height: 3rem;
         border-radius: 50%;
         border: none;
         background: var(--bme-dark-blue);
         color: #ffffff;
         font-size: 0.95rem;
         cursor: pointer;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        box-shadow: 3px 3px 20px #000000;
     }
 
     .chat-launcher:hover {
@@ -257,6 +263,7 @@
         background-color: #25d366;
         color: #ffffff;
         padding: 0.65rem;
+        margin: 0.65rem;
         font-size: 0.85rem;
         font-weight: 600;
         cursor: pointer;
@@ -264,5 +271,9 @@
 
     .chat-whatsapp:hover {
         filter: brightness(0.95);
+    }
+
+    .whatsapp-icon {
+        margin-left: 0.4rem;
     }
 </style>
