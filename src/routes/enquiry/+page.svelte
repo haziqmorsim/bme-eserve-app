@@ -149,4 +149,9 @@
         color: var(--bme-muted);
         margin: 12px 0 20px;
     }
+
+    @media (max-width: 480px) {
+        .panel { padding: 26px 20px; }
+        .logo { height: 72px; }
+    }
 </style>

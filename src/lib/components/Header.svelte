@@ -139,4 +139,22 @@
     .pages .btn-ghost.active a {
         color: #ffffff;
     }
+
+    @media (max-width: 1024px) {
+        .header { height: auto; margin: 0; padding: 14px 16px; }
+        .brand img { height: 72px; }
+        .title { font-size: 16px; }
+        nav { gap: 10px; }
+    }
+ 
+    @media (max-width: 640px) {
+        .header { flex-direction: column; align-items: stretch; gap: 12px; }
+        .row { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .brand img { height: 52px; }
+        .pages { margin-top: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        nav { width: 100%; }
+        .column { width: 100%; }
+        .title-container { align-self: flex-start; }
+        .actions { margin-top: 8px; flex-wrap: wrap; justify-content: flex-start; gap: 10px; }
+    }
 </style>

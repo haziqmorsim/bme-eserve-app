@@ -114,4 +114,12 @@
         gap: 10px; 
         margin-top: 16px; 
     }
+
+    @media (max-width: 640px) {
+        .quote { padding: 16px; }
+        .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
+        .actions { flex-wrap: wrap; }
+        table { font-size: 13px; }
+        th, td { padding: 6px; }
+    }
 </style>

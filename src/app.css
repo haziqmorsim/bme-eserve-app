@@ -135,3 +135,8 @@ input:focus, textarea:focus {
     border-color: var(--bme-dark-blue);
     box-shadow: 0 0 0 3px rgba(63, 90, 179, 0.18);
 }
+
+@media (max-width: 640px) {
+    .card table { display: block; overflow-x: auto; white-space: nowrap; }
+    h1 { font-size: 22px; }
+}

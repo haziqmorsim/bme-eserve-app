@@ -276,4 +276,9 @@
     .whatsapp-icon {
         margin-left: 0.4rem;
     }
+
+    @media (max-width: 480px) {
+        .chat-root { right: 0.75rem; bottom: 0.75rem; }
+        .chat-panel { width: 92vw; height: min(30rem, 70vh); }
+    }
 </style>

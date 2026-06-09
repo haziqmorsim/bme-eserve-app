@@ -259,4 +259,11 @@
         font-weight: 600;
         vertical-align: middle;
     }
+
+    @media (max-width: 640px) {
+        .part { flex-direction: column; align-items: stretch; }
+        .part .actions { justify-content: space-between; }
+        .comp { padding: 8px 14px; }
+        .design { padding: 12px; }
+    }
 </style>

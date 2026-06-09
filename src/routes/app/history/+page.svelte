@@ -117,4 +117,12 @@
         font-size: 13px;
         color: var(--bme-muted);
     }
+
+    @media (max-width: 640px) {
+        .quote { padding: 16px; }
+        .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
+        .meta { flex-direction: column; align-items: flex-start; gap: 10px; }
+        table { font-size: 13px; }
+        th, td { padding: 6px; }
+    }
 </style>

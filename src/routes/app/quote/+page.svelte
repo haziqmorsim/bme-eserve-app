@@ -215,13 +215,23 @@
         margin-bottom: 12px; 
     }
 
-    @media (max-width: 720px) { 
-        .row { 
-            grid-template-columns: 1fr 1fr; 
-        } 
-        
-        .row.head { 
-            display: none; 
-        } 
+    @media (max-width: 720px) {
+        .row {
+            grid-template-columns: 1fr;
+            gap: 4px;
+            position: relative;
+            padding-right: 28px;
+        }
+ 
+        .row.head { display: none; }
+ 
+        .row > span:last-child {
+            position: absolute;
+            top: 10px;
+            right: 0;
+        }
+ 
+        .total { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 16px; }
+        .indicative { text-align: left; }
     }
 </style>

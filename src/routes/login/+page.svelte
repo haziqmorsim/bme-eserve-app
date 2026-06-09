@@ -116,4 +116,9 @@
     .enquiry a:hover {
         text-decoration: underline;
     }
+
+    @media (max-width: 480px) {
+        .panel { padding: 26px 20px; }
+        .logo { height: 72px; }
+    }
 </style>
