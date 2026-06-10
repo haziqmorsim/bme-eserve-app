@@ -16,10 +16,10 @@
         <div class="pages">
             <button class="btn-ghost" class:active={$page.url.pathname === '/app'}><a href="/app">Home</a></button>
 
-            <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quote'}><a href="/app/quote">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
+            <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'}><a href="/app/quotes">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
 
             {#if profile?.role === 'admin'}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/admin')}><a href="/app/admin">Requests</a></button>
+            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a></button>
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
         </div>
