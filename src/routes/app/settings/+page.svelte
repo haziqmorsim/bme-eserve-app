@@ -1,0 +1,62 @@
+<script lang="ts">
+    import BoilerManager from "$lib/components/admin/BoilerManager.svelte";
+    import PartManager from "$lib/components/admin/PartManager.svelte";
+    import CustomerManager from "$lib/components/admin/CustomerManager.svelte";
+
+    let { data } = $props();
+    let tab = $state<'boilers' | 'parts' | 'customers'>('boilers');
+</script>
+
+<h1>Settings</h1>
+
+<div class="tabbar">
+    <button class="tab" class:active={tab === 'boilers'} onclick={() => (tab = 'boilers')}>Boilers</button>
+    <button class="tab" class:active={tab === 'parts'} onclick={() => (tab = 'parts')}>Parts</button>
+    <button class="tab" class:active={tab === 'customers'} onclick={() => (tab = 'customers')}>Customers</button>
+</div>
+
+{#if tab === 'boilers'}
+    <section>
+        <BoilerManager boilers={data.boilers} regions={data.regions} supabase={data.supabase} />
+    </section>
+{:else if tab === 'parts'}
+    <section>
+        <PartManager parts={data.parts} components={data.components} boilers={data.boilers} supabase={data.supabase} />
+    </section>
+{:else}
+    <section>
+        <CustomerManager customers={data.customers} regions={data.regions} supabase={data.supabase} />
+    </section>
+{/if}
+
+<style>
+    h1 {
+        margin-bottom: 18px;
+    }
+ 
+    .tabbar {
+        display: inline-flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+ 
+    .tab {
+        padding: 9px 22px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-weight: 700;
+        background-color: #ffffff;
+        color: var(--bme-muted);
+    }
+ 
+    .tab:hover {
+        border-color: var(--bme-darker-blue);
+    }
+ 
+    .tab.active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-color: var(--bme-dark-blue);
+    }
+</style>

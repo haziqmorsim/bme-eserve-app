@@ -15,12 +15,13 @@
         </div>
         <div class="pages">
             <button class="btn-ghost" class:active={$page.url.pathname === '/app'}><a href="/app">Home</a></button>
-                
-            {#if profile?.role === 'admin'}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/admin')}><a href="/app/admin">Requests</a></button>
-            {/if}
 
             <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quote'}><a href="/app/quote">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
+
+            {#if profile?.role === 'admin'}
+            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/admin')}><a href="/app/admin">Requests</a></button>
+            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
+            {/if}
         </div>
     </div>
 
@@ -141,20 +142,66 @@
     }
 
     @media (max-width: 1024px) {
-        .header { height: auto; margin: 0; padding: 14px 16px; }
-        .brand img { height: 72px; }
-        .title { font-size: 16px; }
-        nav { gap: 10px; }
+        .header { 
+            height: auto; 
+            margin: 0; 
+            padding: 14px 16px; 
+        }
+
+        .brand img { 
+            height: 72px; 
+        }
+
+        .title { 
+            font-size: 16px; 
+        }
+
+        nav { 
+            gap: 10px; 
+        }
     }
- 
+
     @media (max-width: 640px) {
-        .header { flex-direction: column; align-items: stretch; gap: 12px; }
-        .row { flex-direction: column; align-items: flex-start; gap: 10px; }
-        .brand img { height: 52px; }
-        .pages { margin-top: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-        nav { width: 100%; }
-        .column { width: 100%; }
-        .title-container { align-self: flex-start; }
-        .actions { margin-top: 8px; flex-wrap: wrap; justify-content: flex-start; gap: 10px; }
+        .header { 
+            flex-direction: column; 
+            align-items: stretch; 
+            gap: 12px; 
+        }
+
+        .row { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 10px; 
+        }
+
+        .brand img { 
+            height: 52px; 
+        }
+
+        .pages { 
+            margin-top: 0; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+        }
+
+        nav { 
+            width: 100%; 
+        }
+
+        .column { 
+            width: 100%; 
+        }
+
+        .title-container { 
+            align-self: flex-start; 
+        }
+
+        .actions { 
+            margin-top: 8px; 
+            flex-wrap: wrap; 
+            justify-content: flex-start; 
+            gap: 10px; 
+        }
     }
 </style>

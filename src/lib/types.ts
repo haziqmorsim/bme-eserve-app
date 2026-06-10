@@ -38,6 +38,7 @@ export interface Part {
     in_stock: boolean;
     price_min: number | null;
     price_max: number | null;
+    stock_quantity: number;
 }
 
 export interface Profile {
@@ -46,4 +47,6 @@ export interface Profile {
     company: string | null;
     role: 'customer' | 'admin';
     region_id: string | null;
+    email: string | null;
+    phone: string | null;
 }
