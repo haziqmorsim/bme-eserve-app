@@ -26,6 +26,15 @@
                 <small>{new Date(q.created_at).toLocaleString()}</small>
             </div>
 
+            <div class="customer">
+                {#if q.customer.company || q.customer.full_name}
+                    {#if q.customer.company}<strong>{q.customer.company}</strong>{/if}
+                    {#if q.customer.full_name}<strong>{q.customer.full_name}</strong>{/if}
+                {:else}
+                    <span>Unknown customer</span>
+                {/if}
+            </div>
+
             <table>
                 <thead>
                     <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
@@ -87,6 +96,20 @@
 
     .status {
         text-transform: capitalize;
+    }
+
+    .customer {
+        margin-bottom: 14px;
+        font-size: 14px;
+    }
+
+    .customer strong {
+        color: var(--bme-ink);
+    }
+
+    .customer span {
+        color: var(--bme-muted);
+        margin-left: 8px;
     }
 
     table { 

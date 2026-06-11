@@ -88,7 +88,7 @@
 
     function range(p: any) {
         if (p.price_min == null || p.price_max == null) return '—';
-        return `RM ${p.price_min} – ${p.price_max}`;
+        return `RM${p.price_min} – RM${p.price_max}`;
     }
 </script>
 

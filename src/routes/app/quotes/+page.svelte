@@ -13,7 +13,7 @@
 
     function lineRange(min: number | null | undefined, max: number | null | undefined, qty: number) {
         if (min == null || max == null) return 'Price on request';
-        return `RM ${formatMoney(min * qty)} – ${formatMoney(max * qty)}`;
+        return `RM${formatMoney(min * qty)} – RM${formatMoney(max * qty)}`;
     }
 
     async function submitQuote() {

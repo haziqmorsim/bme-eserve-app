@@ -120,7 +120,7 @@
                             <div class="pname">{p.name} <span class="tag">{compName[p.component_id]}</span></div>
                             {#if p.description}<div class="pdesc">{p.description}</div>{/if}
                             <div class="price">{priceRangeLabel(p.price_min, p.price_max)}</div>
-                            {#if !p.in_stock}<div class="avail">made to order</div>{/if}
+                            <!-- {#if !p.in_stock}<div class="avail">made to order</div>{/if} -->
                         </div>
                         <div class="actions">
                             <input type="number" min="1" value={qty[p.id] ?? 1} oninput={(e) => (qty[p.id] = Math.max(1, +e.currentTarget.value))} />
