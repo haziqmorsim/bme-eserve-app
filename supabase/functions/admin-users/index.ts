@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
         const action = body.action;
 
         if (action === 'create') {
-            const { email, password, full_name, company, phone region_id } = body;
+            const { email, password, full_name, company, phone, region_id } = body;
             if (!email || !password) return json(400, { error: 'Email and password are required.' });
 
             const { data: created, error: cErr } = await admin.auth.admin.createUser({
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
         if (action === 'update') {
             const { id, email, full_name, company, phone, region_id } = body;
-            of (!id) return json(400, { error: 'Missing id' });
+            if (!id) return json(400, { error: 'Missing id' });
 
             if (email) {
                 const { error: uErr } = await admin.auth.admin.updateUserById(id, { email });
