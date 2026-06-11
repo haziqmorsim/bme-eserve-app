@@ -80,7 +80,7 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Range (RM)</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Price Range (RM)</span><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">

@@ -1,0 +1,16 @@
+# Supabase project config.
+# Set project_id to your project ref — find it in the Dashboard URL
+# (https://supabase.com/dashboard/project/<ref>) or run: supabase projects list
+project_id = "lhzruijwlrqrsihehroa"
+
+[functions.approve-quote]
+verify_jwt = false
+
+[functions.notify-admin]
+verify_jwt = false
+
+[functions.general-enquiry]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false

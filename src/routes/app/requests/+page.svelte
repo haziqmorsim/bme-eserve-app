@@ -20,7 +20,7 @@
         <div class="card quote">
             <div class="qhead">
                 <div>
-                    <strong>{q.reference}</strong>
+                    <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
                 </div>
                 <small>{new Date(q.created_at).toLocaleString()}</small>
@@ -28,8 +28,8 @@
 
             <div class="customer">
                 {#if q.customer.company || q.customer.full_name}
-                    {#if q.customer.company}<strong>{q.customer.company}</strong>{/if}
-                    {#if q.customer.full_name}<strong>{q.customer.full_name}</strong>{/if}
+                    <p class="cus-info">{#if q.customer.company}Company: <strong>{q.customer.company}</strong>{/if}</p>
+                    <p class="cus-info">{#if q.customer.full_name}Name: <strong>{q.customer.full_name}</strong>{/if}</p>
                 {:else}
                     <span>Unknown customer</span>
                 {/if}
@@ -94,6 +94,10 @@
         margin-left: 10px; 
     }
 
+    .reference {
+        font-size: 18px;
+    }
+
     .status {
         text-transform: capitalize;
     }
@@ -101,6 +105,9 @@
     .customer {
         margin-bottom: 14px;
         font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
 
     .customer strong {
@@ -110,6 +117,10 @@
     .customer span {
         color: var(--bme-muted);
         margin-left: 8px;
+    }
+
+    .cus-info {
+        margin: 0;
     }
 
     table { 

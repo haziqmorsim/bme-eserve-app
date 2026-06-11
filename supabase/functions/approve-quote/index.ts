@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
-import { encodeBase64 } from 'jsr:@std/encoding/base64';
+import { encodeBase64 } from 'jsr:@std/encoding@1/base64';
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { sendEmail } from '../_shared/email.ts';
 
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     const { data: me } = await admin.from('profiles').select('role').eq('id', user.id).single();
     if (me?.role !== 'admin') return json(403, { error: 'Admins only' });
 
-    const { quote_id, action } = await req.json(); // action: 'approve' | 'reject'
+    const { quote_id, action } = await req.json();
 
     const { data: quote } = await admin
       .from('quotes')
@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
     const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
     const customerEmail = userInfo.user?.email;
 
+    const warnings: string[] = [];
+
     if (action === 'reject') {
       await admin
         .from('quotes')
@@ -47,13 +49,20 @@ Deno.serve(async (req) => {
         .eq('id', quote_id);
 
       if (customerEmail) {
-        await sendEmail(
-          customerEmail,
-          `BME e‑Serve — quotation ${quote.reference} update`,
-          `<p>Your quotation request <strong>${quote.reference}</strong> could not be approved at this time. Our team will be in touch.</p>`
-        );
+        try {
+          await sendEmail(
+            customerEmail,
+            `BME e-Serve — quotation ${quote.reference} update`,
+            `<p>Your quotation request <strong>${quote.reference}</strong> could not be approved at this time. Our team will be in touch.</p>`
+          );
+        } catch (e) {
+          console.error('Rejection email failed:', e);
+          warnings.push(`customer_email_failed: ${String(e)}`);
+        }
+      } else {
+        warnings.push('customer_email_missing');
       }
-      return json(200, { ok: true, status: 'rejected' });
+      return json(200, { ok: true, status: 'rejected', warnings });
     }
 
     const pdfBytes = await buildQuotePdf(quote);
@@ -65,7 +74,7 @@ Deno.serve(async (req) => {
 
     const { data: signed } = await admin.storage
       .from('quotes')
-      .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
+      .createSignedUrl(path, 60 * 60 * 24 * 30);
 
     await admin
       .from('quotes')
@@ -77,20 +86,27 @@ Deno.serve(async (req) => {
       .eq('id', quote_id);
 
     if (customerEmail) {
-      await sendEmail(
-        customerEmail,
-        `Your BME e‑Serve quotation ${quote.reference} is approved`,
-        `<div style="font-family:Arial,sans-serif;color:#1C2A14">
-           <h2 style="color:#2F5E18">Quotation Approved</h2>
-           <p>Your quotation <strong>${quote.reference}</strong> has been approved and is attached as a PDF.</p>
-           ${signed?.signedUrl ? `<p>You can also download it <a href="${signed.signedUrl}">here</a> (link valid 30 days).</p>` : ''}
-           <p>Thank you for using BME e‑Serve.</p>
-         </div>`,
-        [{ filename: `${quote.reference}.pdf`, content: encodeBase64(pdfBytes) }]
-      );
+      try {
+        await sendEmail(
+          customerEmail,
+          `Your BME e-Serve quotation ${quote.reference} is approved`,
+          `<div style="font-family:Arial,sans-serif;color:#1C2A14">
+             <h2 style="color:#2F5E18">Quotation Approved</h2>
+             <p>Your quotation <strong>${quote.reference}</strong> has been approved and is attached as a PDF.</p>
+             ${signed?.signedUrl ? `<p>You can also download it <a href="${signed.signedUrl}">here</a> (link valid 30 days).</p>` : ''}
+             <p>Thank you for using BME e-Serve.</p>
+           </div>`,
+          [{ filename: `${quote.reference}.pdf`, content: encodeBase64(pdfBytes) }]
+        );
+      } catch (e) {
+        console.error('Approval email failed:', e);
+        warnings.push(`customer_email_failed: ${String(e)}`);
+      }
+    } else {
+      warnings.push('customer_email_missing');
     }
 
-    return json(200, { ok: true, status: 'approved' });
+    return json(200, { ok: true, status: 'approved', warnings });
   } catch (e) {
     return json(400, { error: String(e) });
   }
