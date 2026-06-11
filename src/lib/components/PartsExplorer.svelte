@@ -2,6 +2,7 @@
     import type { Component, Part, Boiler } from "$lib/types";
     import { SupabaseClient } from "@supabase/supabase-js";
     import { addItem } from "$lib/stores/quote";
+    import { addToast } from "$lib/stores/toast";
     import { priceRangeLabel } from "$lib/price";
     import BoilerDiagram from "./BoilerDiagram.svelte";
 
@@ -9,7 +10,7 @@
 
     let allParts = $state<Part[]>([]);
     let loading = $state(false);
-    let activeComponentId = $state<string | null>(null); // null = All
+    let activeComponentId = $state<string | null>(null);
     let search = $state('');
     let qty = $state<Record<string, number>>({});
     let loadedFor = $state<string | null>(null);
@@ -74,6 +75,7 @@
             quantity: qty[p.id] ?? 1
         });
         qty[p.id] = 1;
+        addToast('Part added to quote list');
     }
 </script>
 

@@ -11,5 +11,14 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .eq('id', user.id)
         .single();
 
-    return { profile, userEmail: user.email };
+    let pendingCount = 0;
+    if (profile?.role === 'admin') {
+        const { count } = await supabase
+            .from('quotes')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        pendingCount = count ?? 0;
+    }
+
+    return { profile, userEmail: user.email, pendingCount };
 };

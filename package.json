@@ -39,6 +39,7 @@
 		"@sveltejs/package": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@types/node": "^25.9.1",
+		"@types/nodemailer": "^8.0.1",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",
 		"publint": "^0.3.18",
@@ -54,6 +55,7 @@
 		"@anthropic-ai/sdk": "^0.102.0",
 		"@lucide/svelte": "^1.17.0",
 		"@supabase/ssr": "^0.10.3",
-		"@supabase/supabase-js": "^2.107.0"
+		"@supabase/supabase-js": "^2.107.0",
+		"nodemailer": "^8.0.11"
 	}
 }

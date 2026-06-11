@@ -85,6 +85,10 @@
         margin-left: 10px; 
     }
 
+    .status {
+        text-transform: capitalize;
+    }
+
     table { 
         width: 100%; 
         border-collapse: collapse; 

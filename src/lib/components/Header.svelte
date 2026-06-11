@@ -2,7 +2,7 @@
     import { page } from "$app/stores";
     import { quoteItems } from "$lib/stores/quote";
 
-    let { profile } = $props();
+    let { profile, pendingCount = 0 } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
 </script>
 
@@ -19,7 +19,7 @@
             <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'}><a href="/app/quotes">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
 
             {#if profile?.role === 'admin'}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a></button>
+            <button class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</button>
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
         </div>
@@ -107,6 +107,8 @@
 
     .pages {
         margin-top: auto;
+        display: flex;
+        gap: 20px;
     }
 
     .title-container {
@@ -125,6 +127,19 @@
     }
 
     .quote-btn .badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translate(50%, -50%);
+        pointer-events: none;
+    }
+
+    .request-btn {
+        position: relative;
+        overflow: visible;
+    }
+
+    .request-btn .badge {
         position: absolute;
         top: 0;
         right: 0;

@@ -1,16 +1,19 @@
 <script lang="ts">
     import Header from "$lib/components/Header.svelte";
     import Footer from "$lib/components/Footer.svelte";
+    import Toaster from "$lib/components/Toaster.svelte";
     let { data, children } = $props();
 </script>
 
 <div class="shell">
-    <Header profile={data.profile} />
+    <Header profile={data.profile} pendingCount={data.pendingCount} />
     <main>
         {@render children()}
     </main>
     <Footer />
 </div>
+
+<Toaster />
 
 <style>
     .shell {
