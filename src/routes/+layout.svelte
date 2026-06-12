@@ -3,6 +3,7 @@
     import { invalidate } from '$app/navigation';
     import { onMount } from 'svelte';
     import Chatbot from '$lib/components/Chatbot.svelte';
+    import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
     let { data, children } = $props();
     let { session, supabase } = $derived(data);
@@ -20,3 +21,4 @@
 {@render children()}
 
 <Chatbot />
+<LoadingSpinner />

@@ -146,8 +146,8 @@ async function buildQuotePdf(quote: any): Promise<Uint8Array> {
     page.drawText(text, { x: rx - w, y, size, font: f, color });
   };
 
-  const logoH = 72;
-  let topY = 800;
+  const logoH = 84;
+  let topY = 815;
   const logoUrl = Deno.env.get('LOGO_URL');
   if (logoUrl) {
     try {
@@ -158,15 +158,15 @@ async function buildQuotePdf(quote: any): Promise<Uint8Array> {
           ? await doc.embedPng(bytes)
           : await doc.embedJpg(bytes);
         const logoW = (img.width / img.height) * logoH;
-        page.drawImage(img, { x: 40, y: 800 - logoH, width: logoW, height: logoH });
-        topY = 800 - logoH - 30;
+        page.drawImage(img, { x: 40, y: 815 - logoH, width: logoW, height: logoH });
+        topY = 815 - logoH - 48;
       }
     } catch (e) {
       console.error('Logo embed failed:', e);
     }
   }
 
-  page.drawText('BME e-Serve', { x: 40, y: topY, size: 26, font: bold, color: blue });
+  page.drawText('BME e-Serve', { x: 40, y: topY, size: 20, font: bold, color: blue });
   page.drawText('Boiler Parts Quotation', { x: 40, y: topY - 24, size: 12, font, color: muted });
 
   const d = new Date();
