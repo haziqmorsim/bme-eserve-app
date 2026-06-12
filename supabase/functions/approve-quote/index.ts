@@ -209,11 +209,7 @@ async function buildQuotePdf(quote: any): Promise<Uint8Array> {
   page.drawLine({ start: { x: 40, y }, end: { x: 555, y }, color: ruleColor });
   y -= 22;
   page.drawText('Total:', { x: bounds[4], y, size: 12, font: bold, color: ink });
-<<<<<<< HEAD
   center(`RM${total.toFixed(2)}`, centerOf(5), y, 12, bold, blue);
-=======
-  center(`RM ${total.toFixed(2)}`, centerOf(5), y, 12, bold, blue);
->>>>>>> 21a03285144085899075c231d658e5daa7bbc2f7
 
   if (quote.notes) {
     y -= 40;
