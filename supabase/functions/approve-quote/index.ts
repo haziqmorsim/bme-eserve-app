@@ -28,7 +28,9 @@ Deno.serve(async (req) => {
     const { data: me } = await admin.from('profiles').select('role').eq('id', user.id).single();
     if (me?.role !== 'admin') return json(403, { error: 'Admins only' });
 
-    const { quote_id, action } = await req.json();
+    const body = await req.json();
+    const { quote_id, action } = body;
+    const priceMap: Record<string, number> = body.prices ?? {};
 
     const { data: quote } = await admin
       .from('quotes')
@@ -65,6 +67,16 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, status: 'rejected', warnings });
     }
 
+    for (const it of quote.quote_items) {
+      const p = Number(priceMap[it.id]);
+      it.unit_price = Number.isFinite(p) ? p : Number(it.unit_price) || 0;
+    }
+    await Promise.all(
+      quote.quote_items.map((it: any) =>
+        admin.from('quote_items').update({ unit_price: it.unit_price }).eq('id', it.id)
+      )
+    );
+
     const pdfBytes = await buildQuotePdf(quote);
     const path = `${quote.user_id}/${quote.reference}.pdf`;
 
@@ -91,7 +103,7 @@ Deno.serve(async (req) => {
           customerEmail,
           `Your BME e-Serve quotation ${quote.reference} is approved`,
           `<div style="font-family:Arial,sans-serif;color:#1C2A14">
-             <h2 style="color:#2F5E18">Quotation Approved</h2>
+             <h2 style="color:#004b8d">Quotation Approved</h2>
              <p>Your quotation <strong>${quote.reference}</strong> has been approved and is attached as a PDF.</p>
              ${signed?.signedUrl ? `<p>You can also download it <a href="${signed.signedUrl}">here</a> (link valid 30 days).</p>` : ''}
              <p>Thank you for using BME e-Serve.</p>
@@ -114,47 +126,90 @@ Deno.serve(async (req) => {
 
 async function buildQuotePdf(quote: any): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  const page = doc.addPage([595, 842]); // A4
+  let page = doc.addPage([595, 842]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const green = rgb(0.18, 0.37, 0.09);
+
+  const blue = rgb(0, 0.294, 0.553);
   const ink = rgb(0.11, 0.16, 0.08);
   const muted = rgb(0.42, 0.48, 0.39);
+  const headerBg = rgb(0.91, 0.95, 0.99);
+  const ruleColor = rgb(0.85, 0.88, 0.92);
 
-  let y = 800;
-  page.drawText('BME e-Serve', { x: 40, y, size: 22, font: bold, color: green });
-  page.drawText('Boiler Parts Quotation', { x: 40, y: y - 22, size: 12, font, color: muted });
+  const center = (text: string, cx: number, y: number, size: number, f: any, color: any) => {
+    const w = f.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: cx - w / 2, y, size, font: f, color });
+  };
 
-  page.drawText(`Quotation: ${quote.reference}`, { x: 360, y, size: 12, font: bold, color: ink });
-  page.drawText(`Date: ${new Date().toLocaleDateString()}`, {
-    x: 360, y: y - 18, size: 11, font, color: muted
-  });
+  const right = (text: string, rx: number, y: number, size: number, f: any, color: any) => {
+    const w = f.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: rx - w, y, size, font: f, color });
+  };
 
-  y -= 70;
-  page.drawRectangle({ x: 40, y: y - 4, width: 515, height: 22, color: rgb(0.93, 0.95, 0.92) });
-  const cols = [44, 150, 330, 420, 480];
-  const headers = ['Part #', 'Description', 'Boiler', 'Qty', 'Unit (MYR)'];
-  headers.forEach((h, i) => page.drawText(h, { x: cols[i], y, size: 10, font: bold, color: ink }));
+  const logoH = 72;
+  let topY = 800;
+  const logoUrl = Deno.env.get('LOGO_URL');
+  if (logoUrl) {
+    try {
+      const resp = await fetch(logoUrl);
+      if (resp.ok) {
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        const img = logoUrl.toLowerCase().endsWith('.png')
+          ? await doc.embedPng(bytes)
+          : await doc.embedJpg(bytes);
+        const logoW = (img.width / img.height) * logoH;
+        page.drawImage(img, { x: 40, y: 800 - logoH, width: logoW, height: logoH });
+        topY = 800 - logoH - 30;
+      }
+    } catch (e) {
+      console.error('Logo embed failed:', e);
+    }
+  }
+
+  page.drawText('BME e-Serve', { x: 40, y: topY, size: 26, font: bold, color: blue });
+  page.drawText('Boiler Parts Quotation', { x: 40, y: topY - 24, size: 12, font, color: muted });
+
+  const d = new Date();
+  const dateStr =
+    `${String(d.getDate()).padStart(2, '0')}/` +
+    `${String(d.getMonth() + 1).padStart(2, '0')}/` +
+    `${d.getFullYear()}`;
+  right(`Quotation: ${quote.reference}`, 555, topY, 13, bold, ink);
+  right(`Date: ${dateStr}`, 555, topY - 22, 11, font, muted);
+
+  const bounds = [40, 135, 300, 360, 410, 480, 555];
+  const centerOf = (i: number) => (bounds[i] + bounds[i + 1]) / 2;
+  const descLeft = bounds[1] + 6;
+
+  let y = topY - 56;
+
+  page.drawRectangle({ x: 40, y: y - 4, width: 515, height: 22, color: headerBg });
+  const headers = ['Part No.', 'Description', 'Boiler', 'Qty', 'Unit (RM)', 'Amount (RM)'];
+  headers.forEach((h, i) => center(h, centerOf(i), y, 10, bold, ink));
 
   y -= 24;
   let total = 0;
   for (const it of quote.quote_items) {
-    const line = Number(it.unit_price) * it.quantity;
-    total += line;
-    page.drawText(String(it.part_number), { x: cols[0], y, size: 10, font, color: ink });
-    page.drawText(trim(it.part_name, 30), { x: cols[1], y, size: 10, font, color: ink });
-    page.drawText(String(it.boiler_code), { x: cols[2], y, size: 10, font, color: ink });
-    page.drawText(String(it.quantity), { x: cols[3], y, size: 10, font, color: ink });
-    page.drawText(Number(it.unit_price).toFixed(2), { x: cols[4], y, size: 10, font, color: ink });
+    const unit = Number(it.unit_price) || 0;
+    const amount = unit * it.quantity;
+    total += amount;
+
+    center(String(it.part_number), centerOf(0), y, 10, font, ink);
+    page.drawText(trim(it.part_name, 30), { x: descLeft, y, size: 10, font, color: ink });
+    center(String(it.boiler_code), centerOf(2), y, 10, font, ink);
+    center(String(it.quantity), centerOf(3), y, 10, font, ink);
+    center(unit.toFixed(2), centerOf(4), y, 10, font, ink);
+    center(amount.toFixed(2), centerOf(5), y, 10, font, ink);
+
     y -= 18;
-    if (y < 90) { y = 800; doc.addPage([595, 842]); }
+    if (y < 90) { page = doc.addPage([595, 842]); y = 800; }
   }
 
   y -= 10;
-  page.drawLine({ start: { x: 40, y }, end: { x: 555, y }, color: rgb(0.89, 0.91, 0.87) });
+  page.drawLine({ start: { x: 40, y }, end: { x: 555, y }, color: ruleColor });
   y -= 22;
-  page.drawText('Estimated total:', { x: 360, y, size: 12, font: bold, color: ink });
-  page.drawText(`MYR ${total.toFixed(2)}`, { x: 480, y, size: 12, font: bold, color: green });
+  page.drawText('Total:', { x: bounds[4], y, size: 12, font: bold, color: ink });
+  center(`RM${total.toFixed(2)}`, centerOf(5), y, 12, bold, blue);
 
   if (quote.notes) {
     y -= 40;
@@ -162,9 +217,9 @@ async function buildQuotePdf(quote: any): Promise<Uint8Array> {
     page.drawText(trim(quote.notes, 90), { x: 40, y: y - 16, size: 10, font, color: ink });
   }
 
-  page.drawText('This quotation is indicative and subject to BME confirmation.', {
-    x: 40, y: 50, size: 9, font, color: muted
-  });
+  // page.drawText('Prices are in Ringgit Malaysia (RM) and reflect the approved quotation.', {
+  //   x: 40, y: 50, size: 9, font, color: muted
+  // });
 
   return await doc.save();
 }
