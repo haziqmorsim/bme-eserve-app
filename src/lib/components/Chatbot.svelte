@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { PUBLIC_WHATSAPP_NUMBER } from "$env/static/public";
+    import { PUBLIC_WHATSAPP_BUSINESS_NUMBER } from "$env/static/public";
     import { Headset } from "@lucide/svelte";
 
     type Msg = { role: 'user' | 'assistant'; content: string };
@@ -64,7 +64,7 @@
         const intro = lastUser 
             ? `Hi BME, I was using the e-Serve portal and need help with ${lastUser.content}.` 
             : 'Hi BME, I need help with the e-Serve portal.';
-        const url = `https://wa.me/${PUBLIC_WHATSAPP_NUMBER}?text=${encodeURIComponent(intro)}`;
+        const url = `https://wa.me/${PUBLIC_WHATSAPP_BUSINESS_NUMBER}?text=${encodeURIComponent(intro)}`;
         window.open(url, '_blank', 'noopener');
     }
 
