@@ -11,7 +11,7 @@
 
 {#if data.isStaff}
     <section class="block">
-        <h2 class="block-title">Review History</h2>
+        <h2 class="block-title">Reviews History</h2>
 
         {#if data.reviews.length === 0}
             <div class="card empty">You have not reviewed any quotation requests yet.</div>
@@ -29,7 +29,6 @@
                     <p class="decision">
                         Your decision at <strong>{levelLabel(r.level)}</strong> level:
                         <span class="status {r.action === 'approved' ? 'approved' : 'rejected'}">{r.action}</span>
-                        {#if r.remarks}<span class="remark">— {r.remarks}</span>{/if}
                     </p>
 
                     <table>
@@ -47,6 +46,7 @@
                             {/each}
                         </tbody>
                     </table>
+                    <p><strong>Remarks:</strong> {#if r.remarks}<span class="remark"> {r.remarks}</span>{/if}</p>
 
                     <div class="meta">
                         <Stepper status={r.quotes.status} level={r.quotes.current_level} />
@@ -57,9 +57,9 @@
     </section>
 {/if}
 
-{#if !data.isStaff || data.quotes.length > 0}
+{#if data.isStaff || data.quotes.length > 0}
     <section class="block">
-        <h2 class="block-title">My Quotation Requests</h2>
+        <h2 class="block-title">Requests History</h2>
 
         {#if data.quotes.length === 0}
             <div class="card empty">You have not submitted any quotation requests yet.</div>

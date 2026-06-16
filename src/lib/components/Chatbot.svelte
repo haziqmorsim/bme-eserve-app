@@ -69,13 +69,17 @@
     }
 
     function segments(text: string) {
-        const re = /\[([^\]]+)\]\((\/[^\s)]*)\)/g;
-        const out: { type: 'text' | 'link'; text: string; href?: string }[] = [];
+        const re = /\[([^\]]+)\]\((\/[^\s)]*)\)|\*\*([^*]+)\*\*/g;
+        const out: { type: 'text' | 'link' | 'bold'; text: string; href?: string }[] = [];
         let last = 0;
         let m: RegExpExecArray | null;
         while ((m = re.exec(text))) {
             if (m.index > last) out.push({ type: 'text', text: text.slice(last, m.index) });
-            out.push({ type: 'link', text: m[1], href: m[2] });
+            if (m[1] !== undefined) {
+                out.push({ type: 'link', text: m[1], href: m[2] });
+            } else {
+                out.push({ type: 'bold', text: m[3] });
+            }
             last = re.lastIndex;
         }
         if (last < text.length) out.push({ type: 'text', text: text.slice(last) });
@@ -96,6 +100,7 @@
                     <div class="chat-bubble {m.role}">
                         {#each segments(m.content) as seg}
                             {#if seg.type === 'link'}<a href={seg.href} onclick={() => (open = false)}>{seg.text}</a>
+                            {:else if seg.type === 'bold'}<strong>{seg.text}</strong>
                             {:else}{seg.text}
                             {/if}
                         {/each}
