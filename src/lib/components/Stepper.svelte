@@ -28,7 +28,7 @@
     }
 
     const finalState = $derived(status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending');
-    const finalLabel = $derived(finalState === 'approved' ? 'Approved' : finalState === 'rejected' ? 'Rejected' : 'Final');
+    const finalLabel = $derived(finalState === 'approved' ? 'Approved' : finalState === 'rejected' ? 'Rejected' : 'Pending');
 </script>
 
 <div class="stepper" role="group" aria-label="Approval progress">

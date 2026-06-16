@@ -21,7 +21,7 @@
                     <div class="qhead">
                         <div>
                             <strong>{r.quotes.reference}</strong>
-                            <span class="status {r.action === 'approved' ? 'approved' : 'rejected'}">{r.action}</span>
+                            <span class="status {r.quotes.status}">{r.quotes.status}</span>
                         </div>
                         <small>Reviewed {new Date(r.created_at).toLocaleString()}</small>
                     </div>
