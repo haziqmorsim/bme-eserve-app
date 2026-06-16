@@ -18,8 +18,10 @@
 
             <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'}><a href="/app/quotes">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
 
-            {#if profile?.role === 'admin'}
+            {#if profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo'}
             <button class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</button>
+            {/if}
+            {#if profile?.role === 'admin'}
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
         </div>

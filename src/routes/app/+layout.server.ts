@@ -11,12 +11,16 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .eq('id', user.id)
         .single();
 
+    const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
+    const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
+
     let pendingCount = 0;
-    if (profile?.role === 'admin') {
+    if (myLevel) {
         const { count } = await supabase
             .from('quotes')
             .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending');
+            .eq('status', 'pending')
+            .eq('current_level', myLevel);
         pendingCount = count ?? 0;
     }
 

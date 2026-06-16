@@ -1,9 +1,11 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
     let { data } = $props();
     let working = $state<string | null>(null);
     let priceError = $state<string | null>(null);
     let prices = $state<Record<string, string>>({});
+    let remarks = $state<Record<string, string>>({});
 
     $effect(() => {
         for (const q of data.quotes) {
@@ -29,6 +31,9 @@
     function money(n: number): string {
         return 'RM ' + n.toFixed(2);
     }
+    function roleLabel(r: string): string {
+        return r === 'admin' ? 'Admin' : r === 'manager' ? 'Manager' : r === 'coo' ? 'COO' : r;
+    }
 
     async function review(q: any, action: 'approve' | 'reject') {
         priceError = null;
@@ -42,21 +47,37 @@
             }
         }
         working = q.id;
-        const body: any = { quote_id: q.id, action };
+        const body: any = { quote_id: q.id, action, remarks: remarks[q.id] ?? '' };
         if (action === 'approve') {
             body.prices = {};
             for (const it of q.quote_items) body.prices[it.id] = Number(prices[it.id]);
         }
-        await data.supabase.functions.invoke('approve-quote', { body });
+
+        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', { body });
         working = null;
+
+        if (error || resp?.error) {
+            addToast(resp?.error ?? error?.message ?? 'Action could not be completed.');
+        } else if (action === 'reject') {
+            addToast(`${q.reference} rejected.`);
+        } else if (resp?.status === 'approved') {
+            addToast(`${q.reference} fully approved.`);
+        } else if (resp?.status === 'pending') {
+            const nextName = resp.current_level === 2 ? 'Manager' : 'COO';
+            addToast(`Approved — forwarded to ${nextName} review.`);
+        } else {
+            addToast('Decision recorded.');
+        }
+
         await invalidateAll();
     }
 </script>
 
 <h1>Quotation Requests</h1>
+<p class="lead">Showing requests awaiting <strong>{data.levelLabel}</strong> review (Level {data.level} of 3).</p>
 
 {#if data.quotes.length === 0}
-    <div class="card empty">No quotation requests yet.</div>
+    <div class="card empty">No requests are awaiting your review.</div>
 {:else}
     {#each data.quotes as q (q.id)}
         <div class="card quote">
@@ -129,13 +150,35 @@
                 </tfoot>
             </table>
 
-            {#if q.notes}<p class="notes"><em>Notes:</em> {q.notes}</p>{/if}
+            {#if q.notes}<p class="notes"><em>Customer notes:</em> {q.notes}</p>{/if}
+
+            {#if q.approvals.length}
+                <div class="prior">
+                    <span class="prior-title">Earlier reviews</span>
+                    {#each q.approvals as a}
+                        <p class="prior-row">
+                            <strong>{roleLabel(a.role)}</strong>
+                            <span class="status {a.action === 'approved' ? 'approved' : 'rejected'}">{a.action}</span>
+                        </p>
+                        <p class="prior-row"><strong>Remarks:</strong> {#if a.remarks} {a.remarks}{/if}</p>
+                    {/each}
+                </div>
+            {/if}
 
             {#if priceError === q.id}
                 <p class="price-err">Enter a valid price (0 or more) for every part before approving.</p>
             {/if}
 
             {#if q.status === 'pending'}
+                <label class="remarks-field">
+                    <p class="notes">Remarks ({data.levelLabel})</p>
+                    <textarea
+                        rows="2"
+                        placeholder="Optional remarks..."
+                        bind:value={remarks[q.id]}
+                    ></textarea>
+                </label>
+
                 <div class="actions">
                     <button class="btn-primary" disabled={working === q.id} onclick={() => review(q, 'approve')}>
                         {working === q.id ? 'Processing...' : 'Approve'}
@@ -151,7 +194,12 @@
 
 <style>
     h1 {
-        margin-bottom: 18px;
+        margin-bottom: 6px;
+    }
+
+    .lead {
+        margin: 0 0 18px;
+        color: var(--bme-muted);
     }
 
     .empty {
@@ -265,14 +313,44 @@
     }
 
     .notes {
-        margin: 12px 0 0;
+        margin: 12px 0;
         color: var(--bme-muted);
+    }
+
+    .prior {
+        margin-top: 14px;
+        padding: 12px 14px;
+        background: var(--bme-bg);
+        border-radius: 8px;
+    }
+
+    .prior-title {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--bme-muted);
+        margin-bottom: 6px;
+    }
+
+    .prior-row {
+        margin: 5px 0;
+        font-size: 14px;
+        color: var(--bme-ink);
+    }
+
+    .remarks-field {
+        display: block;
+        margin-top: 16px;
+    }
+
+    .remarks-field textarea {
+        width: 100%;
     }
 
     .actions {
         display: flex;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: 14px;
     }
 
     @media (max-width: 640px) {

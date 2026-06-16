@@ -1,58 +1,133 @@
 <script lang="ts">
+    import Stepper from "$lib/components/Stepper.svelte";
     let { data } = $props();
+
+    function levelLabel(l: number): string {
+        return l === 1 ? 'Admin' : l === 2 ? 'Manager' : l === 3 ? 'COO' : `Level ${l}`;
+    }
 </script>
 
-<h1>Quote Requests History</h1>
+<h1>History</h1>
 
-{#if data.quotes.length === 0}
-    <div class="card empty">You have not submitted any quotation requests yet.</div>
-{:else}
-    {#each data.quotes as q (q.id)}
-        <div class="card quote">
-            <div class="qhead">
-                <div>
-                    <strong>{q.reference}</strong>
-                    <span class="status {q.status}">{q.status}</span>
+{#if data.isStaff}
+    <section class="block">
+        <h2 class="block-title">Review History</h2>
+
+        {#if data.reviews.length === 0}
+            <div class="card empty">You have not reviewed any quotation requests yet.</div>
+        {:else}
+            {#each data.reviews as r (r.id)}
+                <div class="card quote">
+                    <div class="qhead">
+                        <div>
+                            <strong>{r.quotes.reference}</strong>
+                            <span class="status {r.action === 'approved' ? 'approved' : 'rejected'}">{r.action}</span>
+                        </div>
+                        <small>Reviewed {new Date(r.created_at).toLocaleString()}</small>
+                    </div>
+
+                    <p class="decision">
+                        Your decision at <strong>{levelLabel(r.level)}</strong> level:
+                        <span class="status {r.action === 'approved' ? 'approved' : 'rejected'}">{r.action}</span>
+                        {#if r.remarks}<span class="remark">— {r.remarks}</span>{/if}
+                    </p>
+
+                    <table>
+                        <thead>
+                            <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
+                        </thead>
+                        <tbody>
+                            {#each r.quotes.quote_items as it}
+                                <tr>
+                                    <td>{it.part_number}</td>
+                                    <td>{it.part_name}</td>
+                                    <td>{it.boiler_code}</td>
+                                    <td>{it.quantity}</td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
+
+                    <div class="meta">
+                        <Stepper status={r.quotes.status} level={r.quotes.current_level} />
+                    </div>
                 </div>
-                <small>Submitted {new Date(q.created_at).toLocaleString()}</small>
-            </div>
-            <table>
-                <thead>
-                    <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
-                </thead>
-                <tbody>
-                    {#each q.quote_items as it}
-                        <tr>
-                            <td>{it.part_number}</td>
-                            <td>{it.part_name}</td>
-                            <td>{it.boiler_code}</td>
-                            <td>{it.quantity}</td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
+            {/each}
+        {/if}
+    </section>
+{/if}
 
-            {#if q.notes}<p class="notes"><em>Notes:</em> {q.notes}</p>{/if}
+{#if !data.isStaff || data.quotes.length > 0}
+    <section class="block">
+        <h2 class="block-title">My Quotation Requests</h2>
 
-            <div class="meta">
-                {#if q.status === 'approved'}
-                    {#if q.reviewed_at}<span class="reviewed">Approved on { new Date(q.reviewed_at).toLocaleDateString()}</span>{/if}
-                    {#if q.pdf_url}<a class="btn-primary pdf" href={q.pdf_url} target="_blank" rel="noopener">Download PDF</a>{/if}
-                {:else if q.status === 'rejected'}
-                    <span class="reviewed">
-                        {#if q.reviewed_at}Reviewed on {new Date(q.reviewed_at).toLocaleDateString()}{:else}Not approved{/if}
-                    </span>
-                {:else}
-                    <span class="reviewed">Awaiting review by admin.</span>
-                {/if}
-            </div>
-        </div>
-    {/each}
+        {#if data.quotes.length === 0}
+            <div class="card empty">You have not submitted any quotation requests yet.</div>
+        {:else}
+            {#each data.quotes as q (q.id)}
+                <div class="card quote">
+                    <div class="qhead">
+                        <div>
+                            <strong>{q.reference}</strong>
+                            <span class="status {q.status}">{q.status}</span>
+                        </div>
+                        <small>Submitted {new Date(q.created_at).toLocaleString()}</small>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
+                        </thead>
+                        <tbody>
+                            {#each q.quote_items as it}
+                                <tr>
+                                    <td>{it.part_number}</td>
+                                    <td>{it.part_name}</td>
+                                    <td>{it.boiler_code}</td>
+                                    <td>{it.quantity}</td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
+
+                    {#if q.notes}<p class="notes"><em>Notes:</em> {q.notes}</p>{/if}
+
+                    <div class="meta">
+                        <Stepper status={q.status} level={q.current_level} />
+
+                        <div class="meta-row">
+                            {#if q.status === 'approved'}
+                                {#if q.reviewed_at}<span class="reviewed">Approved on {new Date(q.reviewed_at).toLocaleDateString()}</span>{/if}
+                                {#if q.pdf_url}<a class="btn-primary pdf" href={q.pdf_url} target="_blank" rel="noopener">Download PDF</a>{/if}
+                            {:else if q.status === 'rejected'}
+                                <span class="reviewed">
+                                    {#if q.reviewed_at}Not approved — reviewed on {new Date(q.reviewed_at).toLocaleDateString()}{:else}Not approved{/if}
+                                </span>
+                            {:else}
+                                <span class="reviewed">
+                                    Awaiting {q.current_level === 1 ? 'Admin' : q.current_level === 2 ? 'Manager' : 'COO'} review.
+                                </span>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/each}
+        {/if}
+    </section>
 {/if}
 
 <style>
     h1 {
         margin-bottom: 18px;
+    }
+
+    .block {
+        margin-bottom: 28px;
+    }
+
+    .block-title {
+        font-size: 16px;
+        color: var(--bme-ink);
+        margin: 0 0 12px;
     }
 
     .empty {
@@ -81,6 +156,20 @@
         text-transform: capitalize;
     }
 
+    .decision {
+        margin: 0 0 14px;
+        font-size: 14px;
+        color: var(--bme-ink);
+    }
+
+    .decision .status {
+        margin: 0 4px;
+    }
+
+    .remark {
+        color: var(--bme-muted);
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -107,10 +196,18 @@
 
     .meta {
         display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .meta-row {
+        display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-top: 16px;
     }
 
     .reviewed {
@@ -121,7 +218,7 @@
     @media (max-width: 640px) {
         .quote { padding: 16px; }
         .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
-        .meta { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .meta-row { flex-direction: column; align-items: flex-start; gap: 10px; }
         table { font-size: 13px; }
         th, td { padding: 6px; }
     }

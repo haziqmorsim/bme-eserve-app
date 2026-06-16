@@ -4,6 +4,9 @@ import { encodeBase64 } from 'jsr:@std/encoding@1/base64';
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { sendEmail } from '../_shared/email.ts';
 
+const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
+const LEVEL_NAME: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO' };
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -25,29 +28,46 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
     const { data: me } = await admin.from('profiles').select('role').eq('id', user.id).single();
-    if (me?.role !== 'admin') return json(403, { error: 'Admins only' });
+    const myLevel = me ? ROLE_LEVEL[me.role] : undefined;
+    if (!myLevel) return json(403, { error: 'You are not authorised to review requests.' });
 
     const body = await req.json();
     const { quote_id, action } = body;
+    const remarks: string | null = body.remarks ?? null;
     const priceMap: Record<string, number> = body.prices ?? {};
 
     const { data: quote } = await admin
       .from('quotes')
-      .select('id, reference, notes, user_id, quote_items(*)')
+      .select('id, reference, notes, user_id, status, current_level, quote_items(*)')
       .eq('id', quote_id)
       .single();
     if (!quote) return json(404, { error: 'Quote not found' });
+
+    if (quote.status !== 'pending') return json(409, { error: 'This request has already been finalised.' });
+    if (quote.current_level !== myLevel) return json(409, { error: 'This request is not awaiting your level of review.' });
 
     const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
     const customerEmail = userInfo.user?.email;
 
     const warnings: string[] = [];
+    const now = new Date().toISOString();
+    const myName = LEVEL_NAME[myLevel];
+
+    await admin.from('quote_approvals').insert({
+      quote_id,
+      level: myLevel,
+      role: me!.role,
+      reviewer_id: user.id,
+      action: action === 'approve' ? 'approved' : 'rejected',
+      remarks
+    });
 
     if (action === 'reject') {
       await admin
         .from('quotes')
-        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .update({ status: 'rejected', reviewed_at: now })
         .eq('id', quote_id);
 
       if (customerEmail) {
@@ -55,7 +75,11 @@ Deno.serve(async (req) => {
           await sendEmail(
             customerEmail,
             `BME e-Serve — quotation ${quote.reference} update`,
-            `<p>Your quotation request <strong>${quote.reference}</strong> could not be approved at this time. Our team will be in touch.</p>`
+            `<div style="font-family:Arial,sans-serif;color:#1C2A14">
+               <p>Your quotation request <strong>${quote.reference}</strong> could not be approved at this time.</p>
+               ${remarks ? `<p><em>Reviewer remarks:</em> ${remarks}</p>` : ''}
+               <p>Our team will be in touch if anything further is needed.</p>
+             </div>`
           );
         } catch (e) {
           console.error('Rejection email failed:', e);
@@ -64,7 +88,7 @@ Deno.serve(async (req) => {
       } else {
         warnings.push('customer_email_missing');
       }
-      return json(200, { ok: true, status: 'rejected', warnings });
+      return json(200, { ok: true, status: 'rejected', level: myLevel, warnings });
     }
 
     for (const it of quote.quote_items) {
@@ -77,6 +101,36 @@ Deno.serve(async (req) => {
       )
     );
 
+    if (myLevel < 3) {
+      const nextLevel = myLevel + 1;
+      const nextRole = nextLevel === 2 ? 'manager' : 'coo';
+      const nextName = LEVEL_NAME[nextLevel];
+
+      await admin.from('quotes').update({ current_level: nextLevel }).eq('id', quote_id);
+
+      const { data: reviewers } = await admin.from('profiles').select('email').eq('role', nextRole);
+      const recipients = (reviewers ?? []).map((r: any) => r.email).filter(Boolean).join(';');
+      if (recipients) {
+        try {
+          await sendEmail(
+            recipients,
+            `Quotation ${quote.reference} awaiting ${nextName} review`,
+            `<div style="font-family:Arial,sans-serif;color:#1C2A14">
+               <h2 style="color:#004b8d">Quotation awaiting your review</h2>
+               <p>Request <strong>${quote.reference}</strong> was approved at ${myName} level and now awaits your (${nextName}) review.</p>
+               <p>Please review it in the BME e-Serve Requests page.</p>
+             </div>`
+          );
+        } catch (e) {
+          console.error(`${nextName} notification email failed:`, e);
+          warnings.push(`reviewer_email_failed: ${String(e)}`);
+        }
+      } else {
+        warnings.push(`no_${nextRole}_recipient`);
+      }
+      return json(200, { ok: true, status: 'pending', current_level: nextLevel, warnings });
+    }
+
     const pdfBytes = await buildQuotePdf(quote);
     const path = `${quote.user_id}/${quote.reference}.pdf`;
 
@@ -86,13 +140,13 @@ Deno.serve(async (req) => {
 
     const { data: signed } = await admin.storage
       .from('quotes')
-      .createSignedUrl(path, 60 * 60 * 24 * 30);
+      .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
 
     await admin
       .from('quotes')
       .update({
         status: 'approved',
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: now,
         pdf_url: signed?.signedUrl ?? null
       })
       .eq('id', quote_id);
@@ -104,7 +158,7 @@ Deno.serve(async (req) => {
           `Your BME e-Serve quotation ${quote.reference} is approved`,
           `<div style="font-family:Arial,sans-serif;color:#1C2A14">
              <h2 style="color:#004b8d">Quotation Approved</h2>
-             <p>Your quotation <strong>${quote.reference}</strong> has been approved and is attached as a PDF.</p>
+             <p>Your quotation <strong>${quote.reference}</strong> has completed all approval levels and is attached as a PDF.</p>
              ${signed?.signedUrl ? `<p>You can also download it <a href="${signed.signedUrl}">here</a> (link valid 30 days).</p>` : ''}
              <p>Thank you for using BME e-Serve.</p>
            </div>`,
