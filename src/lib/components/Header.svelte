@@ -239,7 +239,7 @@
             position: fixed;
             top: 0;
             left: 0;
-            height: 100vh;
+            height: 100dvh;
             width: 56px;
             background: var(--bme-surface);
             border-right: 1px solid var(--bme-border);
