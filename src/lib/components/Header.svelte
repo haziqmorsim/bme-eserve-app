@@ -1,9 +1,18 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { quoteItems } from "$lib/stores/quote";
+    import { Menu } from "@lucide/svelte";
 
     let { profile, pendingCount = 0 } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
+
+    let open = $state(false);
+    const close = () => (open = false);
+
+    let isStaff = $derived(
+        profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo'
+    );
+    let isAdmin = $derived(profile?.role === 'admin');
 </script>
 
 <header class="header">
@@ -18,10 +27,10 @@
 
             <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'}><a href="/app/quotes">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
 
-            {#if profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo'}
+            {#if isStaff}
             <button class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</button>
             {/if}
-            {#if profile?.role === 'admin'}
+            {#if isAdmin}
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
         </div>
@@ -45,6 +54,46 @@
     </nav>
 </header>
 
+<aside class="sidebar" class:open>
+    <a href="/app" class="side-logo" onclick={close}>
+        <img src="/images/bme-logo.jpg" alt="BME e-Serve" />
+    </a>
+
+    <button class="menu-btn" onclick={() => (open = !open)} aria-label="Toggle menu" aria-expanded={open}>
+        <Menu size={24} />
+    </button>
+
+    <div class="side-body">
+        <nav class="side-group top">
+            <a href="/app" class="side-link" class:active={$page.url.pathname === '/app'} onclick={close}>Home</a>
+
+            <a href="/app/quotes" class="side-link" class:active={$page.url.pathname === '/app/quotes'} onclick={close}>
+                <span>Quotes</span>{#if count > 0}<span class="badge">{count}</span>{/if}
+            </a>
+
+            {#if isStaff}
+                <a href="/app/requests" class="side-link" class:active={$page.url.pathname.startsWith('/app/requests')} onclick={close}>
+                    <span>Requests</span>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}
+                </a>
+            {/if}
+            {#if isAdmin}
+                <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
+            {/if}
+        </nav>
+
+        <nav class="side-group bottom">
+            <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
+            <form action="/logout" method="POST">
+                <button type="submit" class="side-link signout">Sign Out</button>
+            </form>
+        </nav>
+    </div>
+</aside>
+
+{#if open}
+    <button class="backdrop" aria-label="Close menu" onclick={close}></button>
+{/if}
+
 <style>
     .header {
         display: flex;
@@ -60,18 +109,18 @@
     }
 
     .brand img {
-        height: 120px; 
+        height: 120px;
         display: block;
     }
 
     nav {
-        display: flex; 
-        align-items: center; 
+        display: flex;
+        align-items: center;
         gap: 14px;
     }
-  
-    form { 
-        margin: 0; 
+
+    form {
+        margin: 0;
     }
 
     .greeting {
@@ -81,8 +130,8 @@
         margin-bottom: 0;
     }
 
-    .greeting :global(strong) { 
-        color: var(--bme-ink); 
+    .greeting :global(strong) {
+        color: var(--bme-ink);
     }
 
     .name {
@@ -158,67 +207,159 @@
         color: #ffffff;
     }
 
+    .sidebar { display: none; }
+    .backdrop { display: none; }
+
     @media (max-width: 1024px) {
-        .header { 
-            height: auto; 
-            margin: 0; 
-            padding: 14px 16px; 
+        .header {
+            height: auto;
+            margin: 0;
+            padding: 14px 16px;
         }
 
-        .brand img { 
-            height: 72px; 
+        .brand img {
+            height: 72px;
         }
 
-        .title { 
-            font-size: 16px; 
+        .title {
+            font-size: 16px;
         }
 
-        nav { 
-            gap: 10px; 
+        nav {
+            gap: 10px;
         }
     }
 
-    @media (max-width: 640px) {
-        .header { 
-            flex-direction: column; 
-            align-items: stretch; 
-            gap: 12px; 
+    @media (max-width: 768px) {
+        .header { display: none; }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 56px;
+            background: var(--bme-surface);
+            border-right: 1px solid var(--bme-border);
+            z-index: 60;
+            overflow: hidden;
+            transition: width 0.22s ease;
         }
 
-        .row { 
-            flex-direction: column; 
-            align-items: flex-start; 
-            gap: 10px; 
+        .sidebar.open {
+            width: 150px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.18);
         }
 
-        .brand img { 
-            height: 52px; 
+        .menu-btn {
+            flex: 0 0 auto;
+            width: 56px;
+            height: 56px;
+            display: grid;
+            place-items: center;
+            background: none;
+            border: none;
+            color: var(--bme-dark-blue);
+            cursor: pointer;
         }
 
-        .pages { 
-            margin-top: 0; 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
+        .side-logo {
+            display: block;
+            padding: 8px;
         }
 
-        nav { 
-            width: 100%; 
+        .side-logo img {
+            display: block;
+            width: 100%;
+            height: auto;
         }
 
-        .column { 
-            width: 100%; 
+        .sidebar.open .side-logo {
+            padding: 12px 12px 6px;
         }
 
-        .title-container { 
-            align-self: flex-start; 
+        .sidebar.open .side-logo img {
+            width: auto;
+            height: 60px;
         }
 
-        .actions { 
-            margin-top: 8px; 
-            flex-wrap: wrap; 
-            justify-content: flex-start; 
-            gap: 10px; 
+        .side-body {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            padding: 4px 12px 16px;
+            overflow-y: auto;
+        }
+
+        .sidebar.open .side-body {
+            display: flex;
+        }
+
+        .side-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .side-group.bottom {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--bme-border);
+        }
+
+        .side-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 11px 12px;
+            border: none;
+            border-radius: 8px;
+            background: none;
+            color: var(--bme-ink);
+            font: inherit;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .side-link:hover {
+            background: var(--bme-bg);
+        }
+
+        .side-link.active {
+            background: var(--bme-dark-blue);
+            color: #ffffff;
+        }
+
+        .side-link .badge {
+            margin-left: auto;
+        }
+
+        .side-body form {
+            margin: 0;
+            width: 100%;
+            display: flex;
+        }
+
+        .side-link.signout {
+            flex: 1;
+            width: 100%;
+            justify-content: flex-start;
+            text-align: left;
+        }
+
+        .backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            border: none;
+            z-index: 55;
+            cursor: pointer;
         }
     }
 </style>

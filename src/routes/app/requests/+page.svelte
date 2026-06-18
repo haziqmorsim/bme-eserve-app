@@ -320,7 +320,7 @@
     .prior {
         margin-top: 14px;
         padding: 12px 14px;
-        background: var(--bme-bg);
+        background-color: #eaeff3;
         border-radius: 8px;
     }
 

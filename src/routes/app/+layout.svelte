@@ -26,4 +26,10 @@
         flex: 1;
         padding: 10px;
     }
+
+    @media (max-width: 768px) {
+        .shell {
+            padding-left: 56px;
+        }
+    }
 </style>
