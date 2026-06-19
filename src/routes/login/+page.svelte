@@ -27,6 +27,8 @@
                 <input type="password" name="password" required autocomplete="current-password" />
             </label>
 
+            <div class="forgot"><a href="/forgot-password">Forgot password?</a></div>
+
             {#if form?.error}
                 <p class="err">{form.error}</p>
             {/if}
@@ -92,6 +94,21 @@
         color: var(--bme-red);
         font-size: 14px;
         margin: 4px 0 10px;
+    }
+
+    .forgot {
+        text-align: right;
+        margin: -8px 0 14px;
+    }
+
+    .forgot a {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--bme-dark-blue);
+    }
+
+    .forgot a:hover {
+        text-decoration: underline;
     }
 
     .note {
