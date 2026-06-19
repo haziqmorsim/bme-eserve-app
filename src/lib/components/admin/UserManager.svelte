@@ -4,7 +4,17 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
 
-    let { customers, regions, supabase } = $props<{ customers: any[]; regions: any[]; supabase: SupabaseClient }>();
+    let { users, regions, supabase } = $props<{ users: any[]; regions: any[]; supabase: SupabaseClient }>();
+
+    const ROLES = [
+        { value: 'customer', label: 'Customer' },
+        { value: 'admin', label: 'Admin' },
+        { value: 'manager', label: 'Manager' },
+        { value: 'coo', label: 'Chief Operating Officer (COO)' }
+    ];
+    function roleLabel(r: string): string {
+        return ROLES.find((x) => x.value === r)?.label ?? r ?? '—';
+    }
 
     const pageSize = 20;
     let search = $state('');
@@ -15,10 +25,10 @@
     let err = $state('');
     let form = $state<any>({});
 
-    let filtered = $derived(customers.filter((c: any) => {
+    let filtered = $derived(users.filter((u: any) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
-        return [c.full_name, c.email, c.phone, c.company, c.regions?.name]
+        return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role), u.regions?.name]
             .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
     }));
     let total = $derived(filtered.length);
@@ -29,27 +39,29 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { full_name: '', email: '', password: '', phone: '', company: '', region_id: regions[0]?.id ?? '' };
+        return { full_name: '', email: '', password: '', phone: '', company: '', role: 'customer', region_id: regions[0]?.id ?? '' };
     }
     function startNew() { form = blank(); err = ''; editing = 'new'; }
-    function startEdit(c: any) {
+    function startEdit(u: any) {
         form = {
-            full_name: c.full_name ?? '', email: c.email ?? '', password: '',
-            phone: c.phone ?? '', company: c.company ?? '', region_id: c.region_id ?? ''
+            full_name: u.full_name ?? '', email: u.email ?? '', password: '',
+            phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? 'customer',
+            region_id: u.region_id ?? ''
         };
-        err = ''; editing = c.id;
+        err = ''; editing = u.id;
     }
     function cancel() { editing = null; err = ''; }
 
     async function save() {
         if (!form.email?.trim()) { err = 'Email is required.'; return; }
-        if (editing === 'new' && !form.password) { err = 'An initial password is required for a new customer.'; return; }
+        if (editing === 'new' && !form.password) { err = 'An initial password is required for a new user.'; return; }
         busy = true; err = '';
 
         const action = editing === 'new' ? 'create' : 'update';
         const body: any = {
             action, email: form.email.trim(), full_name: form.full_name || null,
-            company: form.company || null, phone: form.phone || null, region_id: form.region_id || null
+            company: form.company || null, phone: form.phone || null,
+            role: form.role || 'customer', region_id: form.region_id || null
         };
         if (action === 'create') body.password = form.password;
         else body.id = editing;
@@ -74,30 +86,31 @@
 </script>
 
 <div class="adm-bar">
-    <input class="adm-search" type="search" placeholder="Search customers..." bind:value={search} />
-    <button class="btn-primary" onclick={startNew}>Add Customer</button>
+    <input class="adm-search" type="search" placeholder="Search users..." bind:value={search} />
+    <button class="btn-primary" onclick={startNew}>Add User</button>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
     {#if total === 0}
-        <div class="adm-empty">No customers found.</div>
+        <div class="adm-empty">No users found.</div>
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Region</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Region</th><th>Actions</th></tr>
             </thead>
             <tbody>
-                {#each paged as c (c.id)}
+                {#each paged as u (u.id)}
                     <tr>
-                        <td style="text-align: center; vertical-align: middle;"><strong>{c.full_name ?? '—'}</strong></td>
-                        <td style="text-align: center; vertical-align: middle;">{c.email ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{c.phone ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{c.company ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{c.regions?.name ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;"><strong>{u.full_name ?? '—'}</strong></td>
+                        <td style="text-align: center; vertical-align: middle;">{u.email ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{u.phone ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{u.company ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{roleLabel(u.role)}</td>
+                        <td style="text-align: center; vertical-align: middle;">{u.regions?.name ?? '—'}</td>
                         <td>
                             <div class="adm-actions">
-                                <button class="adm-link" onclick={() => startEdit(c)}>Edit</button>
-                                <button class="adm-link danger" onclick={() => (deleting = c)}>Delete</button>
+                                <button class="adm-link" onclick={() => startEdit(u)}>Edit</button>
+                                <button class="adm-link danger" onclick={() => (deleting = u)}>Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -112,7 +125,7 @@
 {/if}
 
 {#if editing !== null}
-    <Modal title={editing === 'new' ? 'Add Customer' : 'Edit Customer'} onclose={cancel}>
+    <Modal title={editing === 'new' ? 'Add User' : 'Edit User'} onclose={cancel}>
         <div class="adm-form">
             <label><span>Full Name</span><input bind:value={form.full_name} /></label>
             <label><span>Email *</span><input type="email" bind:value={form.email} /></label>
@@ -121,6 +134,11 @@
             {/if}
             <label><span>Phone</span><input bind:value={form.phone} placeholder="+60..." /></label>
             <label><span>Company</span><input bind:value={form.company} /></label>
+            <label><span>Role</span>
+                <select bind:value={form.role}>
+                    {#each ROLES as r (r.value)}<option value={r.value}>{r.label}</option>{/each}
+                </select>
+            </label>
             <label><span>Region</span>
                 <select bind:value={form.region_id}>
                     <option value="">— none —</option>
@@ -137,9 +155,9 @@
 {/if}
 
 {#if deleting}
-    <Modal title="Delete Customer" onclose={() => (deleting = null)}>
+    <Modal title="Delete User" onclose={() => (deleting = null)}>
         <div class="modal-confirm">
-            <p>Delete customer <strong>{deleting.email ?? deleting.full_name}</strong>? This permanently removes their account.</p>
+            <p>Delete user <strong>{deleting.email ?? deleting.full_name}</strong>? This permanently removes their account.</p>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="modal-actions">
                 <button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>

@@ -35,6 +35,7 @@ export const load: PageLoad = async ({ parent, url }) => {
         boiler, 
         components, 
         boilerId, 
-        tab
+        tab, 
+        title: "Home"
     };
 };

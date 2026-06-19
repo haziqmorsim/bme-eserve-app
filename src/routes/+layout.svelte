@@ -2,6 +2,7 @@
     import '../app.css';
     import { invalidate } from '$app/navigation';
     import { onMount } from 'svelte';
+    import { page } from '$app/stores';
     import Chatbot from '$lib/components/Chatbot.svelte';
     import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
@@ -17,6 +18,10 @@
         return () => sub.subscription.unsubscribe();
     });
 </script>
+
+<svelte:head>
+    <title>{$page.data.title ? `${$page.data.title} | BME e-Serve App` : "BME e-Serve App"}</title>
+</svelte:head>
 
 {@render children()}
 

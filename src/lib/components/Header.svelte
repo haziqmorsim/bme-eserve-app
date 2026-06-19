@@ -308,7 +308,6 @@
         .side-group.bottom {
             margin-top: auto;
             padding-top: 16px;
-            border-top: 1px solid var(--bme-border);
         }
 
         .side-link {

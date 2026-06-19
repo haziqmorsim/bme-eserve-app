@@ -25,5 +25,9 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         reviews = data ?? [];
     }
 
-    return { quotes: quotes ?? [], reviews, isStaff };
+    return { 
+        quotes: quotes ?? [], 
+        reviews, isStaff, 
+        title: "History"
+    };
 };

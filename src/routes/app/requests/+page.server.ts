@@ -49,5 +49,10 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         approvals: approvalsMap[q.id] ?? []
     }));
 
-    return { quotes: withMeta, level: myLevel, levelLabel: LEVEL_LABEL[myLevel] };
+    return { 
+        quotes: withMeta, 
+        level: myLevel, 
+        levelLabel: LEVEL_LABEL[myLevel], 
+        title: "Requests"
+    };
 };
