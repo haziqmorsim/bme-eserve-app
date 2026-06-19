@@ -26,10 +26,15 @@
                         <small>Reviewed {new Date(r.created_at).toLocaleString()}</small>
                     </div>
 
-                    <p class="decision">
+                    <!-- <p class="decision">
                         Your decision at <strong>{levelLabel(r.level)}</strong> level:
                         <span class="status {r.action === 'approved' ? 'approved' : 'rejected'}">{r.action}</span>
-                    </p>
+                    </p> -->
+
+                    <div class="customer">
+                        <p class="cust-info">Company: <strong>{r.customer.company ?? '—'}</strong></p>
+                        <p class="cust-info">Name: <strong>{r.customer.full_name ?? '—'}</strong></p>
+                    </div>
 
                     <table>
                         <thead>
@@ -157,13 +162,30 @@
     }
 
     .decision {
-        margin: 0 0 14px;
+        margin: 0 0 10px;
         font-size: 14px;
         color: var(--bme-ink);
     }
 
-    .decision .status {
+    /* .decision .status {
         margin: 0 4px;
+    } */
+
+    .customer {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0 0 14px;
+        font-size: 14px;
+    }
+
+    .cust-info {
+        margin: 0;
+        color: var(--bme-muted);
+    }
+
+    .cust-info strong {
+        color: var(--bme-ink);
     }
 
     .remark {

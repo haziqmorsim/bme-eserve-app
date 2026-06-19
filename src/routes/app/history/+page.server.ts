@@ -19,15 +19,33 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     if (isStaff) {
         const { data } = await supabase
             .from('quote_approvals')
-            .select('id, level, role, action, remarks, created_at, quotes(id, reference, status, current_level, created_at, quote_items(*))')
+            .select('id, level, role, action, remarks, created_at, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
             .eq('reviewer_id', user.id)
             .order('created_at', { ascending: false });
-        reviews = data ?? [];
+
+        const list = data ?? [];
+
+        const userIds = [...new Set(list.map((r: any) => r.quotes?.user_id).filter(Boolean))];
+        const custMap: Record<string, { full_name: string | null; company: string | null }> = {};
+        if (userIds.length) {
+            const { data: profs } = await supabase
+                .from('profiles')
+                .select('id, full_name, company')
+                .in('id', userIds);
+            for (const p of profs ?? []) {
+                custMap[p.id] = { full_name: p.full_name, company: p.company };
+            }
+        }
+
+        reviews = list.map((r: any) => ({
+            ...r,
+            customer: custMap[r.quotes?.user_id] ?? { full_name: null, company: null }
+        }));
     }
 
-    return { 
-        quotes: quotes ?? [], 
-        reviews, isStaff, 
+    return {
+        quotes: quotes ?? [],
+        reviews, isStaff,
         title: "History"
     };
 };
