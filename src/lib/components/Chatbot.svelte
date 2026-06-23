@@ -1,15 +1,18 @@
 <script lang="ts">
     import { PUBLIC_WHATSAPP_BUSINESS_NUMBER } from "$env/static/public";
-    import { Headset } from "@lucide/svelte";
+    import { Headset, Image as ImageIcon } from "@lucide/svelte";
 
-    type Msg = { role: 'user' | 'assistant'; content: string };
+    type Msg = { role: 'user' | 'assistant'; content: string; image?: string };
 
     let open = $state(false);
     let input = $state('');
     let loading = $state(false);
     let messages = $state<Msg[]>([ 
-        { role: 'assistant', content: 'Hi! I can help you find your way around BME e-Serve. What are you looking for?' }
+        { role: 'assistant', content: 'Hi! I can help you find your way around BME e-Serve. You can also upload a photo of a boiler part and I will try to identify the right spare part. What are you looking for?' }
     ]);
+
+    let pendingImage = $state<{ dataUrl: string; name: string } | null>(null);
+    let fileInput = $state<HTMLInputElement>();
 
     let scrollEl = $state<HTMLDivElement>();
 
@@ -19,13 +22,80 @@
         scrollEl?.scrollTo({ top: scrollEl.scrollHeight });
     });
 
+    function downscaleImage(file: File, max = 1568, quality = 0.85): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    if (width > max || height > max) {
+                        const scale = Math.min(max / width, max / height);
+                        width = Math.round(width * scale);
+                        height = Math.round(height * scale);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return reject(new Error('no canvas context'));
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => reject(new Error('could not load image'));
+                img.src = reader.result as string;
+            };
+            reader.onerror = () => reject(new Error('could not read file'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function onFile(e: Event) {
+        const target = e.currentTarget as HTMLInputElement;
+        const file = target.files?.[0];
+        target.value = '';
+        if (!file || !file.type.startsWith('image/')) return;
+        try {
+            const dataUrl = await downscaleImage(file);
+            pendingImage = { dataUrl, name: file.name };
+        } catch {
+            pendingImage = null;
+        }
+    }
+
+    function toApiMessage(m: Msg, isLast: boolean) {
+        if (m.role === 'user' && m.image && isLast) {
+            const comma = m.image.indexOf(',');
+            const mediaType = m.image.slice(5, comma).split(';')[0];
+            const data = m.image.slice(comma + 1);
+            return {
+                role: m.role,
+                content: [
+                    { type: 'image', source: { type: 'base64', media_type: mediaType, data } },
+                    {
+                        type: 'text',
+                        text:
+                            m.content?.trim() ||
+                            'Please identify this boiler part from the photo and suggest the correct spare part.'
+                    }
+                ]
+            };
+        }
+        if (m.role === 'user' && m.image) {
+            return { role: m.role, content: m.content ? `${m.content} [photo sent]` : '[photo sent]' };
+        }
+        return { role: m.role, content: m.content };
+    }
+
     async function send() {
         const text = input.trim();
-        if (!text || loading) return;
+        if ((!text && !pendingImage) || loading) return;
         input = '';
+        const image = pendingImage?.dataUrl ?? undefined;
+        pendingImage = null;
 
-        messages.push({ role: 'user', content: text});
-        const payload = messages.map(({ role, content }) => ({ role, content }));
+        messages.push({ role: 'user', content: text, image });
+        const payload = messages.map((m, i) => toApiMessage(m, i === messages.length - 1));
         messages.push({ role: 'assistant', content: '' });
         const idx = messages.length - 1;
         loading = true;
@@ -98,6 +168,9 @@
             <div class="chat-messages" bind:this={scrollEl}>
                 {#each messages as m}
                     <div class="chat-bubble {m.role}">
+                        {#if m.image}
+                            <img class="chat-bubble-img" src={m.image} alt="Uploaded boiler part" />
+                        {/if}
                         {#each segments(m.content) as seg}
                             {#if seg.type === 'link'}<a href={seg.href} onclick={() => (open = false)}>{seg.text}</a>
                             {:else if seg.type === 'bold'}<strong>{seg.text}</strong>
@@ -111,9 +184,21 @@
                 {/each}
             </div>
 
+            {#if pendingImage}
+                <div class="chat-preview">
+                    <img src={pendingImage.dataUrl} alt="Selected part" />
+                    <span class="chat-preview-label" title={pendingImage.name}>{pendingImage.name}</span>
+                    <button class="chat-preview-remove" onclick={() => (pendingImage = null)} aria-label="Remove photo">×</button>
+                </div>
+            {/if}
+
             <div class="chat-input-row">
-                <input type="text" placeholder="Ask me how to find something..." bind:value={input} disabled={loading} />
-                <button class="chat-send" onclick={send} disabled={loading || !input.trim()}>Send</button>
+                <input type="text" placeholder="Ask me how to find something..." bind:value={input} onkeydown={onKey} disabled={loading} />
+                <input type="file" accept="image/*" bind:this={fileInput} onchange={onFile} hidden />
+                <button class="chat-img-btn" onclick={() => fileInput?.click()} disabled={loading} aria-label="Upload a boiler part photo" title="Upload a boiler part photo">
+                    <ImageIcon size={18} />
+                </button>
+                <button class="chat-send" onclick={send} disabled={loading || (!input.trim() && !pendingImage)}>Send</button>
             </div>
 
             <button class="chat-whatsapp" onclick={openWhatsapp}>
@@ -219,6 +304,13 @@
         border: 1px solid #e2e8f0;
     }
 
+    .chat-bubble-img {
+        display: block;
+        max-width: 100%;
+        border-radius: 0.5rem;
+        margin-bottom: 0.4rem;
+    }
+
     .chat-bubble a {
         color: var(--bme-dark-blue);
         text-decoration: underline;
@@ -232,14 +324,52 @@
         opacity: 0.5;
     }
 
+    .chat-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.6rem;
+        border-top: 1px solid #e2e8f0;
+        background-color: #f6f8fb;
+    }
+
+    .chat-preview img {
+        width: 2.5rem;
+        height: 2.5rem;
+        object-fit: cover;
+        border-radius: 0.4rem;
+        flex-shrink: 0;
+    }
+
+    .chat-preview-label {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.8rem;
+        color: #475569;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chat-preview-remove {
+        background: none;
+        border: none;
+        color: #475569;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
     .chat-input-row {
         display: flex;
+        align-items: center;
         gap: 0.5rem;
         padding: 0.6rem;
         border-top: 1px solid #e2e8f0;
     }
 
-    .chat-input-row input {
+    .chat-input-row input[type="text"] {
         flex: 1;
         padding: 0.55rem 0.7rem;
         border: 1px solid #cbd5e1;
@@ -247,11 +377,38 @@
         font-size: 0.9rem;
     }
 
+    ::placeholder {
+        font-size: 0.8rem;
+    }
+
+    .chat-img-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        color: var(--bme-dark-blue);
+        width: 2.3rem;
+        height: 2.3rem;
+        border-radius: 0.6rem;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .chat-img-btn:hover:not(:disabled) {
+        background-color: #eef2f7;
+    }
+
+    .chat-img-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     .chat-send {
         border: none;
         background: var(--bme-dark-blue);
         color: #ffffff;
-        padding: 0 0.9rem;
+        padding: 0.5rem 0.9rem;
         border-radius: 0.6rem;
         cursor: pointer;
         font-size: 0.9rem;

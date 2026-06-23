@@ -1,66 +1,69 @@
-import { env } from "$env/dynamic/private";
-import Anthropic from "@anthropic-ai/sdk";
-import type { RequestHandler } from "./$types";
+import { getClient, MODEL, SYSTEM_PROMPT_WEB } from '$lib/server/assistant';
+import { getPartsCatalogContext } from '$lib/server/catalog';
+import type { RequestHandler } from './$types';
 
-const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+type Block =
+	| { type: 'text'; text: string }
+	| { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+type InMsg = { role: 'user' | 'assistant'; content: string | Block[] };
 
-const MODEL = 'claude-sonnet-4-5';
+const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const MAX_IMG_BYTES = 5 * 1024 * 1024;
 
-const SYSTEM_PROMPT = `
-You are the BME e-Serve assistant, a friendly helper for an industrial biomass
-boiler parts & service portal. You help logged-in customers navigate the site.
-
-The portal lets users:
-- Browse boilers organised by their region, at /boilers
-- Open a boiler to see its specs (including steam temperature) and components, at /boilers/[id]
-- Click zones on an interactive boiler diagram to find the matching spare parts
-- Search spare parts by name, part number, or component
-- Add spare parts to a quote list, and review it at /quote
-- Submit a quotation request to the administrator from the quote list
-- View their profile at /profile
-
-Guidance:
-- Be concise. Answer in 1–4 short sentences.
-- When directing a user to a page, link it using markdown with an INTERNAL path
-  only, like [your quote list](/quote). Never invent external links.
-- You only know about navigation and how the portal works. You do NOT know live
-  data such as a specific user's quotes, prices, or order status — pricing does
-  not exist in this system, so never mention prices, currency, or totals.
-- If a user needs a human, a real account/data lookup, or anything you can't do,
-  tell them to tap the "Chat on WhatsApp" button to reach the team.
-`.trim();
+function sanitize(messages: InMsg[]): InMsg[] {
+	const cleaned = messages.slice(-20).map((m) => {
+		if (typeof m.content === 'string') return { role: m.role, content: m.content };
+		const blocks = (m.content as Block[]).filter((b) => {
+			if (b?.type === 'text') return typeof b.text === 'string';
+			if (b?.type === 'image' && b.source?.type === 'base64') {
+				if (!ALLOWED.has(b.source.media_type)) return false;
+				if ((b.source.data.length * 3) / 4 > MAX_IMG_BYTES) return false;
+				return true;
+			}
+			return false;
+		});
+		return { role: m.role, content: blocks.length ? blocks : '(empty)' };
+	});
+	while (cleaned.length && cleaned[0].role !== 'user') cleaned.shift();
+	return cleaned;
+}
 
 export const POST: RequestHandler = async ({ request }) => {
-    const { messages } = await request.json();
+	let body: { messages?: InMsg[] };
+	try {
+		body = await request.json();
+	} catch {
+		return new Response('Bad request', { status: 400 });
+	}
 
-    const stream = client.messages.stream({
-        model: MODEL, 
-        max_tokens: 1024, 
-        system: SYSTEM_PROMPT, 
-        messages
-    });
+	const messages = Array.isArray(body?.messages) ? sanitize(body.messages) : [];
+	if (!messages.length) return new Response('No messages', { status: 400 });
 
-    const encoder = new TextEncoder();
-    const body = new ReadableStream({
-        async start(controller) {
-            try {
-                for await (const event of stream) {
-                    if (
-                        event.type === 'content_block_delta' && 
-                        event.delta.type === 'text_delta'
-                    ) {
-                        controller.enqueue(encoder.encode(event.delta.text));
-                    }
-                }
-            } catch {
-                controller.enqueue(encoder.encode('\n[Connection interrupted]'));
-            } finally {
-                controller.close();
-            }
-        }
-    });
+	const system = SYSTEM_PROMPT_WEB + (await getPartsCatalogContext());
 
-    return new Response(body, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-    });
+	const stream = getClient().messages.stream({
+		model: MODEL,
+		max_tokens: 1024,
+		system,
+		messages: messages as any
+	});
+
+	const encoder = new TextEncoder();
+	const rs = new ReadableStream({
+		async start(controller) {
+			try {
+				for await (const event of stream) {
+					if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+						controller.enqueue(encoder.encode(event.delta.text));
+					}
+				}
+			} catch {
+				controller.enqueue(encoder.encode('[Connection interrupted]'));
+			} finally {
+				controller.close();
+			}
+		}
+	});
+
+	return new Response(rs, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 };
