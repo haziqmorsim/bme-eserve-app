@@ -24,5 +24,12 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount = count ?? 0;
     }
 
-    return { profile, userEmail: user.email, pendingCount };
+    const { data: notifications } = await supabase
+        .from('notifications')
+        .select('id, type, title, body, is_read, created_at, quote_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+    return { profile, userEmail: user.email, pendingCount, notifications: notifications ?? [] };
 };

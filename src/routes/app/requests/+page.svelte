@@ -98,8 +98,10 @@
                     {#each q.approvals as a}
                         <div class="prior-row">
                             <p class="prior-head">
-                                <strong>{roleLabel(a.role)}</strong>
-                                <span class="status {a.action === 'reopened' ? 'open' : 'closed'}">{a.action}</span>
+                                <span class="prior-who">
+                                    <strong>{roleLabel(a.role)}</strong>
+                                    <span class="status {a.action === 'reopened' ? 'reopened' : 'closed'}">{a.action}</span>
+                                </span>
                                 <span class="prior-when">{when(a.created_at)}</span>
                             </p>
                             <p class="prior-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
@@ -161,9 +163,17 @@
         margin-bottom: 12px;
     }
 
-    .qhead .status { margin-left: 10px; }
-    .reference { font-size: 18px; }
-    .status { text-transform: capitalize; }
+    .qhead .status { 
+        margin-left: 10px; 
+    }
+
+    .reference { 
+        font-size: 18px; 
+    }
+
+    .status { 
+        text-transform: capitalize; 
+    }
 
     .customer {
         margin-bottom: 14px;
@@ -173,9 +183,17 @@
         gap: 5px;
     }
 
-    .customer strong { color: var(--bme-ink); }
-    .customer span { color: var(--bme-muted); }
-    .cus-info { margin: 0; }
+    .customer strong { 
+        color: var(--bme-ink); 
+    }
+    
+    .customer span { 
+        color: var(--bme-muted); 
+    }
+    
+    .cus-info { 
+        margin: 0; 
+    }
 
     table {
         width: 100%;
@@ -197,7 +215,10 @@
         overflow-wrap: break-word;
     }
 
-    th.num, td.num { text-align: right; white-space: nowrap; }
+    th.num, td.num { 
+        text-align: right; 
+        white-space: nowrap; 
+    }
 
     .notes {
         margin: 12px 0;
@@ -219,14 +240,25 @@
         margin-bottom: 8px;
     }
 
-    .prior-row { margin: 0 0 10px; }
-    .prior-row:last-child { margin-bottom: 0; }
+    .prior-row { 
+        margin: 0 0 10px; 
+    }
+
+    .prior-row:last-child { 
+        margin-bottom: 0; 
+    }
 
     .prior-head {
         margin: 0 0 2px;
         font-size: 14px;
         color: var(--bme-ink);
         display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .prior-who {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
     }
@@ -255,9 +287,13 @@
         color: var(--bme-ink);
     }
 
-    .req { color: var(--bme-red); }
+    .req { 
+        color: var(--bme-red); 
+    }
 
-    .action-field textarea { width: 100%; }
+    .action-field textarea { 
+        width: 100%; 
+    }
 
     .form-err {
         color: var(--bme-red);
@@ -271,14 +307,53 @@
         margin-top: 14px;
     }
 
-    .status.open { background-color: #e7f0f8; color: #004b8d; }
-    .status.closed { background-color: #e4f3d8; color: #2f5e18; }
+    .status.open { 
+        background-color: #e7f0f8; 
+        color: #004b8d; 
+    }
+
+    .status.closed { 
+        background-color: #e4f3d8; 
+        color: #2f5e18; 
+    }
+
+    .status.reopened {
+        background-color: #fff3d6;
+        color: #97700a;
+    }
 
     @media (max-width: 640px) {
-        .quote { padding: 16px; }
-        .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
-        .actions { flex-wrap: wrap; }
-        table { font-size: 13px; }
-        th, td { padding: 6px; }
+        .quote { 
+            padding: 16px; 
+        }
+        
+        .qhead { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 6px; 
+        }
+        
+        .prior-head { 
+            flex-direction: 
+            column; 
+            align-items: flex-start; 
+            gap: 2px; 
+        }
+        
+        .prior-when { 
+            order: -1; 
+        }
+        
+        .actions { 
+            flex-wrap: wrap; 
+        }
+        
+        table { 
+            font-size: 13px; 
+        }
+        
+        th, td { 
+            padding: 6px; 
+        }
     }
 </style>

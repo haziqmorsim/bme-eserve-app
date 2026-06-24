@@ -2,8 +2,9 @@
     import { page } from "$app/stores";
     import { quoteItems } from "$lib/stores/quote";
     import { Menu } from "@lucide/svelte";
+    import NotificationBell from "$lib/components/NotificationBell.svelte";
 
-    let { profile, pendingCount = 0 } = $props();
+    let { profile, pendingCount = 0, notifications = [], supabase } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
 
     let open = $state(false);
@@ -45,6 +46,7 @@
                 <p class="greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             </div>
             <div class="actions">
+                <NotificationBell {notifications} {supabase} />
                 <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')}><a href="/app/history">History</a></button>
                 <form action="/logout" method="POST">
                     <button type="submit" class="btn-ghost">Sign Out</button>
@@ -82,6 +84,7 @@
         </nav>
 
         <nav class="side-group bottom">
+            <div class="side-bell"><NotificationBell {notifications} {supabase} /></div>
             <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
             <form action="/logout" method="POST">
                 <button type="submit" class="side-link signout">Sign Out</button>
@@ -207,8 +210,17 @@
         color: #ffffff;
     }
 
-    .sidebar { display: none; }
-    .backdrop { display: none; }
+    .side-bell { 
+        padding: 4px 0 8px; 
+    }
+
+    .sidebar { 
+        display: none; 
+    }
+
+    .backdrop { 
+        display: none; 
+    }
 
     @media (max-width: 1024px) {
         .header {

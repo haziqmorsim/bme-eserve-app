@@ -6,7 +6,7 @@
 </script>
 
 <div class="shell">
-    <Header profile={data.profile} pendingCount={data.pendingCount} />
+    <Header profile={data.profile} pendingCount={data.pendingCount} notifications={data.notifications} supabase={data.supabase} />
     <main>
         {@render children()}
     </main>
