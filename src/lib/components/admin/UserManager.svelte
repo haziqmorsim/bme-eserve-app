@@ -10,7 +10,8 @@
         { value: 'customer', label: 'Customer' },
         { value: 'admin', label: 'Admin' },
         { value: 'manager', label: 'Manager' },
-        { value: 'coo', label: 'Chief Operating Officer (COO)' }
+        { value: 'coo', label: 'Chief Operating Officer (COO)' },
+        { value: 'developer', label: 'Developer' }
     ];
     function roleLabel(r: string): string {
         return ROLES.find((x) => x.value === r)?.label ?? r ?? '—';

@@ -11,9 +11,9 @@
     const close = () => (open = false);
 
     let isStaff = $derived(
-        profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo'
+        profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo' || profile?.role === 'developer'
     );
-    let isAdmin = $derived(profile?.role === 'admin');
+    let isAdmin = $derived(profile?.role === 'admin' || profile?.role === 'developer');
 </script>
 
 <header class="header">

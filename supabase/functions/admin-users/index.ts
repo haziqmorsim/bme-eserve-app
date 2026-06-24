@@ -1,7 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 
-const ALLOWED_ROLES = ['customer', 'admin', 'manager', 'coo'];
+const ALLOWED_ROLES = ['customer', 'admin', 'manager', 'coo', 'developer'];
 function normaliseRole(r: unknown): string {
     return typeof r === 'string' && ALLOWED_ROLES.includes(r) ? r : 'customer';
 }
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
             .select('role')
             .eq('id', user.id)
             .single();
-        if (me?.role !== 'admin') return json(403, { error: 'Admins only' });
+        if (me?.role !== 'admin' && me?.role !== 'developer') return json(403, { error: 'Admins only' });
 
         const body = await req.json();
         const action = body.action;
