@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const { data: quotes } = await supabase
         .from('quotes')
         .select('id, reference, status, notes, created_at, current_level, user_id, quote_items(*)')
-        .eq('status', 'pending')
+        .eq('status', 'open')
         .eq('current_level', myLevel)
         .order('created_at', { ascending: true });
 
@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (quoteIds.length) {
         const { data: approvals } = await supabase
             .from('quote_approvals')
-            .select('quote_id, level, role, action, remarks, created_at')
+            .select('quote_id, level, role, action, action_taken, created_at')
             .in('quote_id', quoteIds)
             .order('level', { ascending: true });
         for (const a of approvals ?? []) {

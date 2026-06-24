@@ -1,83 +1,54 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
+
     let { data } = $props();
     let working = $state<string | null>(null);
-    let priceError = $state<string | null>(null);
-    let prices = $state<Record<string, string>>({});
-    let remarks = $state<Record<string, string>>({});
+    let formError = $state<string | null>(null);
+    let actionTaken = $state<Record<string, string>>({});
 
-    $effect(() => {
-        for (const q of data.quotes) {
-            for (const it of q.quote_items) {
-                if (prices[it.id] === undefined) {
-                    prices[it.id] = it.unit_price != null ? String(it.unit_price) : '';
-                }
-            }
-        }
-    });
-
-    function priceOf(q: any, it: any): number {
-        const raw = q.status === 'pending' ? prices[it.id] : it.unit_price;
-        const n = Number(raw);
-        return Number.isFinite(n) ? n : 0;
-    }
-    function lineTotal(q: any, it: any): number {
-        return priceOf(q, it) * it.quantity;
-    }
-    function grandTotal(q: any): number {
-        return q.quote_items.reduce((sum: number, it: any) => sum + lineTotal(q, it), 0);
-    }
-    function money(n: number): string {
-        return 'RM ' + n.toFixed(2);
-    }
     function roleLabel(r: string): string {
         return r === 'admin' ? 'Admin' : r === 'manager' ? 'Manager' : r === 'coo' ? 'COO' : r;
     }
+    function when(ts: string): string {
+        return new Date(ts).toLocaleString();
+    }
 
-    async function review(q: any, action: 'approve' | 'reject') {
-        priceError = null;
-        if (action === 'approve') {
-            for (const it of q.quote_items) {
-                const raw = prices[it.id];
-                if (raw === undefined || raw === '' || !Number.isFinite(Number(raw)) || Number(raw) < 0) {
-                    priceError = q.id;
-                    return;
-                }
-            }
-        }
+    function cancel(q: any) {
+        actionTaken[q.id] = '';
+        formError = null;
+    }
+
+    async function close(q: any) {
+        formError = null;
+        const text = (actionTaken[q.id] ?? '').trim();
+        if (!text) { formError = q.id; return; }
+
         working = q.id;
-        const body: any = { quote_id: q.id, action, remarks: remarks[q.id] ?? '' };
-        if (action === 'approve') {
-            body.prices = {};
-            for (const it of q.quote_items) body.prices[it.id] = Number(prices[it.id]);
-        }
-
-        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', { body });
+        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
+            body: { quote_id: q.id, action: 'close', action_taken: text }
+        });
         working = null;
 
         if (error || resp?.error) {
             addToast(resp?.error ?? error?.message ?? 'Action could not be completed.');
-        } else if (action === 'reject') {
-            addToast(`${q.reference} rejected.`);
-        } else if (resp?.status === 'approved') {
-            addToast(`${q.reference} fully approved.`);
-        } else if (resp?.status === 'pending') {
-            const nextName = resp.current_level === 2 ? 'Manager' : 'COO';
-            addToast(`Approved — forwarded to ${nextName} review.`);
+        } else if (resp?.status === 'closed') {
+            addToast(`${q.reference} closed.`);
+        } else if (resp?.next_label) {
+            addToast(`${q.reference} closed — forwarded to ${resp.next_label}.`);
         } else {
-            addToast('Decision recorded.');
+            addToast('Action recorded.');
         }
 
         await invalidateAll();
     }
 </script>
 
-<h1>Quotation Requests</h1>
-<p class="lead">Showing requests awaiting <strong>{data.levelLabel}</strong> review (Level {data.level} of 3).</p>
+<h1>Requests</h1>
+<!-- <p class="lead">Showing requests awaiting <strong>{data.levelLabel}</strong> action (Level {data.level} of 3).</p> -->
 
 {#if data.quotes.length === 0}
-    <div class="card empty">No requests are awaiting your review.</div>
+    <div class="card empty">No requests are awaiting your action.</div>
 {:else}
     {#each data.quotes as q (q.id)}
         <div class="card quote">
@@ -86,35 +57,25 @@
                     <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
                 </div>
-                <small>{new Date(q.created_at).toLocaleString()}</small>
+                <small>{when(q.created_at)}</small>
             </div>
 
             <div class="customer">
                 {#if q.customer.company || q.customer.full_name}
-                    <p class="cus-info">{#if q.customer.company}Company: <strong>{q.customer.company}</strong>{/if}</p>
-                    <p class="cus-info">{#if q.customer.full_name}Name: <strong>{q.customer.full_name}</strong>{/if}</p>
+                    {#if q.customer.company}<p class="cus-info">Company: <strong>{q.customer.company}</strong></p>{/if}
+                    {#if q.customer.full_name}<p class="cus-info">Name: <strong>{q.customer.full_name}</strong></p>{/if}
                 {:else}
                     <span>Unknown customer</span>
                 {/if}
             </div>
 
             <table>
-                <colgroup>
-                    <col class="c-part" />
-                    <col class="c-name" />
-                    <col class="c-boiler" />
-                    <col class="c-qty" />
-                    <col class="c-unit" />
-                    <col class="c-amt" />
-                </colgroup>
                 <thead>
                     <tr>
                         <th>Part Number</th>
                         <th>Part Name</th>
                         <th>Boiler</th>
                         <th class="num">Quantity</th>
-                        <th class="num">Unit Price (RM)</th>
-                        <th class="num">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -124,77 +85,57 @@
                             <td>{it.part_name}</td>
                             <td>{it.boiler_code}</td>
                             <td class="num">{it.quantity}</td>
-                            <td class="num">
-                                {#if q.status === 'pending'}
-                                    <input
-                                        class="price-input"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        bind:value={prices[it.id]}
-                                    />
-                                {:else}
-                                    {money(priceOf(q, it))}
-                                {/if}
-                            </td>
-                            <td class="num">{money(lineTotal(q, it))}</td>
                         </tr>
                     {/each}
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5" class="num total-label">Total</td>
-                        <td class="num total-val">{money(grandTotal(q))}</td>
-                    </tr>
-                </tfoot>
             </table>
 
             {#if q.notes}<p class="notes"><em>Customer notes:</em> {q.notes}</p>{/if}
 
             {#if q.approvals.length}
                 <div class="prior">
-                    <span class="prior-title">Earlier reviews</span>
+                    <span class="prior-title">Earlier actions</span>
                     {#each q.approvals as a}
-                        <p class="prior-row">
-                            <strong>{roleLabel(a.role)}</strong>
-                            <span class="status {a.action === 'approved' ? 'approved' : 'rejected'}">{a.action}</span>
-                        </p>
-                        <p class="prior-row"><strong>Remarks:</strong> {#if a.remarks} {a.remarks}{/if}</p>
+                        <div class="prior-row">
+                            <p class="prior-head">
+                                <strong>{roleLabel(a.role)}</strong>
+                                <span class="status {a.action === 'reopened' ? 'open' : 'closed'}">{a.action}</span>
+                                <span class="prior-when">{when(a.created_at)}</span>
+                            </p>
+                            <p class="prior-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
+                        </div>
                     {/each}
                 </div>
             {/if}
 
-            {#if priceError === q.id}
-                <p class="price-err">Enter a valid price (0 or more) for every part before approving.</p>
+            <label class="action-field">
+                <p class="field-label">Action Taken ({data.levelLabel}) <span class="req">*</span></p>
+                <textarea
+                    rows="3"
+                    placeholder="Describe the action you have taken..."
+                    bind:value={actionTaken[q.id]}
+                ></textarea>
+            </label>
+
+            {#if formError === q.id}
+                <p class="form-err">Action Taken is required before closing this request.</p>
             {/if}
 
-            {#if q.status === 'pending'}
-                <label class="remarks-field">
-                    <p class="notes">Remarks ({data.levelLabel})</p>
-                    <textarea
-                        rows="2"
-                        placeholder="Optional remarks..."
-                        bind:value={remarks[q.id]}
-                    ></textarea>
-                </label>
-
-                <div class="actions">
-                    <button class="btn-primary" disabled={working === q.id} onclick={() => review(q, 'approve')}>
-                        {working === q.id ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button class="btn-ghost" disabled={working === q.id} onclick={() => review(q, 'reject')}>
-                        Reject
-                    </button>
-                </div>
-            {/if}
+            <div class="actions">
+                <button class="btn-primary" disabled={working === q.id} onclick={() => close(q)}>
+                    {working === q.id ? 'Processing...' : 'Close'}
+                </button>
+                <button class="btn-ghost" disabled={working === q.id} onclick={() => cancel(q)}>
+                    Cancel
+                </button>
+            </div>
         </div>
     {/each}
 {/if}
 
 <style>
-    h1 {
-        margin-bottom: 6px;
+    h1 { 
+        margin-bottom: 20px; 
     }
 
     .lead {
@@ -220,17 +161,9 @@
         margin-bottom: 12px;
     }
 
-    .qhead .status {
-        margin-left: 10px;
-    }
-
-    .reference {
-        font-size: 18px;
-    }
-
-    .status {
-        text-transform: capitalize;
-    }
+    .qhead .status { margin-left: 10px; }
+    .reference { font-size: 18px; }
+    .status { text-transform: capitalize; }
 
     .customer {
         margin-bottom: 14px;
@@ -240,32 +173,15 @@
         gap: 5px;
     }
 
-    .customer strong {
-        color: var(--bme-ink);
-    }
-
-    .customer span {
-        color: var(--bme-muted);
-        margin-left: 8px;
-    }
-
-    .cus-info {
-        margin: 0;
-    }
+    .customer strong { color: var(--bme-ink); }
+    .customer span { color: var(--bme-muted); }
+    .cus-info { margin: 0; }
 
     table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
-        table-layout: fixed;
     }
-
-    .c-part { width: 16%; }
-    .c-name { width: 30%; }
-    .c-boiler { width: 12%; }
-    .c-qty { width: 10%; }
-    .c-unit { width: 18%; }
-    .c-amt { width: 14%; }
 
     th {
         text-align: left;
@@ -281,36 +197,7 @@
         overflow-wrap: break-word;
     }
 
-    th.num, td.num {
-        text-align: right;
-        white-space: nowrap;
-    }
-
-    .price-input {
-        width: 100%;
-        max-width: 130px;
-        text-align: right;
-        padding: 6px 8px;
-        margin: 0;
-    }
-
-    .total-label {
-        font-weight: 700;
-        color: var(--bme-ink);
-        border-top: 2px solid var(--bme-border);
-    }
-
-    .total-val {
-        font-weight: 700;
-        color: var(--bme-dark-blue);
-        border-top: 2px solid var(--bme-border);
-    }
-
-    .price-err {
-        color: var(--bme-red);
-        margin: 12px 0 0;
-        font-size: 14px;
-    }
+    th.num, td.num { text-align: right; white-space: nowrap; }
 
     .notes {
         margin: 12px 0;
@@ -329,22 +216,53 @@
         font-size: 12px;
         text-transform: uppercase;
         color: var(--bme-muted);
-        margin-bottom: 6px;
+        margin-bottom: 8px;
     }
 
-    .prior-row {
-        margin: 5px 0;
+    .prior-row { margin: 0 0 10px; }
+    .prior-row:last-child { margin-bottom: 0; }
+
+    .prior-head {
+        margin: 0 0 2px;
+        font-size: 14px;
+        color: var(--bme-ink);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .prior-when {
+        color: var(--bme-muted);
+        font-size: 12.5px;
+        font-weight: 400;
+    }
+
+    .prior-action {
+        margin: 0;
         font-size: 14px;
         color: var(--bme-ink);
     }
 
-    .remarks-field {
+    .action-field {
         display: block;
         margin-top: 16px;
     }
 
-    .remarks-field textarea {
-        width: 100%;
+    .field-label {
+        margin: 0 0 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--bme-ink);
+    }
+
+    .req { color: var(--bme-red); }
+
+    .action-field textarea { width: 100%; }
+
+    .form-err {
+        color: var(--bme-red);
+        margin: 10px 0 0;
+        font-size: 14px;
     }
 
     .actions {
@@ -353,12 +271,14 @@
         margin-top: 14px;
     }
 
+    .status.open { background-color: #e7f0f8; color: #004b8d; }
+    .status.closed { background-color: #e4f3d8; color: #2f5e18; }
+
     @media (max-width: 640px) {
         .quote { padding: 16px; }
         .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
         .actions { flex-wrap: wrap; }
         table { font-size: 13px; }
         th, td { padding: 6px; }
-        .price-input { width: 90px; }
     }
 </style>

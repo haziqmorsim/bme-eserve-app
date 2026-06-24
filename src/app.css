@@ -120,6 +120,16 @@ button {
     color: #8e261b;
 }
 
+.status.open {
+    background-color: #e7f0f8;
+    color: #004b8d;
+}
+
+.status.closed {
+    background-color: #e4f3d8;
+    color: #2f5e18;
+}
+
 input, textarea {
     font-family: inherit;
     font-size: 15px;

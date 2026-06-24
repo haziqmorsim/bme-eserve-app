@@ -19,7 +19,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         const { count } = await supabase
             .from('quotes')
             .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending')
+            .eq('status', 'open')
             .eq('current_level', myLevel);
         pendingCount = count ?? 0;
     }

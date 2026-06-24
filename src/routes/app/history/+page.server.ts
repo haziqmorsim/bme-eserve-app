@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     if (isStaff) {
         const { data } = await supabase
             .from('quote_approvals')
-            .select('id, level, role, action, remarks, created_at, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
+            .select('id, level, role, action, action_taken, created_at, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
             .eq('reviewer_id', user.id)
             .order('created_at', { ascending: false });
 
