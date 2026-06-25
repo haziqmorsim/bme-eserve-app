@@ -31,6 +31,9 @@
             {#if isStaff}
             <button class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</button>
             {/if}
+            {#if isStaff}
+            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')}><a href="/app/analytics">Analytics</a></button>
+            {/if}
             {#if isAdmin}
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
@@ -77,6 +80,9 @@
                 <a href="/app/requests" class="side-link" class:active={$page.url.pathname.startsWith('/app/requests')} onclick={close}>
                     <span>Requests</span>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}
                 </a>
+            {/if}
+            {#if isStaff}
+                <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
             {/if}
             {#if isAdmin}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
@@ -211,7 +217,8 @@
     }
 
     .side-bell { 
-        padding: 4px 0 8px; 
+        padding: 4px 0 8px;
+        margin-right: auto;
     }
 
     .sidebar { 
@@ -331,7 +338,7 @@
             border: none;
             border-radius: 8px;
             background: none;
-            color: var(--bme-ink);
+            color: var(--bme-dark-blue);
             font: inherit;
             font-weight: 600;
             text-align: left;

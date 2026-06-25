@@ -55,7 +55,7 @@
 
 <div class="bell-wrap">
     <button class="bell-btn" onclick={toggle} aria-label="Notifications" aria-expanded={open}>
-        <Bell size={22} />
+        <Bell size={20} />
         {#if unread > 0}<span class="dot" aria-label="Unread Notifications"></span>{/if}
     </button>
 
@@ -64,7 +64,7 @@
             <div class="panel-head">
                 <span class="panel-title">Notifications</span>
                 <button class="mark-all" onclick={markAllAsRead} disabled={busy || unread === 0}>
-                    Mark all notifications as read
+                    Mark all as read
                 </button>
             </div>
 
@@ -253,10 +253,15 @@
     @media (max-width: 768px) {
         .panel {
             position: fixed;
-            top: 64px;
-            left: 64px;
+            top: 100px;
+            left: 50%;
             right: auto;
-            width: min(340px, calc(100vw - 80px));
+            transform: translateX(-50%);
+            width: min(340px, calc(100vw - 32px));
+        }
+
+        .bell-btn {
+            border: none;
         }
     }
 </style>

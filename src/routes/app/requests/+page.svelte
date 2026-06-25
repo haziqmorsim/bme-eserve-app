@@ -1,11 +1,23 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
+    import RequestFilters from "$lib/components/RequestFilters.svelte";
+    import { emptyFilters, matches } from "$lib/filters";
+    import SlaBadge from "$lib/components/SlaBadge.svelte";
+    import { levelSince } from "$lib/sla";
 
     let { data } = $props();
     let working = $state<string | null>(null);
     let formError = $state<string | null>(null);
     let actionTaken = $state<Record<string, string>>({});
+
+    let filters = $state(emptyFilters());
+    let filtered = $derived(data.quotes.filter((q: any) => matches(filters, {
+        search: [q.reference, q.customer?.company, q.customer?.full_name],
+        status: q.status,
+        region: q.customer?.region,
+        date: q.created_at
+    })));
 
     function roleLabel(r: string): string {
         return r === 'admin' ? 'Admin' : r === 'manager' ? 'Manager' : r === 'coo' ? 'COO' : r;
@@ -45,17 +57,22 @@
 </script>
 
 <h1>Requests</h1>
+
+<RequestFilters bind:filters regions={data.regions} showStatus={false} placeholder="Search by reference or customer..." />
 <!-- <p class="lead">Showing requests awaiting <strong>{data.levelLabel}</strong> action (Level {data.level} of 3).</p> -->
 
 {#if data.quotes.length === 0}
     <div class="card empty">No requests are awaiting your action.</div>
+{:else if filtered.length === 0}
+    <div class="card empty">No requests match your filters.</div>
 {:else}
-    {#each data.quotes as q (q.id)}
+    {#each filtered as q (q.id)}
         <div class="card quote">
             <div class="qhead">
                 <div>
                     <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
+                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} /></span>
                 </div>
                 <small>{when(q.created_at)}</small>
             </div>
@@ -75,16 +92,16 @@
                         <th>Part Number</th>
                         <th>Part Name</th>
                         <th>Boiler</th>
-                        <th class="num">Quantity</th>
+                        <th>Quantity</th>
                     </tr>
                 </thead>
                 <tbody>
                     {#each q.quote_items as it}
                         <tr>
                             <td>{it.part_number}</td>
-                            <td>{it.part_name}</td>
+                            <td class="name">{it.part_name}</td>
                             <td>{it.boiler_code}</td>
-                            <td class="num">{it.quantity}</td>
+                            <td>{it.quantity}</td>
                         </tr>
                     {/each}
                 </tbody>
@@ -166,11 +183,15 @@
     .qhead .status { 
         margin-left: 10px; 
     }
-
+    
+    .sla-wrap { 
+        margin-left: 10px; 
+    }
+    
     .reference { 
         font-size: 18px; 
     }
-
+    
     .status { 
         text-transform: capitalize; 
     }
@@ -202,7 +223,7 @@
     }
 
     th {
-        text-align: left;
+        text-align: center;
         color: var(--bme-muted);
         font-size: 12px;
         text-transform: uppercase;
@@ -210,14 +231,14 @@
     }
 
     td {
+        text-align: center;
         padding: 8px;
         border-top: 1px solid var(--bme-border);
         overflow-wrap: break-word;
     }
 
-    th.num, td.num { 
-        text-align: right; 
-        white-space: nowrap; 
+    .name {
+        text-align: left;
     }
 
     .notes {
@@ -291,9 +312,9 @@
         color: var(--bme-red); 
     }
 
-    .action-field textarea { 
-        width: 100%; 
-    }
+    .action-field textarea {
+         width: 100%; 
+        }
 
     .form-err {
         color: var(--bme-red);
@@ -334,8 +355,7 @@
         }
         
         .prior-head { 
-            flex-direction: 
-            column; 
+            flex-direction: column; 
             align-items: flex-start; 
             gap: 2px; 
         }

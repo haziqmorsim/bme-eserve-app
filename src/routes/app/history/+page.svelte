@@ -2,12 +2,30 @@
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import Stepper from "$lib/components/Stepper.svelte";
+    import RequestFilters from "$lib/components/RequestFilters.svelte";
+    import { emptyFilters, matches } from "$lib/filters";
 
     let { data } = $props();
 
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     let myLevel = $derived(ROLE_LEVEL[data.profile?.role] ?? 0);
     let working = $state<string | null>(null);
+
+    let filters = $state(emptyFilters());
+
+    let filteredReviews = $derived(data.reviews.filter((r: any) => matches(filters, {
+        search: [r.quotes?.reference, r.customer?.company, r.customer?.full_name],
+        status: r.quotes?.status,
+        region: r.customer?.region,
+        date: r.created_at
+    })));
+
+    let filteredQuotes = $derived(data.quotes.filter((q: any) => matches(filters, {
+        search: [q.reference],
+        status: q.status,
+        region: q.region,
+        date: q.created_at
+    })));
 
     function levelLabel(l: number): string {
         return l === 1 ? 'Admin' : l === 2 ? 'Manager' : l === 3 ? 'COO' : `Level ${l}`;
@@ -16,6 +34,7 @@
         return new Date(ts).toLocaleString();
     }
 
+    // Manager/COO may reopen a request they have closed once it has moved past them.
     function canReopen(r: any): boolean {
         if (r.action !== 'closed') return false;
         if (myLevel === 2) return r.quotes.current_level > 2 || r.quotes.status === 'closed';
@@ -41,21 +60,25 @@
 
 <h1>History</h1>
 
+<RequestFilters bind:filters regions={data.regions} showRegion={data.isStaff} placeholder="Search by reference or customer..." />
+
 {#if data.isStaff}
     <section class="block">
         <h2 class="block-title">Reviews History</h2>
 
         {#if data.reviews.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
+        {:else if filteredReviews.length === 0}
+            <div class="card empty">No reviews match your filters.</div>
         {:else}
-            {#each data.reviews as r (r.id)}
+            {#each filteredReviews as r (r.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
                             <strong>{r.quotes.reference}</strong>
                             <span class="status {r.quotes.status}">{r.quotes.status}</span>
                         </div>
-                        <small>{r.action === 'reopened' ? 'Reopened' : 'Closed'} at {when(r.created_at)}</small>
+                        <small>{r.action === 'reopened' ? 'Reopened' : 'Closed'} {when(r.created_at)}</small>
                     </div>
 
                     <p class="decision">
@@ -88,15 +111,16 @@
 
                     <div class="meta">
                         <Stepper status={r.quotes.status} level={r.quotes.current_level} />
+
+                        {#if canReopen(r)}
+                            <div class="meta-row">
+                                <span class="reviewed">Reopening sends this request back to {levelLabel(myLevel - 1)}.</span>
+                                <button class="btn-ghost" disabled={working === r.id} onclick={() => reopen(r)}>
+                                    {working === r.id ? 'Reopening...' : 'Reopen'}
+                                </button>
+                            </div>
+                        {/if}
                     </div>
-                     {#if canReopen(r)}
-                        <div class="meta-row">
-                            <button class="btn-primary" disabled={working === r.id} onclick={() => reopen(r)}>
-                                {working === r.id ? 'Reopening...' : 'Reopen'}
-                            </button>
-                            <p class="reviewed">Reopening sends this request back to {levelLabel(myLevel - 1)}.</p>
-                        </div>
-                    {/if}
                 </div>
             {/each}
         {/if}
@@ -109,8 +133,10 @@
 
         {#if data.quotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>
+        {:else if filteredQuotes.length === 0}
+            <div class="card empty">No requests match your filters.</div>
         {:else}
-            {#each data.quotes as q (q.id)}
+            {#each filteredQuotes as q (q.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
@@ -127,7 +153,7 @@
                             {#each q.quote_items as it}
                                 <tr>
                                     <td>{it.part_number}</td>
-                                    <td>{it.part_name}</td>
+                                    <td class="name">{it.part_name}</td>
                                     <td>{it.boiler_code}</td>
                                     <td>{it.quantity}</td>
                                 </tr>
@@ -142,7 +168,7 @@
                             <Stepper status={q.status} level={q.current_level} />
                         {/if}
 
-                        <!-- <div class="meta-row">
+                        <div class="meta-row">
                             {#if q.status === 'closed'}
                                 <span class="reviewed">
                                     Closed{#if q.reviewed_at} on {new Date(q.reviewed_at).toLocaleDateString()}{/if}.
@@ -152,7 +178,7 @@
                                     Open — currently with {q.current_level === 1 ? 'Admin' : q.current_level === 2 ? 'Manager' : 'COO'}.
                                 </span>
                             {/if}
-                        </div> -->
+                        </div>
                     </div>
                 </div>
             {/each}
@@ -161,8 +187,13 @@
 {/if}
 
 <style>
-    h1 { margin-bottom: 18px; }
-    .block { margin-bottom: 28px; }
+    h1 { 
+        margin-bottom: 18px; 
+    }
+
+    .block { 
+        margin-bottom: 28px; 
+    }
 
     .block-title {
         font-size: 16px;
@@ -188,8 +219,13 @@
         margin-bottom: 12px;
     }
 
-    .qhead .status { margin-left: 10px; }
-    .status { text-transform: capitalize; }
+    .qhead .status { 
+        margin-left: 10px; 
+    }
+    
+    .status { 
+        text-transform: capitalize; 
+    }
 
     .decision {
         margin: 0 0 12px;
@@ -197,7 +233,9 @@
         color: var(--bme-ink);
     }
 
-    .decision .status { margin-left: 4px; }
+    .decision .status { 
+        margin-left: 4px; 
+    }
 
     .customer {
         display: flex;
@@ -207,8 +245,14 @@
         font-size: 14px;
     }
 
-    .cust-info { margin: 0; color: var(--bme-muted); }
-    .cust-info strong { color: var(--bme-ink); }
+    .cust-info { 
+        margin: 0; 
+        color: var(--bme-muted); 
+    }
+    
+    .cust-info strong { 
+        color: var(--bme-ink); 
+    }
 
     .action-taken {
         margin: 12px 0 0;
@@ -223,7 +267,7 @@
     }
 
     th {
-        text-align: left;
+        text-align: center;
         color: var(--bme-muted);
         font-size: 12px;
         text-transform: uppercase;
@@ -231,11 +275,19 @@
     }
 
     td {
+        text-align: center;
         padding: 8px;
         border-top: 1px solid var(--bme-border);
     }
 
-    .notes { margin: 12px 0 0; color: var(--bme-muted); }
+    .name {
+        text-align: left;
+    }
+
+    .notes { 
+        margin: 12px 0 0; 
+        color: var(--bme-muted); 
+    }
 
     .meta {
         display: flex;
@@ -247,32 +299,55 @@
     }
 
     .meta-row {
-        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 12px;
     }
 
-    .reviewed { font-size: 13px; color: var(--bme-muted); }
+    .reviewed { 
+        font-size: 13px; 
+        color: var(--bme-muted); 
+    }
 
     .status.open { 
         background-color: #e7f0f8; 
         color: #004b8d; 
     }
-
+    
     .status.closed { 
         background-color: #e4f3d8; 
         color: #2f5e18; 
     }
-
-    .status.reopened {
-        background-color: #fff3d6;
-        color: #97700a;
+    
+    .status.reopened { 
+        background-color: #fff3d6; 
+        color: #97700a; 
     }
 
     @media (max-width: 640px) {
-        .quote { padding: 16px; }
-        .qhead { flex-direction: column; align-items: flex-start; gap: 6px; }
-        .meta-row { flex-direction: column; align-items: flex-start; gap: 10px; }
-        table { font-size: 13px; }
-        th, td { padding: 6px; }
+        .quote { 
+            padding: 16px; 
+        }
+        
+        .qhead { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 6px; 
+        }
+        
+        .meta-row { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 10px; 
+        }
+        
+        table { 
+            font-size: 13px; 
+        }
+        
+        th, td { 
+            padding: 6px; 
+        }
     }
 </style>

@@ -80,11 +80,11 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Price Range (RM)</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Price Range</span><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
-                <span>
+                <span class="left">
                     <strong>{item.partNumber}</strong><br /><small>{item.partName}</small>
                 </span>
                 <span>{item.boilerCode}</span>
@@ -164,6 +164,14 @@
         color: var(--bme-red);
     }
 
+    span {
+        text-align: center;
+    }
+
+    .left {
+        text-align: left;
+    }
+
     .total {
         display: flex;
         justify-content: space-between;
@@ -223,7 +231,9 @@
             padding-right: 28px;
         }
  
-        .row.head { display: none; }
+        .row.head { 
+            display: none; 
+        }
  
         .row > span:last-child {
             position: absolute;
@@ -231,7 +241,15 @@
             right: 0;
         }
  
-        .total { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 16px; }
-        .indicative { text-align: left; }
+        .total { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 4px; 
+            font-size: 16px; 
+        }
+
+        .indicative, span { 
+            text-align: left; 
+        }
     }
 </style>

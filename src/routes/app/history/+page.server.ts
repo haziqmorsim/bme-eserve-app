@@ -7,13 +7,21 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
 
     const { profile } = await parent();
     const role = profile?.role;
-    const isStaff = role === 'admin' || role === 'manager' || role === 'coo';
+    const isStaff = role === 'admin' || role === 'manager' || role === 'coo' || role === 'developer';
 
-    const { data: quotes } = await supabase
+    const { data: regionRows } = await supabase.from('regions').select('id, name').order('sort_order');
+    const regions = regionRows ?? [];
+    const regionMap: Record<string, string> = {};
+    for (const r of regions) regionMap[r.id] = r.name;
+    const myRegion = profile?.region_id ? (regionMap[profile.region_id] ?? null) : null;
+
+    const { data: quoteRows } = await supabase
         .from('quotes')
         .select('id, reference, status, notes, created_at, reviewed_at, pdf_url, current_level, quote_items(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+    const quotes = (quoteRows ?? []).map((q) => ({ ...q, region: myRegion }));
 
     let reviews: any[] = [];
     if (isStaff) {
@@ -26,26 +34,31 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         const list = data ?? [];
 
         const userIds = [...new Set(list.map((r: any) => r.quotes?.user_id).filter(Boolean))];
-        const custMap: Record<string, { full_name: string | null; company: string | null }> = {};
+        const custMap: Record<string, { full_name: string | null; company: string | null; region: string | null }> = {};
         if (userIds.length) {
             const { data: profs } = await supabase
                 .from('profiles')
-                .select('id, full_name, company')
+                .select('id, full_name, company, region_id')
                 .in('id', userIds);
             for (const p of profs ?? []) {
-                custMap[p.id] = { full_name: p.full_name, company: p.company };
+                custMap[p.id] = {
+                    full_name: p.full_name,
+                    company: p.company,
+                    region: p.region_id ? (regionMap[p.region_id] ?? null) : null
+                };
             }
         }
 
         reviews = list.map((r: any) => ({
             ...r,
-            customer: custMap[r.quotes?.user_id] ?? { full_name: null, company: null }
+            customer: custMap[r.quotes?.user_id] ?? { full_name: null, company: null, region: null }
         }));
     }
 
     return {
-        quotes: quotes ?? [],
+        quotes,
         reviews, isStaff,
+        regions,
         title: "History"
     };
 };
