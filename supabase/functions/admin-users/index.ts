@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         if (action === 'delete') {
             const { id } = body;
             if (!id) return json(400, { error: 'Missing id' });
-            const { error: dErr } = await admin.auth.admin.deleteUserById(id);
+            const { error: dErr } = await admin.auth.admin.deleteUser(id);
             if (dErr) return json(400, { error: dErr.message });
             return json(200, { ok: true });
         }

@@ -167,7 +167,7 @@
 {#if deleting}
     <Modal title="Delete User" onclose={() => (deleting = null)}>
         <div class="modal-confirm">
-            <p>Delete user <strong>{deleting.email ?? deleting.full_name}</strong>? This permanently removes their account.</p>
+            <p>Are you sure you want to delete user <strong>{deleting.email ?? deleting.full_name}</strong>?</p>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="modal-actions">
                 <button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>
