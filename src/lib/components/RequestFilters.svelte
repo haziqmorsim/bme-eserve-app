@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Search, X } from "@lucide/svelte";
+    import { Search } from "@lucide/svelte";
     import { emptyFilters, isActive, type Filters } from "$lib/filters";
 
     let {
@@ -64,7 +64,7 @@
 
     {#if active}
         <button class="clear" onclick={clear} aria-label="Clear filters">
-            <X size={15} /> Clear
+            Reset filters
         </button>
     {/if}
 </div>

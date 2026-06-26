@@ -136,22 +136,22 @@
 {#if editing !== null}
     <Modal title={editing === 'new' ? 'Add Part' : 'Edit Part'} onclose={cancel}>
         <div class="adm-form">
-            <label><span>Boiler *</span>
+            <label>Boiler <span class="required">*</span>
                 <select bind:value={form.boiler_id} onchange={onBoilerChange}>
                     {#each boilers as b (b.id)}<option value={b.id}>{b.code}</option>{/each}
                 </select>
             </label>
-            <label><span>Component *</span>
+            <label>Component <span class="required">*</span>
                 <select bind:value={form.component_id}>
                     {#each formComponents as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
                 </select>
             </label>
-            <label><span>Part Number *</span><input bind:value={form.part_number} placeholder="PB130-TB-001" /></label>
-            <label><span>Name *</span><input bind:value={form.name} /></label>
-            <label><span>Price Min (RM)</span><input type="number" min="0" bind:value={form.price_min} /></label>
-            <label><span>Price Max (RM)</span><input type="number" min="0" bind:value={form.price_max} /></label>
+            <label>Part Number <span class="required">*</span><input bind:value={form.part_number} placeholder="PB130-TB-001" /></label>
+            <label>Part Name <span class="required">*</span><input bind:value={form.name} /></label>
+            <label>Price Min (RM) <span class="required">*</span><input type="number" min="0" bind:value={form.price_min} /></label>
+            <label>Price Max (RM) <span class="required">*</span><input type="number" min="0" bind:value={form.price_max} /></label>
             <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label>
-            <label class="full"><span>Description</span><textarea rows="2" bind:value={form.description}></textarea></label>
+            <label class="full">Description <span class="required">*</span><textarea rows="2" bind:value={form.description}></textarea></label>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>

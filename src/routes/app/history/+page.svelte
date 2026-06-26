@@ -13,11 +13,11 @@
 
     let filters = $state(emptyFilters());
 
-    let filteredReviews = $derived(data.reviews.filter((r: any) => matches(filters, {
-        search: [r.quotes?.reference, r.customer?.company, r.customer?.full_name],
-        status: r.quotes?.status,
-        region: r.customer?.region,
-        date: r.created_at
+    let filteredGroups = $derived(data.reviewGroups.filter((g: any) => matches(filters, {
+        search: [g.quote?.reference, g.customer?.company, g.customer?.full_name],
+        status: g.quote?.status,
+        region: g.customer?.region,
+        date: g.lastActivity
     })));
 
     let filteredQuotes = $derived(data.quotes.filter((q: any) => matches(filters, {
@@ -34,25 +34,23 @@
         return new Date(ts).toLocaleString();
     }
 
-    // Manager/COO may reopen a request they have closed once it has moved past them.
-    function canReopen(r: any): boolean {
-        if (r.action !== 'closed') return false;
-        if (myLevel === 2) return r.quotes.current_level > 2 || r.quotes.status === 'closed';
-        if (myLevel === 3) return r.quotes.status === 'closed';
+    function canReopen(q: any): boolean {
+        if (myLevel === 2) return q.current_level > 2 || q.status === 'closed';
+        if (myLevel === 3) return q.status === 'closed';
         return false;
     }
 
-    async function reopen(r: any) {
-        working = r.id;
+    async function reopen(q: any) {
+        working = q.id;
         const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
-            body: { quote_id: r.quotes.id, action: 'reopen' }
+            body: { quote_id: q.id, action: 'reopen' }
         });
         working = null;
 
         if (error || resp?.error) {
             addToast(resp?.error ?? error?.message ?? 'Could not reopen this request.');
         } else {
-            addToast(`${r.quotes.reference} reopened — sent back to ${resp.target_label}.`);
+            addToast(`${q.reference} reopened — sent back to ${resp.target_label}.`);
         }
         await invalidateAll();
     }
@@ -66,29 +64,24 @@
     <section class="block">
         <h2 class="block-title">Reviews History</h2>
 
-        {#if data.reviews.length === 0}
+        {#if data.reviewGroups.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
-        {:else if filteredReviews.length === 0}
+        {:else if filteredGroups.length === 0}
             <div class="card empty">No reviews match your filters.</div>
         {:else}
-            {#each filteredReviews as r (r.id)}
+            {#each filteredGroups as g (g.quote.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
-                            <strong>{r.quotes.reference}</strong>
-                            <span class="status {r.quotes.status}">{r.quotes.status}</span>
+                            <strong>{g.quote.reference}</strong>
+                            <span class="status {g.quote.status}">{g.quote.status}</span>
                         </div>
-                        <small>{r.action === 'reopened' ? 'Reopened' : 'Closed'} {when(r.created_at)}</small>
+                        <small>Last activity {when(g.lastActivity)}</small>
                     </div>
 
-                    <p class="decision">
-                        Your action at <strong>{levelLabel(r.level)}</strong> level:
-                        <span class="status {r.action === 'reopened' ? 'reopened' : 'closed'}">{r.action}</span>
-                    </p>
-
                     <div class="customer">
-                        <p class="cust-info">Company: <strong>{r.customer.company ?? '—'}</strong></p>
-                        <p class="cust-info">Name: <strong>{r.customer.full_name ?? '—'}</strong></p>
+                        <p class="cust-info">Company: <strong>{g.customer.company ?? '—'}</strong></p>
+                        <p class="cust-info">Name: <strong>{g.customer.full_name ?? '—'}</strong></p>
                     </div>
 
                     <table>
@@ -96,10 +89,10 @@
                             <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
                         </thead>
                         <tbody>
-                            {#each r.quotes.quote_items as it}
+                            {#each g.quote.quote_items as it}
                                 <tr>
                                     <td>{it.part_number}</td>
-                                    <td>{it.part_name}</td>
+                                    <td class="name">{it.part_name}</td>
                                     <td>{it.boiler_code}</td>
                                     <td>{it.quantity}</td>
                                 </tr>
@@ -107,16 +100,29 @@
                         </tbody>
                     </table>
 
-                    <p class="action-taken"><strong>Action Taken:</strong> {r.action_taken ?? '—'}</p>
+                    <div class="timeline">
+                        <span class="tl-title">Actions history</span>
+                        {#each g.actions as a (a.id)}
+                            <div class="tl-row">
+                                <p class="tl-head">
+                                    <strong>{levelLabel(a.level)}</strong>
+                                    <span class="status {a.action === 'reopened' ? 'reopened' : 'closed'}">{a.action}</span>
+                                    
+                                    <span class="tl-when">{when(a.created_at)}</span>
+                                </p>
+                                <p class="tl-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
+                            </div>
+                        {/each}
+                    </div>
 
                     <div class="meta">
-                        <Stepper status={r.quotes.status} level={r.quotes.current_level} />
+                        <Stepper status={g.quote.status} level={g.quote.current_level} />
 
-                        {#if canReopen(r)}
+                        {#if canReopen(g.quote)}
                             <div class="meta-row">
                                 <span class="reviewed">Reopening sends this request back to {levelLabel(myLevel - 1)}.</span>
-                                <button class="btn-ghost" disabled={working === r.id} onclick={() => reopen(r)}>
-                                    {working === r.id ? 'Reopening...' : 'Reopen'}
+                                <button class="btn-ghost" disabled={working === g.quote.id} onclick={() => reopen(g.quote)}>
+                                    {working === g.quote.id ? 'Reopening...' : 'Reopen'}
                                 </button>
                             </div>
                         {/if}
@@ -168,7 +174,7 @@
                             <Stepper status={q.status} level={q.current_level} />
                         {/if}
 
-                        <div class="meta-row">
+                        <!-- <div class="meta-row">
                             {#if q.status === 'closed'}
                                 <span class="reviewed">
                                     Closed{#if q.reviewed_at} on {new Date(q.reviewed_at).toLocaleDateString()}{/if}.
@@ -178,7 +184,7 @@
                                     Open — currently with {q.current_level === 1 ? 'Admin' : q.current_level === 2 ? 'Manager' : 'COO'}.
                                 </span>
                             {/if}
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             {/each}
@@ -187,12 +193,12 @@
 {/if}
 
 <style>
-    h1 { 
-        margin-bottom: 18px; 
+    h1 {
+        margin-bottom: 18px;
     }
 
-    .block { 
-        margin-bottom: 28px; 
+    .block {
+        margin-bottom: 28px;
     }
 
     .block-title {
@@ -219,22 +225,12 @@
         margin-bottom: 12px;
     }
 
-    .qhead .status { 
-        margin-left: 10px; 
-    }
-    
-    .status { 
-        text-transform: capitalize; 
+    .qhead .status {
+        margin-left: 10px;
     }
 
-    .decision {
-        margin: 0 0 12px;
-        font-size: 14px;
-        color: var(--bme-ink);
-    }
-
-    .decision .status { 
-        margin-left: 4px; 
+    .status {
+        text-transform: capitalize;
     }
 
     .customer {
@@ -245,18 +241,12 @@
         font-size: 14px;
     }
 
-    .cust-info { 
-        margin: 0; 
-        color: var(--bme-muted); 
-    }
-    
-    .cust-info strong { 
-        color: var(--bme-ink); 
+    .cust-info {
+        margin: 0;
+        color: var(--bme-muted);
     }
 
-    .action-taken {
-        margin: 12px 0 0;
-        font-size: 14px;
+    .cust-info strong {
         color: var(--bme-ink);
     }
 
@@ -284,9 +274,57 @@
         text-align: left;
     }
 
-    .notes { 
-        margin: 12px 0 0; 
-        color: var(--bme-muted); 
+    .timeline {
+        margin-top: 16px;
+        padding: 12px 14px;
+        background-color: #eaeff3;
+        border-radius: 8px;
+    }
+
+    .tl-title {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: var(--bme-muted);
+        margin-bottom: 10px;
+    }
+
+    .tl-row {
+        padding-left: 12px;
+        border-left: 2px solid var(--bme-border);
+        margin-bottom: 12px;
+    }
+
+    .tl-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .tl-head {
+        margin: 0 0 2px;
+        font-size: 14px;
+        color: var(--bme-ink);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tl-when {
+        font-size: 12.5px;
+        font-weight: 400;
+        color: var(--bme-muted);
+    }
+
+    .tl-action {
+        margin: 0;
+        font-size: 14px;
+        color: var(--bme-ink);
+    }
+
+    .notes {
+        margin: 12px 0 0;
+        color: var(--bme-muted);
     }
 
     .meta {
@@ -305,49 +343,49 @@
         gap: 12px;
     }
 
-    .reviewed { 
-        font-size: 13px; 
-        color: var(--bme-muted); 
+    .reviewed {
+        font-size: 13px;
+        color: var(--bme-muted);
     }
 
-    .status.open { 
-        background-color: #e7f0f8; 
-        color: #004b8d; 
+    .status.open {
+        background-color: #e7f0f8;
+        color: #004b8d;
     }
-    
-    .status.closed { 
-        background-color: #e4f3d8; 
-        color: #2f5e18; 
+
+    .status.closed {
+        background-color: #e4f3d8;
+        color: #2f5e18;
     }
-    
-    .status.reopened { 
-        background-color: #fff3d6; 
-        color: #97700a; 
+
+    .status.reopened {
+        background-color: #fff3d6;
+        color: #97700a;
     }
 
     @media (max-width: 640px) {
-        .quote { 
-            padding: 16px; 
+        .quote {
+            padding: 16px;
         }
-        
-        .qhead { 
-            flex-direction: column; 
-            align-items: flex-start; 
-            gap: 6px; 
+
+        .qhead {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
         }
-        
-        .meta-row { 
-            flex-direction: column; 
-            align-items: flex-start; 
-            gap: 10px; 
+
+        .meta-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
         }
-        
-        table { 
-            font-size: 13px; 
+
+        table {
+            font-size: 13px;
         }
-        
-        th, td { 
-            padding: 6px; 
+
+        th, td {
+            padding: 6px;
         }
     }
 </style>

@@ -142,14 +142,14 @@
 {#if editing !== null}
     <Modal title={editing === 'new' ? 'Add User' : 'Edit User'} onclose={cancel}>
         <div class="adm-form">
-            <label><span>Full Name</span><input bind:value={form.full_name} /></label>
-            <label><span>Email *</span><input type="email" bind:value={form.email} /></label>
+            <label>Full Name <span class="required">*</span><input bind:value={form.full_name} /></label>
+            <label>Email <span class="required">*</span><input type="email" bind:value={form.email} /></label>
             {#if editing === 'new'}
-                <label><span>Initial Password *</span><input type="text" bind:value={form.password} placeholder="Temporary password" /></label>
+                <label>Initial Password <span class="required">*</span><input type="text" bind:value={form.password} placeholder="Temporary password" /></label>
             {/if}
             <label><span>Phone</span><input bind:value={form.phone} placeholder="+60..." /></label>
             <label><span>Company</span><input bind:value={form.company} /></label>
-            <label><span>Role</span>
+            <label>Role <span class="required">*</span>
                 <select bind:value={form.role}>
                     {#each ROLES as r (r.value)}<option value={r.value}>{r.label}</option>{/each}
                 </select>

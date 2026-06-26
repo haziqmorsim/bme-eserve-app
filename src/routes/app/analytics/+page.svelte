@@ -92,7 +92,7 @@
                         <div class="bar-row">
                             <span class="bar-key">{r.name}</span>
                             <div class="bar-track">
-                                <div class="bar-fill green" style="width: {Math.round((r.count / maxRegion) * 100)}%"></div>
+                                <div class="bar-fill blue" style="width: {Math.round((r.count / maxRegion) * 100)}%"></div>
                             </div>
                             <span class="bar-val">{r.count}</span>
                         </div>
@@ -267,10 +267,6 @@
 
     .bar-fill.blue {
         background: var(--bme-dark-blue);
-    }
-
-    .bar-fill.green {
-        background: var(--bme-green);
     }
 
     .bar-val {

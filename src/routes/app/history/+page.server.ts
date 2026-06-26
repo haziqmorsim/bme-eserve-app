@@ -23,41 +23,64 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
 
     const quotes = (quoteRows ?? []).map((q) => ({ ...q, region: myRegion }));
 
-    let reviews: any[] = [];
+    let reviewGroups: any[] = [];
     if (isStaff) {
-        const { data } = await supabase
+        const { data: mine } = await supabase
             .from('quote_approvals')
-            .select('id, level, role, action, action_taken, created_at, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
-            .eq('reviewer_id', user.id)
-            .order('created_at', { ascending: false });
+            .select('quote_id, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
+            .eq('reviewer_id', user.id);
 
-        const list = data ?? [];
-
-        const userIds = [...new Set(list.map((r: any) => r.quotes?.user_id).filter(Boolean))];
-        const custMap: Record<string, { full_name: string | null; company: string | null; region: string | null }> = {};
-        if (userIds.length) {
-            const { data: profs } = await supabase
-                .from('profiles')
-                .select('id, full_name, company, region_id')
-                .in('id', userIds);
-            for (const p of profs ?? []) {
-                custMap[p.id] = {
-                    full_name: p.full_name,
-                    company: p.company,
-                    region: p.region_id ? (regionMap[p.region_id] ?? null) : null
-                };
-            }
+        const mineList = mine ?? [];
+        const quoteById: Record<string, any> = {};
+        for (const r of mineList) {
+            const q = (r as any).quotes;
+            if (q && !quoteById[q.id]) quoteById[q.id] = q;
         }
+        const quoteIds = Object.keys(quoteById);
 
-        reviews = list.map((r: any) => ({
-            ...r,
-            customer: custMap[r.quotes?.user_id] ?? { full_name: null, company: null, region: null }
-        }));
+        if (quoteIds.length) {
+            const { data: allActions } = await supabase
+                .from('quote_approvals')
+                .select('id, quote_id, level, role, action, action_taken, created_at, reviewer_id')
+                .in('quote_id', quoteIds)
+                .order('created_at', { ascending: true });
+
+            const actionsByQuote: Record<string, any[]> = {};
+            for (const a of allActions ?? []) (actionsByQuote[a.quote_id] ??= []).push(a);
+
+            const ownerIds = [...new Set(Object.values(quoteById).map((q: any) => q.user_id).filter(Boolean))];
+            const custMap: Record<string, { full_name: string | null; company: string | null; region: string | null }> = {};
+            if (ownerIds.length) {
+                const { data: profs } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, company, region_id')
+                    .in('id', ownerIds);
+                for (const p of profs ?? []) {
+                    custMap[p.id] = {
+                        full_name: p.full_name,
+                        company: p.company,
+                        region: p.region_id ? (regionMap[p.region_id] ?? null) : null
+                    };
+                }
+            }
+
+            reviewGroups = quoteIds.map((qid) => {
+                const q = quoteById[qid];
+                const actions = (actionsByQuote[qid] ?? []).map((a) => ({ ...a, mine: a.reviewer_id === user.id }));
+                const lastActivity = actions.length ? actions[actions.length - 1].created_at : q?.created_at;
+                return {
+                    quote: q,
+                    customer: custMap[q?.user_id] ?? { full_name: null, company: null, region: null },
+                    actions,
+                    lastActivity
+                };
+            }).sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : a.lastActivity > b.lastActivity ? -1 : 0));
+        }
     }
 
     return {
         quotes,
-        reviews, isStaff,
+        reviewGroups, isStaff,
         regions,
         title: "History"
     };

@@ -193,13 +193,14 @@
 
     .notes { 
         padding: 18px; 
-        margin-bottom: 18px; 
+        margin-bottom: 18px;
     }
 
     .notes label span { 
         display: block; 
         font-weight: 600; 
         margin-bottom: 8px; 
+        text-align: left;
     }
 
     .submit { 

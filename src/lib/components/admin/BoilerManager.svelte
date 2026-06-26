@@ -113,21 +113,21 @@
 {#if editing !== null}
     <Modal title={editing === 'new' ? 'Add Boiler' : 'Edit Boiler'} onclose={cancel}>
         <div class="adm-form">
-            <label><span>Region *</span>
+            <label>Region <span class="required">*</span>
                 <select bind:value={form.region_id}>
                     {#each regions as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
                 </select>
             </label>
-            <label><span>Code *</span><input bind:value={form.code} placeholder="PB130" /></label>
-            <label><span>Name</span><input bind:value={form.name} /></label>
-            <label><span>Capacity</span><input bind:value={form.capacity} placeholder="25 t/h" /></label>
-            <label><span>Pressure</span><input bind:value={form.pressure} placeholder="21 barg" /></label>
-            <label><span>Steam Temperature</span><input bind:value={form.steam_temperature} placeholder="395 C" /></label>
-            <label><span>Fuel Type</span><input bind:value={form.fuel_type} /></label>
-            <label><span>Year Commissioned</span><input type="number" bind:value={form.year_commissioned} /></label>
-            <label><span>Status</span><input bind:value={form.status} /></label>
-            <label class="full"><span>Design Image URL</span><input bind:value={form.design_image_url} /></label>
-            <label class="full"><span>Description</span><textarea rows="2" bind:value={form.description}></textarea></label>
+            <label>Code <span class="required">*</span><input bind:value={form.code} placeholder="PB130" /></label>
+            <label>Name <span class="required">*</span><input bind:value={form.name} /></label>
+            <label>Capacity <span class="required">*</span><input bind:value={form.capacity} placeholder="25 t/h" /></label>
+            <label>Pressure <span class="required">*</span><input bind:value={form.pressure} placeholder="21 barg" /></label>
+            <label>Steam Temperature <span class="required">*</span><input bind:value={form.steam_temperature} placeholder="395 C" /></label>
+            <label>Fuel Type <span class="required">*</span><input bind:value={form.fuel_type} /></label>
+            <label>Year Commissioned <span class="required">*</span><input type="number" bind:value={form.year_commissioned} /></label>
+            <label>Status <span class="required">*</span><input bind:value={form.status} /></label>
+            <label class="full">Design Image URL <span class="required">*</span><input bind:value={form.design_image_url} /></label>
+            <label class="full">Description <span class="required">*</span><textarea rows="2" bind:value={form.description}></textarea></label>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
