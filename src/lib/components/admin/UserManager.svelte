@@ -53,6 +53,15 @@
     }
     function cancel() { editing = null; err = ''; }
 
+    async function fnError(error: any, resp: any, fallback: string): Promise<string> {
+        if (resp?.error) return resp.error;
+        try {
+            const body = await error?.context?.json?.();
+            if (body?.error) return body.error;
+        } catch { /* body not JSON */ }
+        return error?.message ?? fallback;
+    }
+
     async function save() {
         if (!form.email?.trim()) { err = 'Email is required.'; return; }
         if (editing === 'new' && !form.password) { err = 'An initial password is required for a new user.'; return; }
@@ -69,7 +78,7 @@
 
         const { data: resp, error } = await supabase.functions.invoke('admin-users', { body });
         busy = false;
-        if (error || resp?.error) { err = resp?.error ?? error?.message ?? 'Operation failed.'; return; }
+        if (error || resp?.error) { err = await fnError(error, resp, 'Operation failed.'); return; }
         editing = null;
         await invalidateAll();
     }
@@ -80,7 +89,7 @@
             body: { action: 'delete', id: deleting.id }
         });
         busy = false;
-        if (error || resp?.error) { err = resp?.error ?? error?.message ?? 'Delete failed.'; return; }
+        if (error || resp?.error) { err = await fnError(error, resp, 'Delete failed.'); return; }
         deleting = null;
         await invalidateAll();
     }
