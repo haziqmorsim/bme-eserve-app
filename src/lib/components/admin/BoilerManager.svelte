@@ -1,5 +1,6 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
@@ -55,6 +56,7 @@
             : await supabase.from('boilers').update(payload).eq('id', editing);
         busy = false;
         if (resp.error) { err = resp.error.message; return; }
+        addToast(editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully');
         editing = null;
         await invalidateAll();
     }
@@ -64,6 +66,7 @@
         const { error } = await supabase.from('boilers').delete().eq('id', deleting.id);
         busy = false;
         if (error) { err = error.message; return; }
+        addToast('Boiler deleted successfully');
         deleting = null;
         await invalidateAll();
     }
@@ -137,7 +140,7 @@
 {#if deleting}
     <Modal title="Delete Boiler" onclose={() => (deleting = null)}>
         <div class="modal-confirm">
-            <p>Delete boiler <strong>{deleting.code}</strong>? This also removes its components and parts.</p>
+            <p>Are you sure you want to delete boiler <strong>{deleting.code}</strong>? This also removes its components and parts.</p>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="modal-actions">
                 <button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>

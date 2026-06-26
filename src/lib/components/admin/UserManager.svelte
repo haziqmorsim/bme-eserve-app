@@ -1,5 +1,6 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
@@ -53,6 +54,8 @@
     }
     function cancel() { editing = null; err = ''; }
 
+    // supabase.functions.invoke puts the function's JSON error body on error.context
+    // (a Response), not on `data`, so read it to show the real reason.
     async function fnError(error: any, resp: any, fallback: string): Promise<string> {
         if (resp?.error) return resp.error;
         try {
@@ -79,6 +82,7 @@
         const { data: resp, error } = await supabase.functions.invoke('admin-users', { body });
         busy = false;
         if (error || resp?.error) { err = await fnError(error, resp, 'Operation failed.'); return; }
+        addToast(action === 'create' ? 'User added successfully' : 'User updated successfully');
         editing = null;
         await invalidateAll();
     }
@@ -90,6 +94,7 @@
         });
         busy = false;
         if (error || resp?.error) { err = await fnError(error, resp, 'Delete failed.'); return; }
+        addToast('User deleted successfully');
         deleting = null;
         await invalidateAll();
     }
