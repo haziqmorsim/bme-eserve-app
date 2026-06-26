@@ -2,7 +2,14 @@
     import Header from "$lib/components/Header.svelte";
     import Footer from "$lib/components/Footer.svelte";
     import Toaster from "$lib/components/Toaster.svelte";
+    import SessionTimeout from "$lib/components/SessionTimeout.svelte";
+
     let { data, children } = $props();
+    let { supabase } = $derived(data);
+
+    async function handleTimeout() {
+        await supabase.auth.signOut();
+    }
 </script>
 
 <div class="shell">
@@ -14,6 +21,8 @@
 </div>
 
 <Toaster />
+
+<SessionTimeout onTimeout={handleTimeout} />
 
 <style>
     .shell {
