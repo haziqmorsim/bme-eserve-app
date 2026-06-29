@@ -1,4 +1,6 @@
 <script lang="ts">
+    import SlaBadge from "$lib/components/SlaBadge.svelte";
+
     let { data } = $props();
 
     function fmtDur(ms: number | null): string {
@@ -10,7 +12,7 @@
         if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
         const d = Math.floor(h / 24);
         const rh = h % 24;
-        return rh ? `${d}d ${h}h` : `${d}d`;
+        return rh ? `${d}d ${rh}h` : `${d}d`;
     }
 
     function pct(n: number, total: number): number {
@@ -50,13 +52,13 @@
     </div>
 
     <div class="card section">
-        <h2>Open vs Closed</h2>
+        <h2>Open vs closed requests</h2>
         <div class="split" role="img" aria-label="{data.open} open, {data.closed} closed">
             {#if data.open > 0}
-                <div class="split-open" style="width: {pct(data.open, data.total)};%"></div>
+                <div class="split-open" style="width: {pct(data.open, data.total)}%"></div>
             {/if}
             {#if data.closed > 0}
-                <div class="split-closed" style="width: {pct(data.closed, data.total)};%"></div>
+                <div class="split-closed" style="width: {pct(data.closed, data.total)}%"></div>
             {/if}
         </div>
         <div class="legend">
@@ -66,8 +68,31 @@
     </div>
 
     <div class="card section">
+        <h2>Open request aging</h2>
+        <p class="hint">Time each open request has spent at its current level (aging &ge; 24h, overdue &ge; 48h).</p>
+        <div class="aging-stats">
+            <div class="ag ontrack"><span class="ag-n">{data.openAging.onTrack}</span><span class="ag-l">On track</span></div>
+            <div class="ag aging"><span class="ag-n">{data.openAging.aging}</span><span class="ag-l">Aging</span></div>
+            <div class="ag overdue"><span class="ag-n">{data.openAging.overdue}</span><span class="ag-l">Overdue</span></div>
+        </div>
+
+        {#if data.agingList.length === 0}
+            <p class="hint">All open requests are on track.</p>
+        {:else}
+            <div class="aging-list">
+                {#each data.agingList as a (a.id)}
+                    <div class="ag-row">
+                        <span class="ag-ref">{a.reference} &middot; {a.region}</span>
+                        <span class="ag-meta">{a.levelLabel}</span>
+                        <SlaBadge since={a.since} />
+                    </div>
+                {/each}
+            </div>
+        {/if}
+    </div>
+
+    <div class="card section">
         <h2>Average handling time per level</h2>
-        <!-- <p class="hint">Time from a request arriving at a level to being closed there.</p> -->
         <div class="bars">
             {#each data.handlingPerLevel as l (l.level)}
                 <div class="bar-row">
@@ -324,4 +349,70 @@
             gap: 8px;
         }
     }
+    .aging-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 12px 0 16px;
+    }
+
+    .ag {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        padding: 14px 10px;
+        border-radius: 10px;
+    }
+
+    .ag-n { 
+        font-size: 26px; 
+        font-weight: 700; 
+        line-height: 1; 
+    }
+
+    .ag-l { 
+        font-size: 11px; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 0.02em; 
+    }
+
+    .ag.ontrack { 
+        background-color: #e4f3d8; 
+        color: #2f5e18; 
+    }
+
+    .ag.aging   { 
+        background-color: #fff3d6; 
+        color: #97700a; 
+    }
+
+    .ag.overdue { 
+        background-color: #fbe3e0; 
+        color: #8e261b; 
+    }
+
+    .aging-list { 
+        display: flex; 
+        flex-direction: column; 
+    }
+
+    .ag-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .ag-ref { font-weight: 700; color: var(--bme-ink); }
+    .ag-meta { font-size: 13px; color: var(--bme-muted); }
+
+    @media (max-width: 480px) {
+        .ag-row { grid-template-columns: 1fr auto; }
+        .ag-meta { grid-column: 1 / -1; }
+    }
+
 </style>

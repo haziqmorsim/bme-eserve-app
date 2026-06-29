@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
+
     let { data } = $props();
 
     let name = $state('');
@@ -7,7 +9,6 @@
     let message = $state('');
 
     let submitting = $state(false);
-    let done = $state(false);
     let errorMsg = $state('');
 
     async function submitEnquiry() {
@@ -32,7 +33,7 @@
             errorMsg = 'Sorry, your enquiry cannot be sent. Please try again.';
             return;
         }
-        done = true;
+        await goto('/enquiry/confirmation');
     }
 </script>
 
@@ -41,14 +42,6 @@
         <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
         <h1>General Enquiry</h1>
         <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
-
-        {#if done}
-            <div class="success">
-                <h2>Thank you</h2>
-                <p>Your enquiry has been sent. Our team will be in touch at <strong>{email}</strong>.</p>
-                <a href="/login" class="btn-ghost">Back to Sign In</a>
-            </div>
-        {:else}
             <label>
                 <span>Name</span>
                 <input type="text" bind:value={name} required autocomplete="name" />
@@ -71,7 +64,6 @@
             <button type="button" class="btn-primary" onclick={submitEnquiry} disabled={submitting} style="width: 100%; margin-top: 6px;">{submitting ? 'Sending...' : 'Send Enquiry'}</button>
 
             <p class="note"><a href="/login">Back to Sign In</a></p>
-        {/if}
     </div>
 </div>
 
@@ -139,15 +131,6 @@
     .note a {
         font-weight: 600;
         color: var(--bme-dark-blue);
-    }
- 
-    .success {
-        text-align: center;
-    }
- 
-    .success p {
-        color: var(--bme-muted);
-        margin: 12px 0 20px;
     }
 
     @media (max-width: 480px) {

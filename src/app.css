@@ -220,6 +220,9 @@ select {
 
 .adm-form label { 
     display: block; 
+    font-size: 13px; 
+    font-weight: 600; 
+    margin-bottom: 4px;
 }
 
 .adm-form label.full { 
@@ -395,6 +398,11 @@ select {
     border: 1px solid var(--bme-border); 
     border-radius: 8px; 
     color: var(--bme-muted); 
+}
+
+.required {
+    color: var(--bme-red);
+    display: inline !important;
 }
 
 @media (max-width: 640px) {

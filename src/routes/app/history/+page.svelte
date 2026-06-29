@@ -13,14 +13,17 @@
 
     let filters = $state(emptyFilters());
 
-    let filteredGroups = $derived(data.reviewGroups.filter((g: any) => matches(filters, {
+    let groups = $derived(data.reviewGroups ?? []);
+    let myQuotes = $derived(data.quotes ?? []);
+
+    let filteredGroups = $derived(groups.filter((g: any) => matches(filters, {
         search: [g.quote?.reference, g.customer?.company, g.customer?.full_name],
         status: g.quote?.status,
         region: g.customer?.region,
         date: g.lastActivity
     })));
 
-    let filteredQuotes = $derived(data.quotes.filter((q: any) => matches(filters, {
+    let filteredQuotes = $derived(myQuotes.filter((q: any) => matches(filters, {
         search: [q.reference],
         status: q.status,
         region: q.region,
@@ -64,12 +67,12 @@
     <section class="block">
         <h2 class="block-title">Reviews History</h2>
 
-        {#if data.reviewGroups.length === 0}
+        {#if groups.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
         {:else if filteredGroups.length === 0}
             <div class="card empty">No reviews match your filters.</div>
         {:else}
-            {#each filteredGroups as g (g.quote.id)}
+            {#each filteredGroups as g (g.quote?.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
@@ -89,7 +92,7 @@
                             <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
                         </thead>
                         <tbody>
-                            {#each g.quote.quote_items as it}
+                            {#each g.quote?.quote_items ?? [] as it}
                                 <tr>
                                     <td>{it.part_number}</td>
                                     <td class="name">{it.part_name}</td>
@@ -101,13 +104,12 @@
                     </table>
 
                     <div class="timeline">
-                        <span class="tl-title">Actions history</span>
-                        {#each g.actions as a (a.id)}
+                        <span class="tl-title">Action history</span>
+                        {#each g.actions ?? [] as a (a.id)}
                             <div class="tl-row">
                                 <p class="tl-head">
                                     <strong>{levelLabel(a.level)}</strong>
                                     <span class="status {a.action === 'reopened' ? 'reopened' : 'closed'}">{a.action}</span>
-                                    
                                     <span class="tl-when">{when(a.created_at)}</span>
                                 </p>
                                 <p class="tl-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
@@ -133,11 +135,11 @@
     </section>
 {/if}
 
-{#if data.isStaff || data.quotes.length > 0}
+{#if data.isStaff || myQuotes.length > 0}
     <section class="block">
         <h2 class="block-title">Requests History</h2>
 
-        {#if data.quotes.length === 0}
+        {#if myQuotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>
         {:else if filteredQuotes.length === 0}
             <div class="card empty">No requests match your filters.</div>
@@ -156,7 +158,7 @@
                             <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>
                         </thead>
                         <tbody>
-                            {#each q.quote_items as it}
+                            {#each q.quote_items ?? [] as it}
                                 <tr>
                                     <td>{it.part_number}</td>
                                     <td class="name">{it.part_name}</td>

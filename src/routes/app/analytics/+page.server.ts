@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
+import { slaState } from "$lib/sla";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
@@ -9,8 +10,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Staff only');
 
     const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }] = await Promise.all([
-        supabase.from('quotes').select('id, status, created_at, reviewed_at, user_id, quote_items(boiler_code)'), 
-        supabase.from('quotes_approvals').select('quote_id, level, action, created_at'), 
+        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
+        supabase.from('quote_approvals').select('quote_id, level, action, created_at'), 
         supabase.from('regions').select('id, name')
     ]);
 
@@ -95,6 +96,36 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
+    const latestApproval: Record<string, string> = {};
+    for (const a of approvals) {
+        if (!latestApproval[a.quote_id] || a.created_at > latestApproval[a.quote_id]) {
+            latestApproval[a.quote_id] = a.created_at;
+        }
+    }
+
+    const now = Date.now();
+    let onTrack = 0, agingCount = 0, overdueCount = 0;
+    const agingList: any[] = [];
+    for (const q of quotes) {
+        if (q.status !== 'open') continue;
+        const since = latestApproval[q.id] ?? q.created_at;
+        const st = slaState(since, now);
+        if (st === 'overdue') overdueCount++;
+        else if (st === 'aging') agingCount++;
+        else onTrack++;
+        if (st !== 'ontrack') {
+            agingList.push({
+                id: q.id,
+                reference: (q as any).reference,
+                levelLabel: LEVEL_LABEL[(q as any).current_level] ?? `Level ${(q as any).current_level}`,
+                region: ownerRegion[q.user_id] ?? 'Unknown',
+                since,
+                state: st
+            });
+        }
+    }
+    agingList.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
+
     return {
         title: 'Analytics', 
         total: quotes.length, 
@@ -103,6 +134,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         avgResolutionMs, 
         handlingPerLevel, 
         volumeByRegion, 
-        volumeByBoiler
+        volumeByBoiler, 
+        openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
+        agingList
     };
 };

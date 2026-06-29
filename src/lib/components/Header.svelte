@@ -34,6 +34,9 @@
             {#if isStaff}
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')}><a href="/app/analytics">Analytics</a></button>
             {/if}
+            {#if isStaff}
+            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')}><a href="/app/enquiries">Enquiries</a></button>
+            {/if}
             {#if isAdmin}
             <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
             {/if}
@@ -83,6 +86,9 @@
             {/if}
             {#if isStaff}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
+            {/if}
+            {#if isStaff}
+                <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}>Enquiries</a>
             {/if}
             {#if isAdmin}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
