@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     if (!isDeveloper) query = query.eq('current_level', myLevel as number);
 
-    const { data: quotes } = await query.order('created_at', { ascending: true });
+    const { data: quotes } = await query.order('created_at', { ascending: false });
 
     const list = quotes ?? [];
     const quoteIds = list.map((q) => q.id);

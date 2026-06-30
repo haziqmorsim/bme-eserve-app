@@ -27,7 +27,7 @@
 <h1>Analytics</h1>
 
 {#if data.total === 0}
-    <div class="card empty">No request data yet.</div>
+    <div class="card empty">No request data available yet.</div>
 {:else}
     <div class="stats">
         <div class="card stat">
@@ -69,25 +69,36 @@
 
     <div class="card section">
         <h2>Open request aging</h2>
-        <p class="hint">Time each open request has spent at its current level (aging &ge; 24h, overdue &ge; 48h).</p>
         <div class="aging-stats">
-            <div class="ag ontrack"><span class="ag-n">{data.openAging.onTrack}</span><span class="ag-l">On track</span></div>
-            <div class="ag aging"><span class="ag-n">{data.openAging.aging}</span><span class="ag-l">Aging</span></div>
-            <div class="ag overdue"><span class="ag-n">{data.openAging.overdue}</span><span class="ag-l">Overdue</span></div>
+            <div class="ag ontrack">
+                <span class="ag-n">{data.openAging.onTrack}</span>
+                <span class="ag-l">On track</span>
+                <span class="ag-t">&lt; 24h</span>
+            </div>
+            <div class="ag aging">
+                <span class="ag-n">{data.openAging.aging}</span>
+                <span class="ag-l">Aging</span>
+                <span class="ag-t">&ge; 24h</span>
+            </div>
+            <div class="ag overdue">
+                <span class="ag-n">{data.openAging.overdue}</span>
+                <span class="ag-l">Overdue</span>
+                <span class="ag-t">&ge; 48h</span>
+            </div>
         </div>
 
         {#if data.agingList.length === 0}
-            <p class="hint">All open requests are on track.</p>
+            <p class="hint">No open requests yet.</p>
         {:else}
-            <div class="aging-list">
+            <ol class="aging-list">
                 {#each data.agingList as a (a.id)}
-                    <div class="ag-row">
-                        <span class="ag-ref">{a.reference} &middot; {a.region}</span>
+                    <li class="ag-row">
+                        <span class="ag-ref">{a.reference} &middot; {a.boiler} ({a.region})</span>
                         <span class="ag-meta">{a.levelLabel}</span>
                         <SlaBadge since={a.since} />
-                    </div>
+                    </li>
                 {/each}
-            </div>
+            </ol>
         {/if}
     </div>
 
@@ -316,6 +327,89 @@
         margin-bottom: 0;
     }
 
+    .aging-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 12px 0 16px;
+    }
+
+    .ag {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        padding: 14px 10px;
+        border-radius: 10px;
+    }
+
+    .ag-n { 
+        font-size: 26px; 
+        font-weight: 700; 
+        line-height: 1; 
+    }
+
+    .ag-l { 
+        font-size: 13px; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 0.02em; 
+    }
+
+    .ag-t {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .ag.ontrack { 
+        background-color: #e4f3d8; 
+        color: #2f5e18; 
+    }
+
+    .ag.aging   { 
+        background-color: #fff3d6; 
+        color: #97700a; 
+    }
+
+    .ag.overdue { 
+        background-color: #fbe3e0; 
+        color: #8e261b; 
+    }
+
+    .aging-list { 
+        list-style: none; 
+        margin: 0; 
+        padding: 0; 
+        counter-reset: ag; 
+    }
+
+    .ag-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .ag-row::before {
+        counter-increment: ag;
+        content: counter(ag) ".";
+        font-weight: 700;
+        color: var(--bme-muted);
+        font-size: 13px;
+        min-width: 20px;
+    }
+
+    .ag-ref { 
+        font-weight: 700; 
+        color: var(--bme-ink); }
+
+    .ag-meta { 
+        font-size: 13px; 
+        color: var(--bme-muted); 
+    }
+
     @media (max-width: 860px) {
         .grid2 {
             grid-template-columns: 1fr;
@@ -348,71 +442,12 @@
             grid-template-columns: 76px 1fr auto;
             gap: 8px;
         }
-    }
-    .aging-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin: 12px 0 16px;
-    }
 
-    .ag {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-        padding: 14px 10px;
-        border-radius: 10px;
+        .ag-row { 
+            grid-template-columns: auto 1fr auto; }
+
+        .ag-meta { 
+            grid-column: 1 / -1; 
+        }
     }
-
-    .ag-n { 
-        font-size: 26px; 
-        font-weight: 700; 
-        line-height: 1; 
-    }
-
-    .ag-l { 
-        font-size: 11px; 
-        font-weight: 700; 
-        text-transform: uppercase; 
-        letter-spacing: 0.02em; 
-    }
-
-    .ag.ontrack { 
-        background-color: #e4f3d8; 
-        color: #2f5e18; 
-    }
-
-    .ag.aging   { 
-        background-color: #fff3d6; 
-        color: #97700a; 
-    }
-
-    .ag.overdue { 
-        background-color: #fbe3e0; 
-        color: #8e261b; 
-    }
-
-    .aging-list { 
-        display: flex; 
-        flex-direction: column; 
-    }
-
-    .ag-row {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 0;
-        border-top: 1px solid var(--bme-border);
-    }
-
-    .ag-ref { font-weight: 700; color: var(--bme-ink); }
-    .ag-meta { font-size: 13px; color: var(--bme-muted); }
-
-    @media (max-width: 480px) {
-        .ag-row { grid-template-columns: 1fr auto; }
-        .ag-meta { grid-column: 1 / -1; }
-    }
-
 </style>

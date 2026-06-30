@@ -113,18 +113,19 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         if (st === 'overdue') overdueCount++;
         else if (st === 'aging') agingCount++;
         else onTrack++;
-        if (st !== 'ontrack') {
-            agingList.push({
-                id: q.id,
-                reference: (q as any).reference,
-                levelLabel: LEVEL_LABEL[(q as any).current_level] ?? `Level ${(q as any).current_level}`,
-                region: ownerRegion[q.user_id] ?? 'Unknown',
-                since,
-                state: st
-            });
-        }
+        const boilers = [...new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean))];
+        agingList.push({
+            id: q.id,
+            reference: (q as any).reference,
+            levelLabel: LEVEL_LABEL[(q as any).current_level] ?? `Level ${(q as any).current_level}`,
+            boiler: boilers.join(', ') || '—',
+            region: ownerRegion[q.user_id] ?? 'Unknown',
+            since,
+            created_at: q.created_at,
+            state: st
+        });
     }
-    agingList.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
+    agingList.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 
     return {
         title: 'Analytics', 

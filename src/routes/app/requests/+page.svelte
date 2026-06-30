@@ -127,6 +127,7 @@
                 </div>
             {/if}
 
+            {#if !data.isDeveloper}
             <label class="action-field">
                 <p class="field-label">Action Taken ({data.levelLabel}) <span class="req">*</span></p>
                 <textarea
@@ -148,6 +149,7 @@
                     Cancel
                 </button>
             </div>
+            {/if}
         </div>
     {/each}
 {/if}
