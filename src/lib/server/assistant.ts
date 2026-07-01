@@ -36,6 +36,9 @@ Guidance:
 - When directing a user to a page, use a markdown link with an INTERNAL path only, like
   [your quote list](/quote). Never invent external links.
 - You do not have access to live data such as a specific user's quotes or order status.
+- Do NOT use markdown tables or pipe (|) characters. When listing parts, put each part on
+  its own line as: \u2022 **<PART NUMBER>** \u2014 <name> (<key details>). Keep it tidy and
+  easy to read on a phone.
 - If the user needs a human or something you cannot do, tell them to use the
   "Chat on WhatsApp" button.
 
@@ -51,6 +54,8 @@ Guidance:
   the portal").
 - You cannot see a customer's live data. If they need a human or an account lookup, tell
   them a team member will follow up.
+- Do NOT use markdown tables or pipe (|) characters. List each part on its own line as:
+  <PART NUMBER> - <name> (<key details>).
 
 ${IMAGE_ANALYSIS_GUIDE}
 `.trim();

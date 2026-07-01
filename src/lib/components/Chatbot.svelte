@@ -138,6 +138,32 @@
         window.open(url, '_blank', 'noopener');
     }
 
+    function normalize(text: string): string {
+        const lines = text.replace(/\r/g, '').split('\n');
+        const isPipe = (l: string) => /^\s*\|.*\|\s*$/.test(l);
+        const isSep = (l: string) => /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(l);
+        const out: string[] = [];
+        let i = 0;
+        while (i < lines.length) {
+            if (isPipe(lines[i])) {
+                const block: string[] = [];
+                while (i < lines.length && isPipe(lines[i])) { block.push(lines[i]); i++; }
+                const sepIdx = block.findIndex(isSep);
+                const rows = sepIdx >= 0
+                    ? block.filter((_, idx) => idx !== sepIdx && idx !== sepIdx - 1)
+                    : block;
+                for (const r of rows) {
+                    const cells = r.trim().replace(/^\|/, '').replace(/\|$/, '')
+                        .split('|').map((c) => c.trim()).filter(Boolean);
+                    if (cells.length) out.push('\u2022 ' + cells.join(' \u2014 '));
+                }
+            } else {
+                out.push(lines[i]); i++;
+            }
+        }
+        return out.join('\n').trim();
+    }
+
     function segments(text: string) {
         const re = /\[([^\]]+)\]\((\/[^\s)]*)\)|\*\*([^*]+)\*\*/g;
         const out: { type: 'text' | 'link' | 'bold'; text: string; href?: string }[] = [];
@@ -171,7 +197,7 @@
                         {#if m.image}
                             <img class="chat-bubble-img" src={m.image} alt="Uploaded boiler part" />
                         {/if}
-                        {#each segments(m.content) as seg}
+                        {#each segments(normalize(m.content)) as seg}
                             {#if seg.type === 'link'}<a href={seg.href} onclick={() => (open = false)}>{seg.text}</a>
                             {:else if seg.type === 'bold'}<strong>{seg.text}</strong>
                             {:else}{seg.text}
@@ -287,7 +313,7 @@
         border-radius: 0.8rem;
         font-size: 0.9rem;
         line-height: 1.35;
-        white-space: pre-wrap;
+        white-space: pre-line;
         word-wrap: break-word;
     }
 
@@ -440,7 +466,14 @@
     }
 
     @media (max-width: 480px) {
-        .chat-root { right: 0.75rem; bottom: 0.75rem; }
-        .chat-panel { width: 92vw; height: min(30rem, 70vh); }
+        .chat-root { 
+            right: 0.75rem; 
+            bottom: 0.75rem; 
+        }
+
+        .chat-panel { 
+            width: 92vw; 
+            height: min(30rem, 70vh); 
+        }
     }
 </style>
