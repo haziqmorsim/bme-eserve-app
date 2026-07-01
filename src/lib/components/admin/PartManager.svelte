@@ -17,6 +17,8 @@
     let busy = $state(false);
     let err = $state('');
     let form = $state<any>({});
+    let uploading = $state(false);
+    let fileInput = $state<HTMLInputElement | null>(null);
 
     let boilerCode = $derived(Object.fromEntries(boilers.map((b: any) => [b.id, b.code])) as Record<string, string>);
     let formComponents = $derived(components.filter((c: any) => c.boiler_id === form.boiler_id));
@@ -35,7 +37,7 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { boiler_id: boilers[0]?.id ?? '', component_id: '', part_number: '', name: '', description: '', price_min: '', price_max: '', stock_quantity: 0 };
+        return { boiler_id: boilers[0]?.id ?? '', component_id: '', part_number: '', name: '', description: '', price: '', image_url: '', stock_quantity: 0 };
     }
     function startNew() {
         form = blank();
@@ -46,7 +48,7 @@
         form = {
             boiler_id: p.components?.boiler_id ?? '', component_id: p.component_id,
             part_number: p.part_number, name: p.name, description: p.description ?? '',
-            price_min: p.price_min ?? '', price_max: p.price_max ?? '', stock_quantity: p.stock_quantity ?? 0
+            price: p.price ?? '', image_url: p.image_url ?? '', stock_quantity: p.stock_quantity ?? 0
         };
         err = ''; editing = p.id;
     }
@@ -58,15 +60,16 @@
     async function save() {
         if (!form.component_id) { err = 'Pick a boiler that has a component, then choose the component.'; return; }
         if (!form.part_number?.trim() || !form.name?.trim()) { err = 'Part number and name are required.'; return; }
-        const min = form.price_min === '' ? null : Number(form.price_min);
-        const max = form.price_max === '' ? null : Number(form.price_max);
-        if (min !== null && max !== null && max < min) { err = 'Max price cannot be less than min price.'; return; }
+        const price = form.price === '' ? null : Number(form.price);
+        if (price !== null && (isNaN(price) || price < 0)) { err = 'Price must be a valid non-negative number.'; return; }
         const qty = Math.max(0, Number(form.stock_quantity) || 0);
 
         busy = true; err = '';
         const payload = {
             component_id: form.component_id, part_number: form.part_number.trim(), name: form.name.trim(),
-            description: form.description || null, price_min: min, price_max: max,
+            description: form.description || null,
+            price, price_min: price, price_max: price,
+            image_url: form.image_url || null,
             stock_quantity: qty, in_stock: qty > 0
         };
         const resp = editing === 'new'
@@ -89,9 +92,32 @@
         await invalidateAll();
     }
 
-    function range(p: any) {
-        if (p.price_min == null || p.price_max == null) return '—';
-        return `RM${p.price_min} – RM${p.price_max}`;
+    async function onPickImage(e: Event) {
+        const input = e.currentTarget as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) { err = 'Please select an image file.'; return; }
+        if (file.size > 5 * 1024 * 1024) { err = 'Image must be 5 MB or smaller.'; return; }
+
+        uploading = true; err = '';
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `parts/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('part-images').upload(path, file, {
+            cacheControl: '3600', upsert: false, contentType: file.type
+        });
+        if (upErr) { uploading = false; err = upErr.message; return; }
+        const { data: pub } = supabase.storage.from('part-images').getPublicUrl(path);
+        form.image_url = pub.publicUrl;
+        uploading = false;
+        input.value = '';
+    }
+
+    function removeImage() { form.image_url = ''; }
+
+    function priceCell(p: any) {
+        if (p.price != null) return `RM${p.price}`;
+        if (p.price_min != null && p.price_max != null) return `RM${p.price_min} – RM${p.price_max}`;
+        return '—';
     }
 </script>
 
@@ -106,7 +132,7 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Part #</th><th>Name</th><th>Boiler / Component</th><th>Price Range</th><th>Stock</th><th>Actions</th></tr>
+                <tr><th>Part #</th><th>Name</th><th>Boiler / Component</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as p (p.id)}
@@ -114,7 +140,7 @@
                         <td style="text-align: center; vertical-align: middle;"><strong>{p.part_number}</strong></td>
                         <td style="vertical-align: middle;">{p.name}</td>
                         <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'} / {p.components?.name ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{range(p)}</td>
+                        <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
                         <td style="text-align: center; vertical-align: middle;">{p.stock_quantity}</td>
                         <td>
                             <div class="adm-actions">
@@ -148,10 +174,30 @@
             </label>
             <label>Part Number <span class="required">*</span><input bind:value={form.part_number} placeholder="PB130-TB-001" /></label>
             <label>Part Name <span class="required">*</span><input bind:value={form.name} /></label>
-            <label>Price Min (RM) <span class="required">*</span><input type="number" min="0" bind:value={form.price_min} /></label>
-            <label>Price Max (RM) <span class="required">*</span><input type="number" min="0" bind:value={form.price_max} /></label>
+            <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} /></label>
             <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label>
             <label class="full">Description <span class="required">*</span><textarea rows="2" bind:value={form.description}></textarea></label>
+            <div class="full img-field">
+                <span class="img-label">Part Image</span>
+                <div class="img-row">
+                    <div class="img-preview">
+                        {#if form.image_url}
+                            <img src={form.image_url} alt="Part preview" />
+                        {:else}
+                            <span class="img-empty">No image</span>
+                        {/if}
+                    </div>
+                    <div class="img-actions">
+                        <input type="file" accept="image/*" bind:this={fileInput} onchange={onPickImage} style="display:none" />
+                        <button type="button" class="btn-ghost" onclick={() => fileInput?.click()} disabled={uploading}>
+                            {uploading ? 'Uploading...' : (form.image_url ? 'Replace Image' : 'Upload Image')}
+                        </button>
+                        {#if form.image_url}
+                            <button type="button" class="adm-link danger" onclick={removeImage} disabled={uploading}>Remove</button>
+                        {/if}
+                    </div>
+                </div>
+            </div>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
@@ -173,3 +219,53 @@
         </div>
     </Modal>
 {/if}
+
+<style>
+    .img-field { 
+        margin-top: 4px; 
+    }
+
+    .img-label { 
+        display: block; 
+        font-size: 13px; 
+        font-weight: 600; 
+        color: var(--bme-ink); 
+        margin-bottom: 6px; 
+    }
+
+    .img-row { 
+        display: flex; 
+        align-items: center; 
+        gap: 14px; 
+    }
+
+    .img-preview {
+        width: 72px; 
+        height: 72px; 
+        border: 1px solid var(--bme-border); 
+        border-radius: 10px;
+        overflow: hidden; 
+        background: var(--bme-surface-2); 
+        display: grid; 
+        place-items: center; 
+        flex-shrink: 0;
+    }
+
+    .img-preview img { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover; 
+    }
+
+    .img-empty { 
+        font-size: 11px; 
+        color: var(--bme-muted); 
+    }
+
+    .img-actions { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+        flex-wrap: wrap; 
+    }
+</style>

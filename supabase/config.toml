@@ -6,6 +6,9 @@ project_id = "lhzruijwlrqrsihehroa"
 [functions.approve-quote]
 verify_jwt = false
 
+[functions.quote-pdf]
+verify_jwt = false
+
 [functions.notify-admin]
 verify_jwt = false
 

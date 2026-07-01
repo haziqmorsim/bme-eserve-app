@@ -8,12 +8,16 @@
     let done = $state(false);
     let errorMsg = $state('');
 
-    let totalMin = $derived($quoteItems.reduce((s, i) => s + (i.priceMin ?? 0) * i.quantity, 0));
-    let totalMax = $derived($quoteItems.reduce((s, i) => s + (i.priceMax ?? 0) * i.quantity, 0));
+    function unitPrice(i: any): number {
+        return i.price ?? i.priceMin ?? 0;
+    }
 
-    function lineRange(min: number | null | undefined, max: number | null | undefined, qty: number) {
-        if (min == null || max == null) return 'Price on request';
-        return `RM${formatMoney(min * qty)} – RM${formatMoney(max * qty)}`;
+    let total = $derived($quoteItems.reduce((s, i) => s + unitPrice(i) * i.quantity, 0));
+
+    function lineAmount(i: any) {
+        const up = unitPrice(i);
+        if (!up) return 'Price on request';
+        return `RM${formatMoney(up * i.quantity)}`;
     }
 
     async function submitQuote() {
@@ -42,7 +46,8 @@
             boiler_code: i.boilerCode,
             part_number: i.partNumber,
             part_name: i.partName,
-            quantity: i.quantity
+            quantity: i.quantity,
+            unit_price: unitPrice(i)
         }));
         const { error: iErr } = await supabase
             .from('quote_items')
@@ -80,7 +85,7 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Est. Price Range</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Amount</span><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
@@ -91,16 +96,16 @@
                 <span>
                     <input type="number" min="1" value={item.quantity} oninput={(e) => setQuantity(item.partId, + e.currentTarget.value)} />
                 </span>
-                <span class="range">{lineRange(item.priceMin, item.priceMax, item.quantity)}</span>
+                <span class="range">{lineAmount(item)}</span>
                 <span><button class="remove" onclick={() => removeItem(item.partId)} aria-label="Remove">✕</button></span>
             </div>
         {/each}
 
         <div class="total">
-            <span>Estimated total</span>
-            <strong>RM{formatMoney(totalMin)} – RM{formatMoney(totalMax)}</strong>
+            <span>Total</span>
+            <strong>RM{formatMoney(total)}</strong>
         </div>
-        <p class="indicative">Indicative range only. The final quotation will be confirmed by BME.</p>
+        <p class="indicative">Prices are indicative. The final quotation will be confirmed by BME.</p>
     </div>
 
     <div class="card notes">

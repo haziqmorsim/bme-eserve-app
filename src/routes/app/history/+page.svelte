@@ -10,6 +10,13 @@
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     let myLevel = $derived(ROLE_LEVEL[data.profile?.role] ?? 0);
     let working = $state<string | null>(null);
+    let copied = $state<string | null>(null);
+
+    async function copyCode(code: string) {
+        try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
+        copied = code;
+        setTimeout(() => { if (copied === code) copied = null; }, 1500);
+    }
 
     let filters = $state(emptyFilters());
 
@@ -138,6 +145,46 @@
 {#if data.isStaff || myQuotes.length > 0}
     <section class="block">
         <h2 class="block-title">Requests History</h2>
+
+        {#if data.loyalty}
+            <div class="card loyalty bme-animate-in">
+                <div class="loy-head">
+                    <div>
+                        <h3 class="loy-title">Loyalty Rewards</h3>
+                        <p class="loy-sub">Earn discount coupons as you submit more requests.</p>
+                    </div>
+                    <div class="loy-count"><span class="loy-n">{data.loyalty.count}</span><span class="loy-l">requests</span></div>
+                </div>
+
+                {#if data.loyalty.nextTier}
+                    <div class="loy-progress">
+                        <div class="loy-bar"><div class="loy-fill" style="width:{data.loyalty.progressPct}%"></div></div>
+                        <p class="loy-next">{data.loyalty.toNext} more request{data.loyalty.toNext === 1 ? '' : 's'} to unlock a <strong>{data.loyalty.nextTier.percent}%</strong> coupon.</p>
+                    </div>
+                {:else}
+                    <p class="loy-max">You have unlocked the maximum {data.loyalty.currentPercent}% loyalty discount. Thank you!</p>
+                {/if}
+
+                <div class="loy-tiers">
+                    {#each data.loyalty.tiers as t (t.percent)}
+                        <div class="loy-tier" class:earned={t.earned}>
+                            <div class="loy-tier-top">
+                                <span class="loy-pct">{t.percent}%</span>
+                                <span class="loy-req">{t.threshold} requests</span>
+                            </div>
+                            {#if t.earned}
+                                <button class="loy-code" onclick={() => copyCode(t.code)} title="Click to copy">
+                                    {copied === t.code ? 'Copied!' : t.code}
+                                </button>
+                            {:else}
+                                <span class="loy-locked">Locked</span>
+                            {/if}
+                        </div>
+                    {/each}
+                </div>
+                <p class="loy-note">Discount coupons will be applied to eligible requests. Terms to be confirmed.</p>
+            </div>
+        {/if}
 
         {#if myQuotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>
@@ -390,4 +437,160 @@
             padding: 6px;
         }
     }
+
+    .loyalty {
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid var(--bme-border);
+    }
+
+    .loy-head { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: flex-start; 
+        gap: 16px; 
+    }
+    
+    .loy-title { 
+        margin: 0; 
+        font-size: 16px; 
+        color: var(--bme-green-darker); 
+    }
+    
+    .loy-sub { 
+        margin: 4px 0 0; 
+        font-size: 13px; 
+        color: var(--bme-muted); 
+    }
+    
+    .loy-count { 
+        text-align: center; 
+        flex-shrink: 0; 
+    }
+    
+    .loy-n { 
+        display: block; 
+        font-size: 30px; 
+        font-weight: 700; 
+        line-height: 1; 
+        color: var(--bme-darker-blue); 
+    }
+    
+    .loy-l { 
+        font-size: 11px; 
+        text-transform: uppercase; 
+        letter-spacing: 0.03em; 
+        color: var(--bme-muted); 
+    }
+
+    .loy-progress { 
+        margin: 16px 0 4px; 
+    }
+
+    .loy-bar { 
+        height: 10px; 
+        border-radius: 999px; 
+        background: #e2ebe0; 
+        overflow: hidden; 
+    }
+
+    .loy-fill {
+        height: 100%; 
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--bme-green), var(--bme-teal));
+        transition: width var(--t-slow) var(--ease);
+    }
+
+    .loy-next { 
+        margin: 8px 0 0; 
+        font-size: 13px; 
+        color: var(--bme-ink); 
+    }
+
+    .loy-max { 
+        margin: 14px 0 0; 
+        font-size: 14px; 
+        font-weight: 600; 
+        color: var(--bme-green-dark); 
+    }
+
+    .loy-tiers { 
+        display: grid; 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 10px; 
+        margin-top: 16px; 
+    }
+
+    .loy-tier {
+        border: 1px solid var(--bme-border); 
+        border-radius: 10px; padding: 12px; 
+        background: #fff;
+        transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .loy-tier.earned { 
+        border-color: var(--bme-green); 
+        box-shadow: 0 4px 14px rgba(108, 179, 63, 0.18); 
+    }
+
+    .loy-tier:hover { 
+        transform: translateY(-2px); 
+    }
+
+    .loy-tier-top { 
+        display: flex; 
+        align-items: baseline; 
+        justify-content: space-between; 
+        gap: 8px; 
+        margin-bottom: 8px; 
+    }
+    
+    .loy-pct { 
+        font-size: 20px; 
+        font-weight: 700; 
+        color: var(--bme-darker-blue); 
+    }
+    
+    .loy-req { 
+        font-size: 11px; 
+        color: var(--bme-muted); 
+    }
+
+    .loy-code {
+        width: 100%; 
+        font-family: ui-monospace, Menlo, Consolas, monospace; 
+        font-weight: 700; 
+        font-size: 13px;
+        letter-spacing: 0.03em; 
+        color: var(--bme-green-darker); 
+        background: var(--bme-mint);
+        border: 1px dashed var(--bme-green); 
+        border-radius: 8px; 
+        padding: 7px;
+    }
+
+    .loy-code:hover { 
+        background: #dff0d0; 
+    }
+
+    .loy-locked { 
+        display: block; 
+        text-align: center; 
+        font-size: 12px; 
+        color: var(--bme-muted); 
+        padding: 7px; 
+    }
+    
+    .loy-note { 
+        margin: 14px 0 0; 
+        font-size: 11.5px; 
+        color: var(--bme-muted); 
+    }
+
+    @media (max-width: 640px) {
+        .loy-tiers { 
+            grid-template-columns: 1fr; 
+        }
+    }
+
 </style>

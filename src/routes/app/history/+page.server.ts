@@ -78,10 +78,32 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         }
     }
 
+    const TIERS = [ { threshold: 10, percent: 5 }, { threshold: 20, percent: 10 }, { threshold: 30, percent: 15 } ];
+    const reqCount = quotes.length;
+    const couponCode = (percent: number): string => {
+        let h = 0;
+        const str = `${user.id}:${percent}`;
+        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+        return `BME${percent}-${h.toString(36).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+    };
+    const tiers = TIERS.map((t) => ({ ...t, earned: reqCount >= t.threshold, code: couponCode(t.percent) }));
+    const earnedTiers = tiers.filter((t) => t.earned);
+    const currentPercent = earnedTiers.length ? earnedTiers[earnedTiers.length - 1].percent : 0;
+    const nextTier = tiers.find((t) => !t.earned) ?? null;
+    const segStart = earnedTiers.length ? earnedTiers[earnedTiers.length - 1].threshold : 0;
+    const progressPct = nextTier
+        ? Math.min(100, Math.round(((reqCount - segStart) / (nextTier.threshold - segStart)) * 100))
+        : 100;
+    const loyalty = {
+        count: reqCount, tiers, currentPercent, nextTier,
+        toNext: nextTier ? nextTier.threshold - reqCount : 0, progressPct
+    };
+
     return {
         quotes,
         reviewGroups, isStaff,
         regions,
+        loyalty,
         title: "History"
     };
 };

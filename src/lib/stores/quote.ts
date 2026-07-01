@@ -7,6 +7,7 @@ export interface QuoteItem {
     partName: string;
     boilerCode: string;
     componentName: string;
+    price?: number;
     priceMin: number;
     priceMax: number;
     quantity: number;

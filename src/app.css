@@ -15,6 +15,21 @@
     --radius: 12px;
     --shadow: 0 1px 2px rgba(28, 42, 20, 0.06), 0 4px 16px rgba(28, 42, 20, 0.06);
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --bme-orange: #F5871F;
+    --bme-orange-dark: #D96E12;
+    --bme-teal: #17879C;
+    --bme-teal-dark: #0F6577;
+    --bme-navy: #10243E;
+    --bme-gold: #F2B705;
+    --bme-mint: #EAF5E1;
+    --bme-sky: #E7F0F8;
+    --bme-surface-2: #F7FAF5;
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --t-fast: 140ms;
+    --t-med: 240ms;
+    --t-slow: 420ms;
 }
 
 * {
@@ -429,5 +444,80 @@ select {
     .adm-search { 
         max-width: none; 
         flex: 1; 
+    }
+}
+
+button,
+.btn-primary,
+.btn-ghost,
+.btn-danger {
+    transition: background-color var(--t-fast) var(--ease),
+                color var(--t-fast) var(--ease),
+                border-color var(--t-fast) var(--ease),
+                transform var(--t-fast) var(--ease),
+                box-shadow var(--t-fast) var(--ease);
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(16, 36, 62, 0.20);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-ghost:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+    transform: translateY(0) scale(0.985);
+}
+
+a {
+    transition: color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+
+input, select, textarea {
+    transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--bme-dark-blue);
+    box-shadow: 0 0 0 3px rgba(0, 75, 141, 0.14);
+}
+
+.card {
+    transition: box-shadow var(--t-med) var(--ease), transform var(--t-med) var(--ease);
+}
+
+@keyframes bmeFadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes bmePopIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes bmeShimmer {
+    0%   { background-position: -180% 0; }
+    100% { background-position: 180% 0; }
+}
+@keyframes bmeGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+
+.bme-animate-in { 
+    animation: bmeFadeInUp var(--t-med) var(--ease) both; 
+}
+
+.bme-pop-in { 
+    animation: bmePopIn var(--t-med) var(--ease) both; 
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
     }
 }

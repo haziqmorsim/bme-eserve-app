@@ -3,7 +3,7 @@
     import { SupabaseClient } from "@supabase/supabase-js";
     import { addItem } from "$lib/stores/quote";
     import { addToast } from "$lib/stores/toast";
-    import { priceRangeLabel } from "$lib/price";
+    import { formatMoney } from "$lib/price";
     import BoilerDiagram from "./BoilerDiagram.svelte";
 
     let { boiler, components, supabase } = $props<{boiler: Boiler; components: Component[]; supabase: SupabaseClient;}>();
@@ -14,6 +14,7 @@
     let search = $state('');
     let qty = $state<Record<string, number>>({});
     let loadedFor = $state<string | null>(null);
+    let lightbox = $state<Part | null>(null);
 
     let compName = $derived(
         Object.fromEntries(components.map((c: Component) => [c.id, c.name])) as Record<string, string>
@@ -70,12 +71,19 @@
             partName: p.name,
             boilerCode: boiler.code,
             componentName: compName[p.component_id] ?? '',
-            priceMin: p.price_min ?? 0,
-            priceMax: p.price_max ?? 0,
+            price: p.price ?? p.price_min ?? 0,
+            priceMin: p.price ?? p.price_min ?? 0,
+            priceMax: p.price ?? p.price_max ?? 0,
             quantity: qty[p.id] ?? 1
         });
         qty[p.id] = 1;
         addToast('Part added to quote list');
+    }
+
+    function priceLabel(p: Part): string {
+        if (p.price != null) return `RM${formatMoney(p.price)}`;
+        if (p.price_min != null && p.price_max != null) return `RM${formatMoney(p.price_min)} - RM${formatMoney(p.price_max)}`;
+        return 'Price on request';
     }
 </script>
 
@@ -114,15 +122,19 @@
         {:else}
             <div class="parts">
                 {#each visibleParts as p (p.id)}
-                    <div class="card part">
+                    <div class="card part bme-animate-in">
                         <div class="info">
                             <div class="pn">{p.part_number}</div>
                             <div class="pname">{p.name} <span class="tag">{compName[p.component_id]}</span></div>
                             {#if p.description}<div class="pdesc">{p.description}</div>{/if}
-                            <div class="price">{priceRangeLabel(p.price_min, p.price_max)}</div>
-                            <!-- {#if !p.in_stock}<div class="avail">made to order</div>{/if} -->
+                            <div class="price">{priceLabel(p)}</div>
                         </div>
                         <div class="actions">
+                            {#if p.image_url}
+                                <button class="thumb" onclick={() => (lightbox = p)} title="View image" aria-label="View image of {p.name}">
+                                    <img src={p.image_url} alt={p.name} loading="lazy" />
+                                </button>
+                            {/if}
                             <input type="number" min="1" value={qty[p.id] ?? 1} oninput={(e) => (qty[p.id] = Math.max(1, +e.currentTarget.value))} />
                             <button class="btn-primary" onclick={() => add(p)}>Add</button>
                         </div>
@@ -132,6 +144,19 @@
         {/if}
     </div>
 </div>
+
+{#if lightbox}
+    <div class="lightbox" onclick={() => (lightbox = null)} role="presentation">
+        <div class="lightbox-inner bme-pop-in">
+            <img src={lightbox.image_url} alt={lightbox.name} />
+            <div class="lightbox-cap">
+                <strong>{lightbox.part_number}</strong> <span>{lightbox.name}</span>
+                <span class="lb-price">{priceLabel(lightbox)}</span>
+            </div>
+        </div>
+        <button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close">&times;</button>
+    </div>
+{/if}
 
 <style>
     .explorer { 
@@ -267,5 +292,106 @@
         .part .actions { justify-content: space-between; }
         .comp { padding: 8px 14px; }
         .design { padding: 12px; }
+    }
+    .thumb {
+        flex-shrink: 0;
+        width: 66px;
+        height: 66px;
+        margin-right: 10px;
+        padding: 0;
+        border: 1px solid var(--bme-border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--bme-surface-2);
+        cursor: pointer;
+        transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .thumb:hover {
+        transform: scale(1.06);
+        border-color: var(--bme-teal);
+        box-shadow: 0 6px 16px rgba(23, 135, 156, 0.22);
+    }
+
+    .part {
+        border-left: 3px solid transparent;
+    }
+
+    .part:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(16, 36, 62, 0.10);
+        border-left-color: var(--bme-green);
+    }
+
+    .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(16, 36, 62, 0.72);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        animation: bmeFadeInUp var(--t-fast) var(--ease);
+    }
+
+    .lightbox-inner {
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+        max-width: min(460px, 92vw);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .lightbox-inner img {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-height: 68vh;
+        object-fit: contain;
+        background: var(--bme-surface-2);
+    }
+
+    .lightbox-cap {
+        padding: 12px 16px;
+        font-size: 14px;
+        color: var(--bme-ink);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: baseline;
+    }
+
+    .lightbox-cap span { 
+        color: var(--bme-muted); 
+    }
+
+    .lb-price {
+        margin-left: auto;
+        font-weight: 700;
+        color: var(--bme-darker-blue) !important;
+    }
+
+    .lightbox-close {
+        position: fixed;
+        top: 18px;
+        right: 22px;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-size: 24px;
+        line-height: 1;
+    }
+
+    .lightbox-close:hover { 
+        background: rgba(255, 255, 255, 0.30); 
     }
 </style>
