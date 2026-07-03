@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { slaState, ageLabel, SLA_LABEL } from "$lib/sla";
+    import { slaState, ageLabel, slaStateBusiness, businessAgeLabel, SLA_LABEL } from "$lib/sla";
 
-    let { since } = $props<{ since: string }>();
+    let { since, businessHours = false } = $props<{ since: string; businessHours?: boolean }>();
 
     let now = $state(Date.now());
     $effect(() => {
@@ -9,8 +9,8 @@
         return () => clearInterval(t);
     });
 
-    let sla = $derived(slaState(since, now));
-    let age = $derived(ageLabel(since, now));
+    let sla = $derived(businessHours ? slaStateBusiness(since, now) : slaState(since, now));
+    let age = $derived(businessHours ? businessAgeLabel(since, now) : ageLabel(since, now));
 </script>
 
 <span class="sla {sla}" title="At this level for {age}">

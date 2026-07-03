@@ -33,6 +33,7 @@
         <div class="card stat">
             <span class="stat-label">Total requests</span>
             <span class="stat-value">{data.total}</span>
+            <span class="stat-sub">+{data.newThisWeek} this week</span>
         </div>
         <div class="card stat">
             <span class="stat-label">Open requests</span>
@@ -95,7 +96,7 @@
                     <li class="ag-row">
                         <span class="ag-ref">{a.reference} &middot; {a.boiler} ({a.region})</span>
                         <span class="ag-meta">{a.levelLabel}</span>
-                        <SlaBadge since={a.since} />
+                        <SlaBadge since={a.since} businessHours />
                     </li>
                 {/each}
             </ol>
@@ -161,6 +162,10 @@
 <style>
     h1 {
         margin-bottom: 18px;
+    }
+
+    h2 {
+        margin-top: 5px;
     }
 
     .empty {
@@ -320,7 +325,7 @@
     .grid2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 18px;
+        gap: 5px;
     }
 
     .grid2 .section {

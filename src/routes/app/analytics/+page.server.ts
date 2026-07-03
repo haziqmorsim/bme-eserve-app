@@ -1,9 +1,36 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { slaState } from "$lib/sla";
+import { slaState, slaStateBusiness } from "$lib/sla";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
+
+const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
+const WORK_START_MIN = 8 * 60 + 30; // 08:30
+const WORK_END_MIN = 18 * 60;       // 18:00
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function businessMs(startUtcMs: number, endUtcMs: number): number {
+    if (!(endUtcMs > startUtcMs)) return 0;
+    const s = startUtcMs + MYT_OFFSET_MS;
+    const e = endUtcMs + MYT_OFFSET_MS;
+
+    const first = new Date(s);
+    first.setUTCHours(0, 0, 0, 0);
+    let dayMs = first.getTime();
+
+    let total = 0;
+    for (; dayMs < e; dayMs += DAY_MS) {
+        const dow = new Date(dayMs).getUTCDay();
+        if (dow === 0 || dow === 6) continue;
+        const winStart = dayMs + WORK_START_MIN * 60000;
+        const winEnd = dayMs + WORK_END_MIN * 60000;
+        const from = Math.max(s, winStart);
+        const to = Math.min(e, winEnd);
+        if (to > from) total += to - from;
+    }
+    return total;
+}
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
@@ -46,6 +73,18 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     const avgResolutionMs = resN ? Math.round(resSum / resN) : null;
 
+    const nowShift = Date.now() + MYT_OFFSET_MS;
+    const mytNow = new Date(nowShift);
+    const daysSinceMon = (mytNow.getUTCDay() + 6) % 7;
+    const weekStart = new Date(nowShift);
+    weekStart.setUTCHours(0, 0, 0, 0);
+    weekStart.setUTCDate(weekStart.getUTCDate() - daysSinceMon);
+    const weekStartUtcMs = weekStart.getTime() - MYT_OFFSET_MS;
+    let newThisWeek = 0;
+    for (const q of quotes) {
+        if (new Date(q.created_at).getTime() >= weekStartUtcMs) newThisWeek++;
+    }
+
     const createdAt: Record<string, string> = {};
     for (const q of quotes) createdAt[q.id] = q.created_at;
 
@@ -60,7 +99,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         let arrival = createdAt[qid] ?? list[0].created_at;
         for (const a of list) {
             if (a.action === 'closed' && (a.level === 1 || a.level === 2 || a.level === 3)) {
-                const dur = new Date(a.created_at).getTime() - new Date(arrival).getTime();
+                const dur = businessMs(new Date(arrival).getTime(), new Date(a.created_at).getTime());
                 if (dur >= 0) {
                     levelSum[a.level] += dur;
                     levelN[a.level]++;
@@ -109,7 +148,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const q of quotes) {
         if (q.status !== 'open') continue;
         const since = latestApproval[q.id] ?? q.created_at;
-        const st = slaState(since, now);
+        const st = slaStateBusiness(since, now);
         if (st === 'overdue') overdueCount++;
         else if (st === 'aging') agingCount++;
         else onTrack++;
@@ -130,6 +169,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     return {
         title: 'Analytics', 
         total: quotes.length, 
+        newThisWeek, 
         open, 
         closed, 
         avgResolutionMs, 

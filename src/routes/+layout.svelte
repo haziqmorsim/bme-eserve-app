@@ -4,7 +4,7 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import Chatbot from '$lib/components/Chatbot.svelte';
-    import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+    import PageSkeleton from '$lib/components/PageSkeleton.svelte';
 
     let { data, children } = $props();
     let { session, supabase } = $derived(data);
@@ -26,4 +26,4 @@
 {@render children()}
 
 <Chatbot />
-<LoadingSpinner />
+<PageSkeleton />

@@ -24,21 +24,21 @@
             </a>
         </div>
         <div class="pages">
-            <button class="btn-ghost" class:active={$page.url.pathname === '/app'}><a href="/app">Home</a></button>
+            <a class="btn-ghost" class:active={$page.url.pathname === '/app'} href="/app">Home</a>
 
-            <button class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'}><a href="/app/quotes">Quotes</a>{#if count > 0}<span class="badge">{count}</span>{/if}</button>
+            <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Quotes{#if count > 0}<span class="badge">{count}</span>{/if}</a>
 
             {#if isStaff}
-            <button class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')}><a href="/app/requests">Requests</a>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</button>
+            <a class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')}><a href="/app/analytics">Analytics</a></button>
+            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
             {/if}
             {#if isStaff}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')}><a href="/app/enquiries">Enquiries</a></button>
+            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries</a>
             {/if}
             {#if isAdmin}
-            <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')}><a href="/app/settings">Settings</a></button>
+            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
             {/if}
         </div>
     </div>
@@ -53,9 +53,9 @@
             </div>
             <div class="actions">
                 <NotificationBell {notifications} {supabase} />
-                <button class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')}><a href="/app/history">History</a></button>
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
                 <form action="/logout" method="POST">
-                    <button type="submit" class="btn-ghost">Sign Out</button>
+                    <button type="submit" class="btn-ghost signout">Sign Out</button>
                 </form>
             </div>
         </div>
@@ -218,8 +218,15 @@
         color: #ffffff;
     }
 
-    .pages .btn-ghost.active a {
-        color: #ffffff;
+    .btn-ghost {
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .signout {
+        height: 100%;
+        font-size: 14px;
     }
 
     .side-bell { 
@@ -271,7 +278,7 @@
             border-right: 1px solid var(--bme-border);
             z-index: 60;
             overflow: hidden;
-            transition: width 0.22s ease;
+            transition: width 0.3s ease;
         }
 
         .sidebar.open {

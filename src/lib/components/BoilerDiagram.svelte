@@ -109,7 +109,7 @@
         fill: #ffffff;
         stroke: var(--bme-dark-blue);
         stroke-width: 1.5;
-        transition: fill 0.12s ease, stroke 0.12s ease;
+        transition: fill 0.3s ease, stroke 0.3s ease;
     }
 
     .zone text {

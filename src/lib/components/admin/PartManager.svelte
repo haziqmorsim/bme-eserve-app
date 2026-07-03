@@ -193,7 +193,7 @@
                             {uploading ? 'Uploading...' : (form.image_url ? 'Replace Image' : 'Upload Image')}
                         </button>
                         {#if form.image_url}
-                            <button type="button" class="adm-link danger" onclick={removeImage} disabled={uploading}>Remove</button>
+                            <button type="button" class="btn-ghost danger" onclick={removeImage} disabled={uploading}>Remove Image</button>
                         {/if}
                     </div>
                 </div>

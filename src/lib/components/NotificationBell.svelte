@@ -2,6 +2,8 @@
     import { Bell } from "@lucide/svelte";
     import { invalidateAll, goto } from "$app/navigation";
     import type { SupabaseClient } from "@supabase/supabase-js";
+    import { fly, fade } from "svelte/transition";
+    import { cubicInOut } from "svelte/easing";
 
     let { notifications = [], supabase } = $props<{ notifications: any[]; supabase: SupabaseClient }>();
 
@@ -60,7 +62,7 @@
     </button>
 
     {#if open}
-        <div class="panel" role="menu">
+        <div class="panel" role="menu" transition:fly={{ y: -8, duration: 190, easing: cubicInOut }}>
             <div class="panel-head">
                 <span class="panel-title">Notifications</span>
                 <button class="mark-all" onclick={markAllAsRead} disabled={busy || unread === 0}>
@@ -88,7 +90,7 @@
 </div>
 
 {#if open}
-    <button class="bell-backdrop" aria-label="Close notifications" onclick={shut}></button>
+    <button class="bell-backdrop" aria-label="Close notifications" onclick={shut} transition:fade={{ duration: 150 }}></button>
 {/if}
 
 <style>

@@ -1,6 +1,8 @@
 <script lang="ts">
     import { PUBLIC_WHATSAPP_BUSINESS_NUMBER } from "$env/static/public";
     import { Headset, Image as ImageIcon } from "@lucide/svelte";
+    import { fly } from "svelte/transition";
+    import { cubicInOut } from "svelte/easing";
 
     type Msg = { role: 'user' | 'assistant'; content: string; image?: string };
 
@@ -185,7 +187,7 @@
 
 <div class="chat-root">
     {#if open}
-        <div class="chat-panel" role="dialog" aria-label="BME e-Serve assistant">
+        <div class="chat-panel" role="dialog" aria-label="BME e-Serve assistant" transition:fly={{ y: 16, duration: 220, easing: cubicInOut }}>
             <div class="chat-header">
                 <span>BME e-Serve Assistant</span>
                 <button class="chat-icon-btn" onclick={() => (open = false)} aria-label="Close">×</button>

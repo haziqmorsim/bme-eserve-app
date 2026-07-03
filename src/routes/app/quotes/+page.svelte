@@ -14,6 +14,12 @@
 
     let total = $derived($quoteItems.reduce((s, i) => s + unitPrice(i) * i.quantity, 0));
 
+    function unitLabel(i: any) {
+        const up = unitPrice(i);
+        if (!up) return 'Price on request';
+        return `RM${formatMoney(up)}`;
+    }
+
     function lineAmount(i: any) {
         const up = unitPrice(i);
         if (!up) return 'Price on request';
@@ -85,7 +91,7 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Amount</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Unit Price</span><span>Amount</span><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
@@ -96,6 +102,7 @@
                 <span>
                     <input type="number" min="1" value={item.quantity} oninput={(e) => setQuantity(item.partId, + e.currentTarget.value)} />
                 </span>
+                <span class="unit">{unitLabel(item)}</span>
                 <span class="range">{lineAmount(item)}</span>
                 <span><button class="remove" onclick={() => removeItem(item.partId)} aria-label="Remove">✕</button></span>
             </div>
@@ -134,7 +141,7 @@
 
     .row {
         display: grid;
-        grid-template-columns: 2.2fr 0.9fr 0.8fr 1.5fr 40px;
+        grid-template-columns: 2.2fr 0.9fr 0.8fr 1fr 1.2fr 40px;
         align-items: center;
         gap: 12px;
         padding: 14px 0;
@@ -151,6 +158,10 @@
     .row input {
         width: 70px;
         text-align: center;
+    }
+
+    .unit {
+        color: var(--bme-ink);
     }
 
     .range {

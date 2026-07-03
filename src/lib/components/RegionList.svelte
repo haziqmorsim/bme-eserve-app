@@ -93,7 +93,7 @@
         border-right: 2px solid var(--bme-muted);
         border-bottom: 2px solid var(--bme-muted);
         transform: rotate(-45deg);
-        transition: transform 0.15s;
+        transition: transform 0.3s;
     }
 
     .region[open] summary::after {

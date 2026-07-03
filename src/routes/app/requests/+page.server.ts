@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             .from('quote_approvals')
             .select('quote_id, level, role, action, action_taken, created_at')
             .in('quote_id', quoteIds)
-            .order('level', { ascending: true });
+            .order('created_at', { ascending: true });
         for (const a of approvals ?? []) {
             (approvalsMap[a.quote_id] ??= []).push(a);
         }

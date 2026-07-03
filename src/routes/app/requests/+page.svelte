@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { invalidateAll } from "$app/navigation";
+    import { invalidateAll, goto } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import RequestFilters from "$lib/components/RequestFilters.svelte";
     import { emptyFilters, matches } from "$lib/filters";
@@ -29,6 +29,7 @@
     function cancel(q: any) {
         actionTaken[q.id] = '';
         formError = null;
+        goto('/app');
     }
 
     async function close(q: any) {

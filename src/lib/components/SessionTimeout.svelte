@@ -162,7 +162,7 @@
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-        border-top: 4px solid var(--bme-green, #6cb33f);
+        border-top: 4px solid var(--bme-dark-blue, #6cb33f);
     }
 
     .st-title {
@@ -196,7 +196,7 @@
         font-size: 0.95rem;
         font-weight: 600;
         cursor: pointer;
-        transition: opacity 0.15s ease, background 0.15s ease;
+        transition: opacity 0.3s ease, background 0.3s ease;
     }
 
     .st-btn--ghost {
@@ -210,7 +210,7 @@
     }
 
     .st-btn--primary {
-        background: var(--bme-green, #6cb33f);
+        background: var(--bme-dark-blue, #6cb33f);
         color: #ffffff;
     }
 

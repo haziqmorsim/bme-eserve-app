@@ -81,6 +81,13 @@ button {
     cursor: not-allowed;
 }
 
+a.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
 .btn-ghost {
     background: transparent;
     color: var(--bme-darker-blue);
@@ -91,6 +98,15 @@ button {
 
 .btn-ghost:hover {
     background-color: #eaeff3;
+}
+
+.btn-ghost.danger {
+    color: var(--bme-red);
+    border: 1px solid var(--bme-border);
+}
+
+.btn-ghost.danger:hover {
+    background-color: #f3eaea;
 }
 
 .card {
