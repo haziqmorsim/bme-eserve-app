@@ -354,7 +354,27 @@
         .qhead { 
             flex-direction: column; 
             align-items: flex-start; 
-            gap: 6px; 
+            gap: 8px; 
+        }
+
+        .qhead > div { 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 8px; 
+        }
+
+        .qhead > div .status { 
+            margin-left: 0; 
+        }
+
+        .sla-wrap { 
+            flex-basis: 100%; 
+            margin-left: 0; 
+        }
+
+        .qhead small { 
+            margin-top: 4px; 
         }
         
         .prior-head { 

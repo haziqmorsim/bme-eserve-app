@@ -96,7 +96,7 @@
                     <li class="ag-row">
                         <span class="ag-ref">{a.reference} &middot; {a.boiler} ({a.region})</span>
                         <span class="ag-meta">{a.levelLabel}</span>
-                        <SlaBadge since={a.since} businessHours />
+                        <span class="ag-sla"><SlaBadge since={a.since} businessHours /></span>
                     </li>
                 {/each}
             </ol>
@@ -410,6 +410,8 @@
         font-weight: 700; 
         color: var(--bme-ink); }
 
+    .ag-sla { display: inline-flex; }
+
     .ag-meta { 
         font-size: 13px; 
         color: var(--bme-muted); 
@@ -449,10 +451,25 @@
         }
 
         .ag-row { 
-            grid-template-columns: auto 1fr auto; }
+            grid-template-columns: auto 1fr; 
+            row-gap: 6px; 
+            column-gap: 0; 
+        }
+
+        .ag-l, .ag-t {
+            font-size: 12px;
+        }
 
         .ag-meta { 
             grid-column: 1 / -1; 
+        }
+
+        .ag-sla { 
+            grid-column: 1 / -1; 
+        }
+
+        .bar-e {
+            font-size: 13px;
         }
     }
 </style>
