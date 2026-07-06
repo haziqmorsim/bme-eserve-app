@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { corsHeaders, json } from '../shared/cors.ts';
+import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
+import { corsHeaders, json } from '../_shared/cors.ts';
 
 const BLUE = rgb(0, 0.29, 0.55);
 const GREEN = rgb(0.184, 0.369, 0.094);
@@ -126,7 +126,8 @@ Deno.serve(async (req) => {
 
         if (quote.notes) {
             ensureSpace();
-            text('Notes', M, y, 9, bold, MUTED): y -= 14;
+            text('Notes', M, y, 9, bold, MUTED); 
+            y -= 14;
             let notes = String(quote.notes);
             const maxW = W - 2 * M;
             const words = notes.split(/\s+/);
@@ -147,7 +148,7 @@ Deno.serve(async (req) => {
             y -= 10;
         }
 
-        text('Prices are idicative and subject to confirmation by Boilermech Sdn Bhd.', M, M, 8, font, MUTED);
+        text('Prices are indicative and subject to confirmation by Boilermech Sdn Bhd.', M, M, 8, font, MUTED);
 
         const bytes = await doc.save();
 

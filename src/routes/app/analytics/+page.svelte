@@ -470,6 +470,7 @@
 
         .bar-e {
             font-size: 13px;
+            font-weight: 600;
         }
     }
 </style>
