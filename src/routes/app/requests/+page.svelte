@@ -60,7 +60,6 @@
 <h1>Requests</h1>
 
 <RequestFilters bind:filters regions={data.regions} showStatus={false} placeholder="Search by reference or customer..." />
-<!-- <p class="lead">Showing requests awaiting <strong>{data.levelLabel}</strong> action (Level {data.level} of 3).</p> -->
 
 {#if data.quotes.length === 0}
     <div class="card empty">No requests are awaiting your action.</div>
@@ -73,7 +72,7 @@
                 <div>
                     <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
-                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} /></span>
+                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} businessHours /></span>
                 </div>
                 <small>{when(q.created_at)}</small>
             </div>

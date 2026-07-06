@@ -190,7 +190,6 @@
         <div class="chat-panel" role="dialog" aria-label="BME e-Serve assistant" transition:fly={{ y: 16, duration: 220, easing: cubicInOut }}>
             <div class="chat-header">
                 <span>BME e-Serve Assistant</span>
-                <button class="chat-icon-btn" onclick={() => (open = false)} aria-label="Close">×</button>
             </div>
 
             <div class="chat-messages" bind:this={scrollEl}>
@@ -283,7 +282,6 @@
     .chat-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         padding: 0.75rem 1rem;
         background: var(--bme-dark-blue);
         color: #ffffff;
