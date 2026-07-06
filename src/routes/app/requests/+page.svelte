@@ -156,7 +156,7 @@
 
 <style>
     h1 { 
-        margin-bottom: 20px; 
+        margin: 5px 0 15px; 
     }
 
     .lead {

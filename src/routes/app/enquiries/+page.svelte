@@ -46,7 +46,9 @@
 {/if}
 
 <style>
-    h1 { margin-bottom: 6px; }
+    h1 { 
+        margin: 5px 0 15px;
+    }
  
     .searchbar {
         position: relative;

@@ -4,6 +4,8 @@
     import Stepper from "$lib/components/Stepper.svelte";
     import RequestFilters from "$lib/components/RequestFilters.svelte";
     import { emptyFilters, matches } from "$lib/filters";
+    import Pagination from "$lib/components/admin/Pagination.svelte";
+    import { untrack } from "svelte";
 
     let { data } = $props();
 
@@ -36,6 +38,25 @@
         region: q.region,
         date: q.created_at
     })));
+
+    const PAGE_SIZE = 10;
+    let tab = $state<'reviews' | 'requests'>(untrack(() => (data.isStaff ? 'reviews' : 'requests')));
+    let reviewPage = $state(1);
+    let requestPage = $state(1);
+
+    $effect(() => {
+        filters.q; filters.status; filters.region; filters.from; filters.to;
+        reviewPage = 1;
+        requestPage = 1;
+    });
+
+    let reviewPages = $derived(Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE)));
+    let reviewCur = $derived(Math.min(reviewPage, reviewPages));
+    let pagedGroups = $derived(filteredGroups.slice((reviewCur - 1) * PAGE_SIZE, reviewCur * PAGE_SIZE));
+
+    let requestPages = $derived(Math.max(1, Math.ceil(filteredQuotes.length / PAGE_SIZE)));
+    let requestCur = $derived(Math.min(requestPage, requestPages));
+    let pagedQuotes = $derived(filteredQuotes.slice((requestCur - 1) * PAGE_SIZE, requestCur * PAGE_SIZE));
 
     function levelLabel(l: number): string {
         return l === 1 ? 'Admin' : l === 2 ? 'Manager' : l === 3 ? 'COO' : `Level ${l}`;
@@ -70,16 +91,22 @@
 
 <RequestFilters bind:filters regions={data.regions} showRegion={data.isStaff} placeholder="Search by reference or customer..." />
 
-{#if data.isStaff}
+<div class="tabbar">
+    {#if data.isStaff}
+        <button class="tab" class:active={tab === 'reviews'} onclick={() => { tab = 'reviews'; }}>Reviews</button>
+    {/if}
+    <button class="tab" class:active={tab === 'requests'} onclick={() => { tab = 'requests'; }}>Requests</button>
+</div>
+
+{#if data.isStaff && tab === 'reviews'}
     <section class="block">
-        <h2 class="block-title">Reviews History</h2>
 
         {#if groups.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
         {:else if filteredGroups.length === 0}
             <div class="card empty">No reviews match your filters.</div>
         {:else}
-            {#each filteredGroups as g (g.quote?.id)}
+            {#each pagedGroups as g (g.quote?.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
@@ -139,12 +166,14 @@
                 </div>
             {/each}
         {/if}
+        {#if filteredGroups.length > 0}
+            <Pagination total={filteredGroups.length} page={reviewCur} pageSize={PAGE_SIZE} onpage={(p) => (reviewPage = p)} />
+        {/if}
     </section>
 {/if}
 
-{#if data.isStaff || myQuotes.length > 0}
+{#if !data.isStaff || tab === 'requests'}
     <section class="block">
-        <h2 class="block-title">Requests History</h2>
 
         {#if data.loyalty}
             <div class="card loyalty bme-animate-in">
@@ -191,7 +220,7 @@
         {:else if filteredQuotes.length === 0}
             <div class="card empty">No requests match your filters.</div>
         {:else}
-            {#each filteredQuotes as q (q.id)}
+            {#each pagedQuotes as q (q.id)}
                 <div class="card quote">
                     <div class="qhead">
                         <div>
@@ -222,36 +251,51 @@
                         {#if data.isStaff}
                             <Stepper status={q.status} level={q.current_level} />
                         {/if}
-
-                        <!-- <div class="meta-row">
-                            {#if q.status === 'closed'}
-                                <span class="reviewed">
-                                    Closed{#if q.reviewed_at} on {new Date(q.reviewed_at).toLocaleDateString()}{/if}.
-                                </span>
-                            {:else}
-                                <span class="reviewed">
-                                    Open — currently with {q.current_level === 1 ? 'Admin' : q.current_level === 2 ? 'Manager' : 'COO'}.
-                                </span>
-                            {/if}
-                        </div> -->
                     </div>
                 </div>
             {/each}
+        {/if}
+        {#if filteredQuotes.length > 0}
+            <Pagination total={filteredQuotes.length} page={requestCur} pageSize={PAGE_SIZE} onpage={(p) => (requestPage = p)} />
         {/if}
     </section>
 {/if}
 
 <style>
-    h1 {
-        margin-bottom: 18px;
+    .tabbar {
+        display: inline-flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
     }
 
-    .block {
-        margin-bottom: 28px;
+    .tab {
+        padding: 9px 22px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-weight: 700;
+        background-color: #ffffff;
+        color: var(--bme-muted);
+        cursor: pointer;
+        transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .tab.active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-color: var(--bme-dark-blue);
+    }
+
+    .block :global(.pager) {
+        margin-top: 16px;
+    }
+
+    h1 {
+        margin: 5px 0 15px;
     }
 
     .block-title {
-        font-size: 16px;
+        font-size: 20px;
         color: var(--bme-ink);
         margin: 0 0 12px;
     }

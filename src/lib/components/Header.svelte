@@ -29,16 +29,16 @@
             <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Quotes{#if count > 0}<span class="badge">{count}</span>{/if}</a>
 
             {#if isStaff}
-            <a class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
+                <a class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
-            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries</a>
             {/if}
             {#if isStaff}
-            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries</a>
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
             {/if}
             {#if isAdmin}
-            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
             {/if}
         </div>
     </div>
@@ -85,10 +85,10 @@
                 </a>
             {/if}
             {#if isStaff}
-                <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
+                <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}>Enquiries</a>
             {/if}
             {#if isStaff}
-                <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}>Enquiries</a>
+                <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
             {/if}
             {#if isAdmin}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>

@@ -131,7 +131,7 @@
 
 <style>
     h1 {
-        margin-bottom: 18px;
+        margin: 5px 0 15px;
     }
 
     .list {
