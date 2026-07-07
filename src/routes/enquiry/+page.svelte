@@ -13,8 +13,8 @@
 
     async function submitEnquiry() {
         errorMsg = '';
-        if (!name.trim() || !email.trim() || !message.trim()) {
-            errorMsg = 'Please fill in your name, e-mail address, and message.';
+        if (!name.trim() || !email.trim() || !company.trim() || !message.trim()) {
+            errorMsg = 'Please fill in all fields.';
             return;
         }
 
@@ -43,20 +43,20 @@
         <h1>General Enquiry</h1>
         <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
             <label>
-                <span>Name</span>
+                Name <span class="required">*</span>
                 <input type="text" bind:value={name} required autocomplete="name" />
             </label>
             <label>
-                <span>E-mail Address</span>
+                E-mail Address <span class="required">*</span>
                 <input type="email" bind:value={email} required autocomplete="email" />
             </label>
             <label>
-                <span>Company</span>
+                Company <span class="required">*</span>
                 <input type="text" bind:value={company} required autocomplete="organization" />
             </label>
             <label>
-                <span>Message</span>
-                <textarea rows="5" bind:value={message} placeholder="How can we help?"></textarea>
+                Message <span class="required">*</span>
+                <textarea rows="5" bind:value={message} required placeholder="How can we help?"></textarea>
             </label>
 
             {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
@@ -104,15 +104,19 @@
  
     label {
         display: block;
+        font-weight: 600;
         margin-bottom: 14px;
     }
  
-    label span {
+    label > span {
         display: block;
         font-size: 13px;
         font-weight: 600;
-        margin-bottom: 6px;
-        color: var(--bme-ink);
+        margin-bottom: 4px;
+    }
+
+    input, textarea {
+        margin-top: 8px;
     }
  
     .err {

@@ -39,7 +39,7 @@
             <a href="mailto:{e.email}" class="email"><Mail size={14} /> {e.email}</a>
             <p class="message">{e.message}</p>
             <div class="actions">
-                <a href="mailto:{e.email}?subject=Re: Your enquiry to Boilermech" class="btn-primary reply">Reply</a>
+                <button class="btn-primary"><a href="mailto:{e.email}?subject=Re: Your enquiry to Boilermech" class="reply">Reply</a></button>
             </div>
         </div>
     {/each}
@@ -134,8 +134,7 @@
     }
  
     .reply {
-        display: inline-block;
-        text-decoration: none;
+        color: #ffffff;
     }
  
     @media (max-width: 640px) {

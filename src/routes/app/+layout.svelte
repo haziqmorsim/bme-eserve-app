@@ -30,7 +30,7 @@
 </script>
 
 <div class="shell">
-    <Header profile={data.profile} pendingCount={data.pendingCount} notifications={data.notifications} supabase={data.supabase} />
+    <Header profile={data.profile} pendingCount={data.pendingCount} enquiryCount={data.enquiryCount} notifications={data.notifications} supabase={data.supabase} />
     <main>
         {#if showSkeleton}
             <AppSkeleton route={dest} />

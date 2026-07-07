@@ -24,6 +24,15 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount = count ?? 0;
     }
 
+    const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+    let enquiryCount = 0;
+    if (profile && STAFF.has(profile.role)) {
+        const { count } = await supabase
+            .from('enquiries')
+            .select('id', { count: 'exact', head: true });
+        enquiryCount = count ?? 0;
+    }
+
     const { data: notifications } = await supabase
         .from('notifications')
         .select('id, type, title, body, is_read, created_at, quote_id')
@@ -31,5 +40,5 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .order('created_at', { ascending: false })
         .limit(30);
 
-    return { profile, userEmail: user.email, pendingCount, notifications: notifications ?? [] };
+    return { profile, userEmail: user.email, pendingCount, enquiryCount, notifications: notifications ?? [] };
 };

@@ -4,7 +4,7 @@
     import { Menu } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
 
-    let { profile, pendingCount = 0, notifications = [], supabase } = $props();
+    let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
 
     let open = $state(false);
@@ -29,10 +29,10 @@
             <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Quotes{#if count > 0}<span class="badge">{count}</span>{/if}</a>
 
             {#if isStaff}
-                <a class="btn-ghost request-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
+                <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
-                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries</a>
+                <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
@@ -200,12 +200,12 @@
         pointer-events: none;
     }
 
-    .request-btn {
+    .badge-btn {
         position: relative;
         overflow: visible;
     }
 
-    .request-btn .badge {
+    .badge-btn .badge {
         position: absolute;
         top: 0;
         right: 0;

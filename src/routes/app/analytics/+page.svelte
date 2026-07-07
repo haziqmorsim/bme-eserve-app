@@ -112,7 +112,7 @@
                     <div class="bar-track">
                         <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
                     </div>
-                    <span class="bar-val">{fmtDur(l.avgMs)} <small>({l.count})</small></span>
+                    <span class="bar-val">{fmtDur(l.avgMs)}</span>
                 </div>
             {/each}
         </div>
@@ -315,11 +315,6 @@
         font-weight: 700;
         color: var(--bme-ink);
         white-space: nowrap;
-    }
-
-    .bar-val small {
-        color: var(--bme-muted);
-        font-weight: 600;
     }
 
     .grid2 {
