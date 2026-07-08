@@ -29,7 +29,8 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
     if (profile && STAFF.has(profile.role)) {
         const { count } = await supabase
             .from('enquiries')
-            .select('id', { count: 'exact', head: true });
+            .select('id', { count: 'exact', head: true })
+            .is('replied_at', null);
         enquiryCount = count ?? 0;
     }
 

@@ -246,7 +246,7 @@
     .s-qty{ height:34px; width:70px; border-radius:8px; margin:0 auto; }
     .qtotal{ display:flex; justify-content:space-between; align-items:baseline; padding-top:18px; }
 
-    .loyalty{ padding:20px; margin-bottom:14px; background:linear-gradient(135deg, var(--bme-mint), #fff 62%); }
+    .loyalty{ padding:20px; margin-bottom:14px; }
     .loy-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
     .loy-tiers{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
     .s-block{ height:18px; width:170px; border-radius:8px; margin:22px 0 12px; }

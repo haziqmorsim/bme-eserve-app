@@ -85,7 +85,7 @@
                 </a>
             {/if}
             {#if isStaff}
-                <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}>Enquiries</a>
+                <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}><span>Enquiries</span>{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>

@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     const { data: enquiries } = await supabase
         .from('enquiries')
-        .select('id, name, email, company, message, created_at')
+        .select('id, name, email, company, message, created_at, replied_at')
         .order('created_at', { ascending: false });
 
     return { enquiries: enquiries ?? [], title: "Enquiries"};

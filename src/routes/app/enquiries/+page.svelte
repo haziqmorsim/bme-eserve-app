@@ -1,8 +1,12 @@
 <script lang="ts">
     import { Search, Mail } from "@lucide/svelte";
+    import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
 
     let { data } = $props();
     let search = $state('');
+    let tab = $state<'unreplied' | 'replied'>('unreplied');
+    let busy = $state<Set<string>>(new Set());
 
     let filtered = $derived(data.enquiries.filter((e: any) => {
         const q = search.trim().toLowerCase();
@@ -10,8 +14,33 @@
         return [e.name, e.email, e.company, e.message].some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
     }));
 
+    let unreplied = $derived(filtered.filter((e: any) => !e.replied_at));
+    let replied = $derived(filtered.filter((e: any) => e.replied_at));
+    let list = $derived(tab === 'unreplied' ? unreplied : replied);
+
     function when(ts: string): string {
         return new Date(ts).toLocaleString();
+    }
+
+    async function markAsReplied(e: any) {
+        if (busy.has(e.id)) return;
+        busy = new Set(busy).add(e.id);
+
+        const { error } = await data.supabase
+            .from('enquiries')
+            .update({ replied_at: new Date().toISOString() })
+            .eq('id', e.id);
+
+        const next = new Set(busy);
+        next.delete(e.id);
+        busy = next;
+
+        if (error) {
+            addToast(`Could not mark as replied: ${error.message}`);
+            return;
+        }
+        await invalidateAll();
+        addToast('Enquiry marked as replied.');
     }
 </script>
 
@@ -24,25 +53,59 @@
 
 {#if data.enquiries.length === 0}
     <div class="card empty">No enquiries have been received yet.</div>
-{:else if filtered.length === 0}
-    <div class="card empty">No enquiries match your search.</div>
 {:else}
-    {#each filtered as e (e.id)}
-        <div class="card enquiry">
-            <div class="ehead">
-                <div>
-                    <strong class="ename">{e.name}</strong>
-                    {#if e.company}<span class="company">{e.company}</span>{/if}
-                </div>
-                <small>{when(e.created_at)}</small>
-            </div>
-            <a href="mailto:{e.email}" class="email"><Mail size={14} /> {e.email}</a>
-            <p class="message">{e.message}</p>
-            <div class="actions">
-                <button class="btn-primary"><a href="mailto:{e.email}?subject=Re: Your enquiry to Boilermech" class="reply">Reply</a></button>
-            </div>
+    <div class="tabbar">
+        <button class="tab" class:active={tab === 'unreplied'} onclick={() => (tab = 'unreplied')}>Unreplied ({unreplied.length})</button>
+        <button class="tab" class:active={tab === 'replied'} onclick={() => (tab = 'replied')}>Replied ({replied.length})</button>
+    </div>
+    {#if filtered.length === 0}
+        <div class="card empty">
+            {#if search.trim()}
+                No enquiries matched your search.
+            {:else if tab === 'unreplied'}
+                No unreplied enquiries.
+            {:else}
+                No replied enquiries yet.
+            {/if}
         </div>
-    {/each}
+    {:else}
+        {#each list as e (e.id)}
+            <div class="card enquiry">
+                <div class="ehead">
+                    <div>
+                        <strong class="ename">{e.name}</strong>
+                        {#if e.company}<span class="company">{e.company}</span>{/if}
+                    </div>
+                    <div class="emeta">
+                        <small>{when(e.created_at)}</small>
+                        {#if e.replied_at}<small class="replied-on">Marked as replied on {when(e.replied_at)}</small>{/if}
+                    </div>
+                </div>
+                <a
+                    href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(e.email)}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`}
+                    target="_blank"
+                    rel="noopener"
+                    class="email">
+                    <Mail size={14} /> {e.email}
+                </a>
+                <p class="message">{e.message}</p>
+                <div class="actions">
+                    {#if !e.replied_at}
+                        <a
+                            href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(e.email)}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`}
+                            target="_blank"
+                            rel="noopener"
+                            class="btn-primary reply">
+                            Reply
+                        </a>
+                        <button class="mark-btn" onclick={() => markAsReplied(e)} disabled={busy.has(e.id)}>
+                            {busy.has(e.id) ? 'Saving…' : 'Mark as replied'}
+                        </button>
+                    {/if}
+                </div>
+            </div>
+        {/each}
+    {/if}
 {/if}
 
 <style>
@@ -71,6 +134,34 @@
         padding: 11px 14px 11px 36px;
         border: none;
         background: transparent;
+    }
+
+    .tabbar {
+        display: inline-flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .tab {
+        padding: 9px 20px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-weight: 700;
+        background-color: #ffffff;
+        color: var(--bme-muted);
+        cursor: pointer;
+        transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .tab.active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-color: var(--bme-dark-blue);
+    }
+
+    .tab:hover {
+        border-color: var(--bme-dark-blue);
     }
  
     .empty {
@@ -102,11 +193,26 @@
         font-size: 13px;
         color: var(--bme-muted);
     }
+
+    .emeta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        flex: 0 0 auto;
+    }
  
     .ehead small {
         flex: 0 0 auto;
         color: var(--bme-muted);
         font-size: 12.5px;
+    }
+
+    .emeta .replied-on {
+        flex: 0 0 auto;
+        color: var(--bme-muted);
+        font-size: 12.5px;
+        font-weight: 600;
     }
  
     .email {
@@ -122,7 +228,7 @@
     .email:hover { text-decoration: underline; }
  
     .message {
-        margin: 12px 0 0;
+        margin: 12px 0;
         font-size: 14px;
         color: var(--bme-ink);
         line-height: 1.55;
@@ -131,14 +237,62 @@
  
     .actions {
         margin-top: 14px;
+        padding-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
  
     .reply {
-        color: #ffffff;
+        font-family: inherit;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 8px 12px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .mark-btn {
+        font-family: inherit;
+        cursor: pointer;
+        border: 1px solid var(--bme-dark-blue);
+        background-color: #ffffff;
+        color: var(--bme-dark-blue);
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 8px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background-color var(--t-fast) var(--ease);
+    }
+
+    .mark-btn:hover:not(:disabled) {
+        background-color: #eaeff3;
+    }
+
+    .mark-btn:disabled {
+        opacity: .6;
+        cursor: default;
     }
  
     @media (max-width: 640px) {
-        .enquiry { padding: 16px; }
-        .ehead { flex-direction: column; align-items: flex-start; gap: 4px; }
+        .enquiry { 
+            padding: 16px; 
+        }
+
+        .ehead { 
+            flex-direction: column; 
+            align-items: flex-start; 
+            gap: 4px; 
+        }
+
+        .emeta {
+            align-items: flex-start;
+        }
     }
 </style>
