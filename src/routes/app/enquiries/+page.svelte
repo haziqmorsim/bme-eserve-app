@@ -7,6 +7,7 @@
     let search = $state('');
     let tab = $state<'unreplied' | 'replied'>('unreplied');
     let busy = $state<Set<string>>(new Set());
+    let isDeveloper = $derived(data.profile?.role === 'developer');
 
     let filtered = $derived(data.enquiries.filter((e: any) => {
         const q = search.trim().toLowerCase();
@@ -86,17 +87,23 @@
                 <div class="actions">
                     {#if !e.replied_at}
                         <a
-                            href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(e.email)}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`}
+                            href={isDeveloper ? undefined : `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(e.email)}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`}
                             target="_blank"
                             rel="noopener"
-                            class="btn-primary reply">
+                            class="btn-primary reply"
+                            class:disabled={isDeveloper}
+                            aria-disabled={isDeveloper}
+                            tabindex={isDeveloper ? -1 : undefined}>
                             Reply
                         </a>
-                        <button class="mark-btn" onclick={() => markAsReplied(e)} disabled={busy.has(e.id)}>
+                        <button class="mark-btn" onclick={() => markAsReplied(e)} disabled={isDeveloper || busy.has(e.id)}>
                             {busy.has(e.id) ? 'Saving…' : 'Mark as replied'}
                         </button>
                     {/if}
                 </div>
+                {#if isDeveloper}
+                    <p class="hint">Read-only for the developer role.</p>
+                {/if}
             </div>
         {/each}
     {/if}
@@ -237,8 +244,15 @@
         flex-wrap: wrap;
     }
  
+    .reply.disabled {
+        opacity: 0.55;
+        pointer-events: none;
+        cursor: default;
+    }
+
     .reply {
         font-family: inherit;
+        font-size: 14px;
         cursor: pointer;
         border: none;
         border-radius: 8px;
@@ -269,8 +283,14 @@
     }
 
     .mark-btn:disabled {
-        opacity: .6;
+        opacity: 0.6;
         cursor: default;
+    }
+
+    .hint {
+        margin: 10px 0 0;
+        font-size: 13px;
+        color: var(--bme-muted);
     }
  
     @media (max-width: 640px) {

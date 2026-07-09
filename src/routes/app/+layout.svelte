@@ -5,6 +5,8 @@
     import SessionTimeout from "$lib/components/SessionTimeout.svelte";
     import AppSkeleton from "$lib/components/AppSkeleton.svelte";
     import { navigating } from "$app/stores";
+    import { afterNavigate } from "$app/navigation";
+    import { logActivity } from "$lib/activity";
 
     let { data, children } = $props();
     let { supabase } = $derived(data);
@@ -13,7 +15,6 @@
         await supabase.auth.signOut();
     }
 
-    // Show a page-tailored skeleton while navigating between app pages.
     let showSkeleton = $state(false);
     let skTimer: ReturnType<typeof setTimeout> | undefined;
     let dest = $derived($navigating?.to?.route?.id ?? '');
@@ -26,6 +27,16 @@
             showSkeleton = false;
         }
         return () => clearTimeout(skTimer);
+    });
+
+    afterNavigate((nav) => {
+        const path = nav.to?.url.pathname;
+        if (!path || !path.startsWith('/app')) return;
+        logActivity(
+            data.supabase,
+            data.profile ? { id: data.profile.id, role: data.profile.role } : null,
+            { event_type: 'page_view', path }
+        );
     });
 </script>
 

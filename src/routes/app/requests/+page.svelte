@@ -10,6 +10,7 @@
     let working = $state<string | null>(null);
     let formError = $state<string | null>(null);
     let actionTaken = $state<Record<string, string>>({});
+    let isDeveloper = $derived(data.profile?.role === 'developer');
 
     let filters = $state(emptyFilters());
     let filtered = $derived(data.quotes.filter((q: any) => matches(filters, {
@@ -127,13 +128,13 @@
                 </div>
             {/if}
 
-            {#if !data.isDeveloper}
             <label class="action-field">
                 <p class="field-label">Action Taken ({data.levelLabel}) <span class="req">*</span></p>
                 <textarea
                     rows="3"
                     placeholder="Describe the action you have taken..."
                     bind:value={actionTaken[q.id]}
+                    disabled={data.isDeveloper}
                 ></textarea>
             </label>
 
@@ -142,13 +143,15 @@
             {/if}
 
             <div class="actions">
-                <button class="btn-primary" disabled={working === q.id} onclick={() => close(q)}>
+                <button class="btn-primary" disabled={data.isDeveloper || working === q.id} onclick={() => close(q)}>
                     {working === q.id ? 'Processing...' : 'Close'}
                 </button>
-                <button class="btn-ghost" disabled={working === q.id} onclick={() => cancel(q)}>
+                <button class="btn-ghost" disabled={data.isDeveloper || working === q.id} onclick={() => cancel(q)}>
                     Cancel
                 </button>
             </div>
+            {#if isDeveloper}
+                <p class="hint">Read-only for the developer role.</p>
             {/if}
         </div>
     {/each}
@@ -343,6 +346,27 @@
     .status.reopened {
         background-color: #fff3d6;
         color: #97700a;
+    }
+    
+    textarea:disabled {
+        opacity: 0.6;
+    }
+
+    .btn-primary:disabled {
+        background: var(--bme-dark-blue);
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    .btn-ghost:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    .hint {
+        margin: 10px 0 0;
+        font-size: 13px;
+        color: var(--bme-muted);
     }
 
     @media (max-width: 640px) {

@@ -24,7 +24,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount = count ?? 0;
     }
 
-    const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+    const STAFF = new Set(['admin', 'manager', 'coo']); // exclude developer
     let enquiryCount = 0;
     if (profile && STAFF.has(profile.role)) {
         const { count } = await supabase

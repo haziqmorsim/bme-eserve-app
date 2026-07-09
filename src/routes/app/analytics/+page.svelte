@@ -23,8 +23,8 @@
     let maxRegion = $derived(Math.max(1, ...data.volumeByRegion.map((r: any) => r.count)));
     let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
     let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
-    let maxCustomer = $derived(Math.max(1, ...data.topCustomers.map((c: any) => c.count)));
-    let maxStaff = $derived(Math.max(1, ...data.staffActivity.map((s: any) => s.count)));
+    let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
+    let maxPage = $derived(Math.max(1, ...data.topPages.map((p: any) => p.count)));
 
     const ROLE_LABEL: Record<string, string> = { admin: 'Admin', manager: 'Manager', coo: 'COO', developer: 'Developer', customer: 'Customer' };
     function roleLabel(r: string | null): string {
@@ -181,8 +181,9 @@
     <div class="card section">
         <h2>User activity (last 30 days)</h2>
         <div class="ua-stats">
-            <div class="ua"><span class="ua-n">{data.activitySummary.activeCustomers}</span><span class="ua-l">Active customers</span></div>
-            <div class="ua"><span class="ua-n">{data.activitySummary.activeStaff}</span><span class="ua-l">Active staff</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.activeUsers}</span><span class="ua-l">Active users</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.sessions}</span><span class="ua-l">Sessions</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l">Page views</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l">Review actions</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span></div>
         </div>
@@ -198,20 +199,20 @@
         </div>
     </div>
 
-    <!-- <div class="grid2">
+    <div class="grid2">
         <div class="card section">
-            <h2>Most active customers</h2>
-            {#if data.topCustomers.length === 0}
-                <p class="hint">No customer activity yet.</p>
+            <h2>Most active users</h2>
+            {#if data.topUsers.length === 0}
+                <p class="hint">No activity recorded yet.</p>
             {:else}
                 <div class="bars">
-                    {#each data.topCustomers as c, i (i)}
+                    {#each data.topUsers as u, i (i)}
                         <div class="bar-row2">
-                            <span class="bar-key">{c.name}{#if c.company} &nbsp; ({c.company}){/if}</span>
+                            <span class="bar-key">{u.name}{#if u.role} &nbsp; ({roleLabel(u.role)}){/if}</span>
                             <div class="bar-track">
-                                <div class="bar-fill green" style="width: {Math.round((c.count / maxCustomer) * 100)}%"></div>
+                                <div class="bar-fill green" style="width: {Math.round((u.count / maxUser) * 100)}%"></div>
                             </div>
-                            <span class="bar-val">{c.count}</span>
+                            <span class="bar-val">{u.count}</span>
                         </div>
                     {/each}
                 </div>
@@ -219,24 +220,24 @@
         </div>
 
         <div class="card section">
-            <h2>Staff activity</h2>
-            {#if data.staffActivity.length === 0}
-                <p class="hint">No staff activity yet.</p>
+            <h2>Most visited pages</h2>
+            {#if data.topPages.length === 0}
+                <p class="hint">No page views recorded yet.</p>
             {:else}
                 <div class="bars">
-                    {#each data.staffActivity as st, i (i)}
+                    {#each data.topPages as pg, i (i)}
                         <div class="bar-row2">
-                            <span class="bar-key">{st.name}{#if st.role} &nbsp; ({roleLabel(st.role)}){/if}</span>
+                            <span class="bar-key">{pg.label}</span>
                             <div class="bar-track">
-                                <div class="bar-fill green" style="width: {Math.round((st.count / maxStaff) * 100)}%"></div>
+                                <div class="bar-fill green" style="width: {Math.round((pg.count / maxPage) * 100)}%"></div>
                             </div>
-                            <span class="bar-val">{st.count}</span>
+                            <span class="bar-val">{pg.count}</span>
                         </div>
                     {/each}
                 </div>
             {/if}
         </div>
-    </div> -->
+    </div>
 
     <div class="card section">
         <h2>Recent activity</h2>
@@ -387,8 +388,13 @@
         gap: 12px;
     }
 
+    .bar-e {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
     .bar-key {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--bme-ink);
         overflow: hidden;
@@ -412,6 +418,10 @@
 
     .bar-fill.blue {
         background: var(--bme-dark-blue);
+    }
+
+    .bar-fill.green { 
+        background: var(--bme-green); 
     }
 
     .bar-val {
@@ -519,7 +529,7 @@
 
     .ua-stats {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 12px;
         margin-bottom: 20px;
     }
@@ -575,8 +585,6 @@
         white-space: nowrap;
     }
 
-    .bar-fill.green { background: var(--bme-green); }
-
     .feed {
         list-style: none;
         margin: 0;
@@ -607,6 +615,8 @@
     .feed-dot.closed { background: var(--bme-green); }
     .feed-dot.reopened { background: var(--bme-orange); }
     .feed-dot.enquiry { background: var(--bme-teal); }
+    .feed-dot.page_view { background: var(--bme-dark-blue); }
+    .feed-dot.login { background: var(--bme-green); }
 
     .feed-text {
         flex: 1;
@@ -674,11 +684,6 @@
 
         .ag-sla { 
             grid-column: 2; 
-        }
-
-        .bar-e {
-            font-size: 13px;
-            font-weight: 600;
         }
     }
     

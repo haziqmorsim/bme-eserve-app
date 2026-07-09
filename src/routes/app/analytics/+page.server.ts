@@ -36,23 +36,27 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const { profile } = await parent();
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Staff only');
 
-    const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }, { data: enquiryRows }] = await Promise.all([
+    const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
+    const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
         supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
         supabase.from('regions').select('id, name'), 
-        supabase.from('enquiries').select('id, name, created_at')
+        supabase.from('enquiries').select('id, name, created_at'), 
+        supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000)
     ]);
 
     const quotes = quoteRows ?? [];
     const approvals = approvalRows ?? [];
     const regions = regionRows ?? [];
     const enquiries = enquiryRows ?? [];
+    const activityEvents = eventRows ?? [];
 
     const RegionMap: Record<string, string> = {};
     for (const r of regions) RegionMap[r.id] = r.name;
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
     const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
-    const personIds = [...new Set([...ownerIds, ...reviewerIds])];
+    const eventUserIds = [...new Set(activityEvents.map((e: any) => e.user_id).filter(Boolean))];
+    const personIds = [...new Set([...ownerIds, ...reviewerIds, ...eventUserIds])];
     const ownerRegion: Record<string, string | null> = {};
     const person: Record<string, { name: string; company: string | null; role: string | null }> = {};
     if (personIds.length) {
@@ -172,75 +176,89 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     agingList.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 
-    const THIRTY_MS = 30 * DAY_MS;
-    const thirtyAgo = now - THIRTY_MS;
+    const PAGE_LABELS: Record<string, string> = {
+        '/app': 'Home',
+        '/app/quotes': 'Quote list',
+        '/app/requests': 'Requests',
+        '/app/history': 'History',
+        '/app/analytics': 'Analytics',
+        '/app/enquiries': 'Enquiries',
+        '/app/settings': 'Settings'
+    };
+    const pageLabel = (path: string | null): string => {
+        if (!path) return 'Unknown';
+        const clean = path.split('?')[0].split('#')[0];
+        return PAGE_LABELS[clean] ?? clean;
+    };
 
-    const activeCustomers = new Set<string>();
-    for (const q of quotes) {
-        if (q.user_id && new Date(q.created_at).getTime() >= thirtyAgo) activeCustomers.add(q.user_id);
-    }
-    const activeStaff = new Set<string>();
-    let actions30 = 0;
-    for (const a of approvals) {
-        if (new Date(a.created_at).getTime() >= thirtyAgo) {
-            actions30++;
-            if ((a as any).reviewer_id) activeStaff.add((a as any).reviewer_id);
-        }
-    }
+    const pageViews = activityEvents.filter((e: any) => e.event_type === 'page_view');
 
+    const usersSet = new Set<string>();
+    const sessionSet = new Set<string>();
+    for (const e of activityEvents) {
+        if (!e.user_id) continue;
+        usersSet.add(e.user_id);
+        sessionSet.add(`${e.user_id}|${String(e.created_at).slice(0, 10)}`);
+    }
+    const activeUsers = usersSet.size;
+
+    const thirtyAgo = now - 30 * DAY_MS;
+    let reviewActions30 = 0;
+    for (const a of approvals) if (new Date(a.created_at).getTime() >= thirtyAgo) reviewActions30++;
     let enquiries30 = 0;
-    for (const e of enquiries) {
-        if (new Date(e.created_at).getTime() >= thirtyAgo) enquiries30++;
-    }
+    for (const e of enquiries) if (new Date(e.created_at).getTime() >= thirtyAgo) enquiries30++;
+
     const activitySummary = {
-        activeCustomers: activeCustomers.size, 
-        activeStaff: activeStaff.size, 
-        actions: actions30, 
+        activeUsers, 
+        sessions: sessionSet.size, 
+        pageViews: pageViews.length, 
+        actions: reviewActions30, 
         enquiries: enquiries30
     };
 
-    const custCount: Record<string, number> = {};
-    for (const q of quotes) if (q.user_id) custCount[q.user_id] = (custCount[q.user_id] ?? 0) + 1;
-    const topCustomers = Object.entries(custCount)
-        .map(([id, count]) => ({ name: person[id]?.name ?? 'User', company: person[id]?.company ?? null, count }))
+    const userCount: Record<string, number> = {};
+    for (const e of activityEvents) if (e.user_id) userCount[e.user_id] = (userCount[e.user_id] ?? 0) + 1;
+    const topUsers = Object.entries(userCount)
+        .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
-    const staffCount: Record<string, number> = {};
-    for (const a of approvals) {
-        const rid = (a as any).reviewer_id;
-        if (rid) staffCount[rid] = (staffCount[rid] ?? 0) + 1;
+    const pathCount: Record<string, number> = {};
+    for (const e of pageViews) {
+        const label = pageLabel(e.path);
+        pathCount[label] = (pathCount[label] ?? 0) + 1;
     }
-    const staffActivity = Object.entries(staffCount)
-        .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
+    const topPages = Object.entries(pathCount)
+        .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
     const quoteRef: Record<string, string> = {};
     for (const q of quotes) quoteRef[q.id] = (q as any).reference;
 
-    const events: { ts: string; who: string; action: string; detail: string; kind: string }[] = [];
+    const bizEvents: { ts: string; who: string; action: string; detail: string; kind: string }[] = [];
     for (const q of quotes) {
-        events.push({ 
+        bizEvents.push({
             ts: q.created_at, 
             who: person[q.user_id]?.name ?? 'Customer', 
             action: 'submitted request', 
             detail: (q as any).reference ?? '', 
-            kind: 'request' 
+            kind: 'request'
         });
     }
     for (const a of approvals) {
+        if (a.action !== 'closed' && a.action !== 'reopened') continue;
         const rid = (a as any).reviewer_id;
-        events.push({
+        bizEvents.push({
             ts: a.created_at, 
             who: rid ? (person[rid]?.name ?? 'Staff') : 'Staff', 
-            action: a.action === 'closed' ? 'closed request' : (a.action === 'reopened' ? 'reopened request' : String(a.action)), 
+            action: a.action === 'closed' ? 'closed request' : 'reopened request', 
             detail: quoteRef[a.quote_id] ?? '', 
             kind: String(a.action)
         });
     }
     for (const e of enquiries) {
-        events.push({ 
+        bizEvents.push({
             ts: e.created_at, 
             who: (e as any).name || 'Someone', 
             action: 'sent an enquiry', 
@@ -248,8 +266,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             kind: 'enquiry'
         });
     }
-    events.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
-    const recentActivity = events.slice(0, 12);
+    bizEvents.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
+    const recentActivity = bizEvents.slice(0, 10);
 
     const DAYS = 30;
     const todayShift = new Date(now + MYT_OFFSET_MS);
@@ -268,7 +286,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         const dayStartUtc = Math.floor(shifted / DAY_MS) * DAY_MS - MYT_OFFSET_MS;
         const i = dayIndex[dayStartUtc];
         if (i !== undefined) dailyActivity[i].count++;
-    }
+    };
     for (const q of quotes) bump(q.created_at);
     for (const a of approvals) bump(a.created_at);
     for (const e of enquiries) bump(e.created_at);
@@ -286,8 +304,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
         agingList, 
         activitySummary, 
-        topCustomers, 
-        staffActivity, 
+        topUsers, 
+        topPages, 
         recentActivity, 
         dailyActivity
     };
