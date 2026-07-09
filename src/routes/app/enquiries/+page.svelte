@@ -81,13 +81,7 @@
                         {#if e.replied_at}<small class="replied-on">Marked as replied on {when(e.replied_at)}</small>{/if}
                     </div>
                 </div>
-                <a
-                    href={`https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(e.email)}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`}
-                    target="_blank"
-                    rel="noopener"
-                    class="email">
-                    <Mail size={14} /> {e.email}
-                </a>
+                <p class="email"><Mail size={14} /> {e.email}</p>
                 <p class="message">{e.message}</p>
                 <div class="actions">
                     {#if !e.replied_at}
@@ -218,14 +212,13 @@
     .email {
         display: inline-flex;
         align-items: center;
+        margin: 0;
         gap: 6px;
         font-size: 13.5px;
         font-weight: 600;
         color: var(--bme-dark-blue);
         text-decoration: none;
     }
- 
-    .email:hover { text-decoration: underline; }
  
     .message {
         margin: 12px 0;

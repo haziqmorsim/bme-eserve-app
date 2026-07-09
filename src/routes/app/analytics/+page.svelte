@@ -22,6 +22,26 @@
     let maxHandle = $derived(Math.max(1, ...data.handlingPerLevel.map((l: any) => l.avgMs ?? 0)));
     let maxRegion = $derived(Math.max(1, ...data.volumeByRegion.map((r: any) => r.count)));
     let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
+    let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
+    let maxCustomer = $derived(Math.max(1, ...data.topCustomers.map((c: any) => c.count)));
+    let maxStaff = $derived(Math.max(1, ...data.staffActivity.map((s: any) => s.count)));
+
+    const ROLE_LABEL: Record<string, string> = { admin: 'Admin', manager: 'Manager', coo: 'COO', developer: 'Developer', customer: 'Customer' };
+    function roleLabel(r: string | null): string {
+        return r ? (ROLE_LABEL[r] ?? r) : '';
+    }
+
+    function ago(ts: string): string {
+        const diff = Date.now() - new Date(ts).getTime();
+        const m = Math.round(diff / 60000);
+        if (m < 1) return 'just now';
+        if (m < 60) return `${m}m ago`;
+        const h = Math.floor(m / 60);
+        if (h < 24) return `${h}h ago`;
+        const d = Math.floor(h / 24);
+        if (d < 30) return `${d}d ago`;
+        return new Date(ts).toLocaleDateString();
+    }
 </script>
 
 <h1>Analytics</h1>
@@ -157,6 +177,83 @@
             {/if}
         </div>
     </div>
+
+    <div class="card section">
+        <h2>User activity (last 30 days)</h2>
+        <div class="ua-stats">
+            <div class="ua"><span class="ua-n">{data.activitySummary.activeCustomers}</span><span class="ua-l">Active customers</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.activeStaff}</span><span class="ua-l">Active staff</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l">Review actions</span></div>
+            <div class="ua"><span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span></div>
+        </div>
+
+        <h3 class="ua-sub">Daily activity</h3>
+        <div class="spark" role="img" aria-label="Daily activity for the last 14 days">
+            {#each data.dailyActivity as d, i (i)}
+                <div class="spark-col">
+                    <div class="spark-bar" style="height: {Math.round((d.count / maxDaily) * 100)}%" title="{d.label}: {d.count}"></div>
+                    <span class="spark-x">{d.label}</span>
+                </div>
+            {/each}
+        </div>
+    </div>
+
+    <!-- <div class="grid2">
+        <div class="card section">
+            <h2>Most active customers</h2>
+            {#if data.topCustomers.length === 0}
+                <p class="hint">No customer activity yet.</p>
+            {:else}
+                <div class="bars">
+                    {#each data.topCustomers as c, i (i)}
+                        <div class="bar-row2">
+                            <span class="bar-key">{c.name}{#if c.company} &nbsp; ({c.company}){/if}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill green" style="width: {Math.round((c.count / maxCustomer) * 100)}%"></div>
+                            </div>
+                            <span class="bar-val">{c.count}</span>
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+
+        <div class="card section">
+            <h2>Staff activity</h2>
+            {#if data.staffActivity.length === 0}
+                <p class="hint">No staff activity yet.</p>
+            {:else}
+                <div class="bars">
+                    {#each data.staffActivity as st, i (i)}
+                        <div class="bar-row2">
+                            <span class="bar-key">{st.name}{#if st.role} &nbsp; ({roleLabel(st.role)}){/if}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill green" style="width: {Math.round((st.count / maxStaff) * 100)}%"></div>
+                            </div>
+                            <span class="bar-val">{st.count}</span>
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    </div> -->
+
+    <div class="card section">
+        <h2>Recent activity</h2>
+        {#if data.recentActivity.length === 0}
+            <p class="hint">No recent records yet.</p>
+        {:else}
+            <ul class="feed">
+                {#each data.recentActivity as ev, i (i)}
+                    <li class="feed-row">
+                        <span class="feed-dot {ev.kind}"></span>
+                        <span class="feed-text"><strong>{ev.who}</strong> {ev.action} {#if ev.detail}<span class="feed-ref">{ev.detail}</span>{/if}</span>
+                        <span class="feed-time">{ago(ev.ts)}</span>
+                    </li>
+                {/each}
+            </ul>
+        {/if}
+    </div>
 {/if}
 
 <style>
@@ -283,6 +380,13 @@
         gap: 12px;
     }
 
+    .bar-row2 {
+        display: grid;
+        grid-template-columns: 200px 1fr auto;
+        align-items: center;
+        gap: 12px;
+    }
+
     .bar-key {
         font-size: 13px;
         font-weight: 600;
@@ -320,6 +424,7 @@
     .grid2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
+        margin: 0 0 4px;
         gap: 5px;
     }
 
@@ -412,6 +517,112 @@
         color: var(--bme-muted); 
     }
 
+    .ua-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .ua {
+        background: var(--bme-sky);
+        border-radius: 10px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .ua-n { font-size: 24px; font-weight: 700; color: var(--bme-dark-blue); }
+    .ua-l { font-size: 12.5px; color: var(--bme-muted); }
+
+    .ua-sub {
+        margin: 6px 0 10px;
+        color: var(--bme-ink);
+    }
+
+    .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 130px;
+        padding-top: 8px;
+    }
+
+    .spark-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+        gap: 6px;
+    }
+
+    .spark-bar {
+        width: 100%;
+        max-width: 26px;
+        min-height: 3px;
+        background: var(--bme-dark-blue);
+        border-radius: 4px 4px 0 0;
+        transition: height var(--t-med) var(--ease);
+    }
+
+    .spark-x {
+        font-size: 10.5px;
+        color: var(--bme-muted);
+        white-space: nowrap;
+    }
+
+    .bar-fill.green { background: var(--bme-green); }
+
+    .feed {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .feed-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .feed-row:first-child { border-top: none; }
+
+    .feed-dot {
+        flex: 0 0 auto;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--bme-muted);
+    }
+
+    .feed-dot.request { background: var(--bme-dark-blue); }
+    .feed-dot.closed { background: var(--bme-green); }
+    .feed-dot.reopened { background: var(--bme-orange); }
+    .feed-dot.enquiry { background: var(--bme-teal); }
+
+    .feed-text {
+        flex: 1;
+        font-size: 13.5px;
+        color: var(--bme-ink);
+        min-width: 0;
+    }
+
+    .feed-ref { color: var(--bme-dark-blue); font-weight: 600; }
+
+    .feed-time {
+        flex: 0 0 auto;
+        font-size: 12px;
+        color: var(--bme-muted);
+    }
+
     @media (max-width: 860px) {
         .grid2 {
             grid-template-columns: 1fr;
@@ -420,6 +631,7 @@
 
     @media (max-width: 480px) {
         .stats {
+            grid-template-columns: repeat(2, 1fr);
             gap: 6px;
         }
 
@@ -449,6 +661,7 @@
             grid-template-columns: auto 1fr; 
             row-gap: 6px; 
             column-gap: 0; 
+            align-items: start;
         }
 
         .ag-l, .ag-t {
@@ -456,16 +669,32 @@
         }
 
         .ag-meta { 
-            grid-column: 1 / -1; 
+            grid-column: 2; 
         }
 
         .ag-sla { 
-            grid-column: 1 / -1; 
+            grid-column: 2; 
         }
 
         .bar-e {
             font-size: 13px;
             font-weight: 600;
+        }
+    }
+    
+    @media (max-width: 720px) {
+        .ua-stats { 
+            grid-template-columns: repeat(2, 1fr); 
+        }
+
+        .spark { 
+            height: 104px; 
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .spark-x { 
+            font-size: 9px; 
         }
     }
 </style>

@@ -36,24 +36,30 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const { profile } = await parent();
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Staff only');
 
-    const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }] = await Promise.all([
+    const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }, { data: enquiryRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
-        supabase.from('quote_approvals').select('quote_id, level, action, created_at'), 
-        supabase.from('regions').select('id, name')
+        supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
+        supabase.from('regions').select('id, name'), 
+        supabase.from('enquiries').select('id, name, created_at')
     ]);
 
     const quotes = quoteRows ?? [];
     const approvals = approvalRows ?? [];
     const regions = regionRows ?? [];
+    const enquiries = enquiryRows ?? [];
 
     const RegionMap: Record<string, string> = {};
     for (const r of regions) RegionMap[r.id] = r.name;
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
+    const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
+    const personIds = [...new Set([...ownerIds, ...reviewerIds])];
     const ownerRegion: Record<string, string | null> = {};
-    if (ownerIds.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, region_id').in('id', ownerIds);
+    const person: Record<string, { name: string; company: string | null; role: string | null }> = {};
+    if (personIds.length) {
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role, region_id').in('id', personIds);
         for (const p of profs ?? []) {
             ownerRegion[p.id] = p.region_id ? (RegionMap[p.region_id] ?? null) : null;
+            person[p.id] = { name: p.full_name || 'User', company: p.company ?? null, role: p.role ?? null };
         } 
     }
 
@@ -123,7 +129,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const volumeByRegion = Object.entries(regionCount)
         .map(([name, count]) => ({ name, count }))
-        .sort ((a, b) => b.count - a.count);
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     const boilerCount: Record<string, number> = {};
     for (const q of quotes) {
@@ -132,7 +138,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const volumeByBoiler = Object.entries(boilerCount)
         .map(([code, count]) => ({ code, count }))
-        .sort((a, b) => b.count - a.count)
+        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
         .slice(0, 10);
 
     const latestApproval: Record<string, string> = {};
@@ -166,6 +172,107 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     agingList.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 
+    const THIRTY_MS = 30 * DAY_MS;
+    const thirtyAgo = now - THIRTY_MS;
+
+    const activeCustomers = new Set<string>();
+    for (const q of quotes) {
+        if (q.user_id && new Date(q.created_at).getTime() >= thirtyAgo) activeCustomers.add(q.user_id);
+    }
+    const activeStaff = new Set<string>();
+    let actions30 = 0;
+    for (const a of approvals) {
+        if (new Date(a.created_at).getTime() >= thirtyAgo) {
+            actions30++;
+            if ((a as any).reviewer_id) activeStaff.add((a as any).reviewer_id);
+        }
+    }
+
+    let enquiries30 = 0;
+    for (const e of enquiries) {
+        if (new Date(e.created_at).getTime() >= thirtyAgo) enquiries30++;
+    }
+    const activitySummary = {
+        activeCustomers: activeCustomers.size, 
+        activeStaff: activeStaff.size, 
+        actions: actions30, 
+        enquiries: enquiries30
+    };
+
+    const custCount: Record<string, number> = {};
+    for (const q of quotes) if (q.user_id) custCount[q.user_id] = (custCount[q.user_id] ?? 0) + 1;
+    const topCustomers = Object.entries(custCount)
+        .map(([id, count]) => ({ name: person[id]?.name ?? 'User', company: person[id]?.company ?? null, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 6);
+
+    const staffCount: Record<string, number> = {};
+    for (const a of approvals) {
+        const rid = (a as any).reviewer_id;
+        if (rid) staffCount[rid] = (staffCount[rid] ?? 0) + 1;
+    }
+    const staffActivity = Object.entries(staffCount)
+        .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 6);
+
+    const quoteRef: Record<string, string> = {};
+    for (const q of quotes) quoteRef[q.id] = (q as any).reference;
+
+    const events: { ts: string; who: string; action: string; detail: string; kind: string }[] = [];
+    for (const q of quotes) {
+        events.push({ 
+            ts: q.created_at, 
+            who: person[q.user_id]?.name ?? 'Customer', 
+            action: 'submitted request', 
+            detail: (q as any).reference ?? '', 
+            kind: 'request' 
+        });
+    }
+    for (const a of approvals) {
+        const rid = (a as any).reviewer_id;
+        events.push({
+            ts: a.created_at, 
+            who: rid ? (person[rid]?.name ?? 'Staff') : 'Staff', 
+            action: a.action === 'closed' ? 'closed request' : (a.action === 'reopened' ? 'reopened request' : String(a.action)), 
+            detail: quoteRef[a.quote_id] ?? '', 
+            kind: String(a.action)
+        });
+    }
+    for (const e of enquiries) {
+        events.push({ 
+            ts: e.created_at, 
+            who: (e as any).name || 'Someone', 
+            action: 'sent an enquiry', 
+            detail: '', 
+            kind: 'enquiry'
+        });
+    }
+    events.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
+    const recentActivity = events.slice(0, 12);
+
+    const DAYS = 30;
+    const todayShift = new Date(now + MYT_OFFSET_MS);
+    todayShift.setUTCHours(0, 0, 0, 0);
+    const todayMidnightUtc = todayShift.getTime() - MYT_OFFSET_MS;
+    const dailyActivity: { label: string; count: number }[] = [];
+    const dayIndex: Record<number, number> = {};
+    for (let i = DAYS - 1; i >= 0; i--) {
+        const dayStartUtc = todayMidnightUtc - i * DAY_MS;
+        const d = new Date(dayStartUtc + MYT_OFFSET_MS);
+        dayIndex[dayStartUtc] = dailyActivity.length;
+        dailyActivity.push({ label: `${d.getUTCDate()}/${d.getUTCMonth() + 1}`, count: 0 });
+    }
+    const bump = (ts: string) => {
+        const shifted = new Date(ts).getTime() + MYT_OFFSET_MS;
+        const dayStartUtc = Math.floor(shifted / DAY_MS) * DAY_MS - MYT_OFFSET_MS;
+        const i = dayIndex[dayStartUtc];
+        if (i !== undefined) dailyActivity[i].count++;
+    }
+    for (const q of quotes) bump(q.created_at);
+    for (const a of approvals) bump(a.created_at);
+    for (const e of enquiries) bump(e.created_at);
+
     return {
         title: 'Analytics', 
         total: quotes.length, 
@@ -177,6 +284,11 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         volumeByRegion, 
         volumeByBoiler, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
-        agingList
+        agingList, 
+        activitySummary, 
+        topCustomers, 
+        staffActivity, 
+        recentActivity, 
+        dailyActivity
     };
 };

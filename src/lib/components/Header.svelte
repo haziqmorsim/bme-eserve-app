@@ -73,6 +73,7 @@
 
     <div class="side-body">
         <nav class="side-group top">
+            <p class="side-greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             <a href="/app" class="side-link" class:active={$page.url.pathname === '/app'} onclick={close}>Home</a>
 
             <a href="/app/quotes" class="side-link" class:active={$page.url.pathname === '/app/quotes'} onclick={close}>
@@ -227,6 +228,12 @@
     .signout {
         height: 100%;
         font-size: 14px;
+    }
+    .side-greeting {
+        font-weight: 600;
+        color: var(--bme-muted);
+        margin: 0 0 8px 12px;
+        align-self: start;
     }
 
     .side-bell { 
