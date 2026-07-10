@@ -227,7 +227,7 @@
     .pn { 
         font-size: 12px; 
         font-weight: 700; 
-        color: var(--bme-green-darker); 
+        color: var(--bme-darker-green); 
     }
 
     .pname { 

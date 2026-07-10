@@ -209,7 +209,7 @@
                     {#each data.topUsers as u, i (i)}
                         <div class="bar-row2">
                             <span class="bar-key">{u.name}{#if u.role} &nbsp; ({roleLabel(u.role)}){/if}</span>
-                            <div class="bar-track">
+                            <div class="bar-track-green">
                                 <div class="bar-fill green" style="width: {Math.round((u.count / maxUser) * 100)}%"></div>
                             </div>
                             <span class="bar-val">{u.count}</span>
@@ -228,7 +228,7 @@
                     {#each data.topPages as pg, i (i)}
                         <div class="bar-row2">
                             <span class="bar-key">{pg.label}</span>
-                            <div class="bar-track">
+                            <div class="bar-track-green">
                                 <div class="bar-fill green" style="width: {Math.round((pg.count / maxPage) * 100)}%"></div>
                             </div>
                             <span class="bar-val">{pg.count}</span>
@@ -409,6 +409,13 @@
         overflow: hidden;
     }
 
+    .bar-track-green {
+        height: 14px;
+        background: var(--bme-light-green);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
     .bar-fill {
         height: 100%;
         border-radius: 999px;
@@ -421,7 +428,7 @@
     }
 
     .bar-fill.green { 
-        background: var(--bme-green); 
+        background: var(--bme-darker-green); 
     }
 
     .bar-val {
@@ -512,7 +519,6 @@
         content: counter(ag) ".";
         font-weight: 700;
         color: var(--bme-muted);
-        font-size: 13px;
         min-width: 20px;
     }
 
@@ -535,7 +541,7 @@
     }
 
     .ua {
-        background: var(--bme-sky);
+        background: var(--bme-light-green);
         border-radius: 10px;
         padding: 14px;
         display: flex;
@@ -544,7 +550,7 @@
         text-align: center;
     }
 
-    .ua-n { font-size: 24px; font-weight: 700; color: var(--bme-dark-blue); }
+    .ua-n { font-size: 24px; font-weight: 700; color: var(--bme-darker-green); }
     .ua-l { font-size: 12.5px; color: var(--bme-muted); }
 
     .ua-sub {
@@ -574,7 +580,7 @@
         width: 100%;
         max-width: 26px;
         min-height: 3px;
-        background: var(--bme-dark-blue);
+        background: var(--bme-darker-green);
         border-radius: 4px 4px 0 0;
         transition: height var(--t-med) var(--ease);
     }
@@ -667,10 +673,33 @@
             gap: 8px;
         }
 
+        .bar-row2 {
+            grid-template-columns: 1fr auto;
+            grid-template-areas:
+                "key key"
+                "track val";
+            row-gap: 6px;
+            column-gap: 12px;
+            align-items: center;
+        }
+
+        .bar-row2 .bar-key {
+            grid-area: key;
+            white-space: normal;
+        }
+
+        .bar-row2 .bar-track-green {
+            grid-area: track;
+        }
+
+        .bar-row2 .bar-val {
+            grid-area: val;
+        }
+
         .ag-row { 
-            grid-template-columns: auto 1fr; 
+            grid-template-columns: auto auto 1fr; 
             row-gap: 6px; 
-            column-gap: 0; 
+            column-gap: 8px; 
             align-items: start;
         }
 
@@ -678,12 +707,19 @@
             font-size: 12px;
         }
 
+        .ag-ref {
+            grid-column: 2 / -1;
+        }
+
         .ag-meta { 
             grid-column: 2; 
+            align-self: center;
         }
 
         .ag-sla { 
-            grid-column: 2; 
+            grid-column: 3;
+            justify-self: start;
+            align-self: center; 
         }
     }
     

@@ -498,7 +498,7 @@
     .loy-title { 
         margin: 0; 
         font-size: 16px; 
-        color: var(--bme-green-darker); 
+        color: var(--bme-darker-green); 
     }
     
     .loy-sub { 
@@ -555,7 +555,7 @@
         margin: 14px 0 0; 
         font-size: 14px; 
         font-weight: 600; 
-        color: var(--bme-green-dark); 
+        color: var(--bme-dark-green); 
     }
 
     .loy-tiers { 
@@ -606,7 +606,7 @@
         font-weight: 700; 
         font-size: 13px;
         letter-spacing: 0.03em; 
-        color: var(--bme-green-darker); 
+        color: var(--bme-darker-green); 
         background: var(--bme-mint);
         border: 1px dashed var(--bme-green); 
         border-radius: 8px; 
