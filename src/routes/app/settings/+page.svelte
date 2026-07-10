@@ -25,7 +25,7 @@
     </section>
 {:else}
     <section>
-        <UserManager users={data.users} regions={data.regions} supabase={data.supabase} />
+        <UserManager users={data.users} regions={data.regions} boilers={data.boilers} assignments={data.assignments} supabase={data.supabase} />
     </section>
 {/if}
 

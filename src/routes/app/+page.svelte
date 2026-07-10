@@ -7,7 +7,7 @@
 </script>
 
 <div class="layout">
-    <RegionList regions={data.regions} activeBoilerId={data.boilerId} />
+    <RegionList regions={data.regions} activeBoilerId={data.boilerId} customerNoBoilers={data.customerNoBoilers} />
 
     <div class="content">
         {#if !data.boiler}

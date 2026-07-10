@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Region, Boiler } from "$lib/types";
-    let { regions, activeBoilerId } = $props<{ regions: Region[]; activeBoilerId: string | null }>();
+    let { regions, activeBoilerId, customerNoBoilers = false } = $props<{ regions: Region[]; activeBoilerId: string | null; customerNoBoilers?: boolean }>();
 
     let search = $state('');
 
@@ -22,30 +22,40 @@
 </script>
 
 <aside class="card sidebar">
-    <input type="search" class="boiler-search" placeholder="Search boilers..." bind:value={search} />
-    {#each filtered as region (region.id)}
-    <details class="region">
-        <summary>{region.name}</summary>
-        <ul>
-            {#each region.boilers ?? [] as boiler (boiler.id)}
-            <li>
-                <a href={`/app?boiler=${boiler.id}&tab=dashboard`} class:active={boiler.id === activeBoilerId}>
-                <strong>{boiler.code}</strong>
-                {#if boiler.name}<span>{boiler.name}</span>{/if}
-                </a>
-            </li>
-            {/each}
-        </ul>
-    </details>
-    {/each}
-    {#if filtered.length === 0}
-        <p class="no-results">No boilers found.</p>
+    {#if customerNoBoilers}
+        <p class="no-boilers">No boilers assigned yet.</p>
+    {:else}
+        <input type="search" class="boiler-search" placeholder="Search boilers..." bind:value={search} />
+        {#each filtered as region (region.id)}
+        <details class="region">
+            <summary>{region.name}</summary>
+            <ul>
+                {#each region.boilers ?? [] as boiler (boiler.id)}
+                <li>
+                    <a href={`/app?boiler=${boiler.id}&tab=dashboard`} class:active={boiler.id === activeBoilerId}>
+                    <strong>{boiler.code}</strong>
+                    {#if boiler.name}<span>{boiler.name}</span>{/if}
+                    </a>
+                </li>
+                {/each}
+            </ul>
+        </details>
+        {/each}
+        {#if filtered.length === 0}
+            <p class="no-results">No boilers found.</p>
+        {/if}
     {/if}
 </aside>
 
 <style>
     .boiler-search {
         margin-bottom: 14px;
+    }
+
+    .no-boilers {
+        color: var(--bme-muted);
+        font-size: 13px;
+        text-align: center;
     }
 
     .no-results {
