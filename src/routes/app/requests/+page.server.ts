@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         }
     }
 
-    const { data: regions } = await supabase.from('regions').select('id, name').order('sort_order');
+    const { data: regions } = await supabase.from('regions').select('id, name').order('name');
 
     const withMeta = list.map((q) => ({
         ...q,

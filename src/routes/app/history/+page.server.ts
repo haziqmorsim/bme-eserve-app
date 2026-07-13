@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     const role = profile?.role;
     const isStaff = role === 'admin' || role === 'manager' || role === 'coo' || role === 'developer';
 
-    const { data: regionRows } = await supabase.from('regions').select('id, name').order('sort_order');
+    const { data: regionRows } = await supabase.from('regions').select('id, name').order('name');
     const regions = regionRows ?? [];
     const regionMap: Record<string, string> = {};
     for (const r of regions) regionMap[r.id] = r.name;

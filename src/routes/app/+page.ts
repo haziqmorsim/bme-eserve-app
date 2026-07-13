@@ -17,7 +17,7 @@ export const load: PageLoad = async ({ parent, url }) => {
     const { data: regionsRaw } = await supabase
         .from('regions')
         .select('id, name, sort_order, boilers(id, code, name, region_id)')
-        .order('sort_order', { ascending: true });
+        .order('name', { ascending: true });
 
     let regions = (regionsRaw ?? []) as Region[];
     if (assignedIds) {
@@ -48,7 +48,7 @@ export const load: PageLoad = async ({ parent, url }) => {
             .from('components')
             .select('*')
             .eq('boiler_id', boilerId)
-            .order('sort_order', { ascending: true });
+            .order('name', { ascending: true });
         components = c ?? [];
     }
 

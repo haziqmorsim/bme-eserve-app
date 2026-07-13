@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Admins only');
 
     const [regions, boilers, components, parts, users, assignments, lastSignIns] = await Promise.all([
-        supabase.from('regions').select('id, name').order('sort_order'),
+        supabase.from('regions').select('id, name').order('name'),
         supabase.from('boilers').select('*, regions(name)').order('code'),
         supabase.from('components').select('id, name, boiler_id').order('name'),
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
