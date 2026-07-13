@@ -1,8 +1,29 @@
 <script lang="ts">
     import type { Region, Boiler } from "$lib/types";
-    let { regions, activeBoilerId, customerNoBoilers = false } = $props<{ regions: Region[]; activeBoilerId: string | null; customerNoBoilers?: boolean }>();
+    import { logActivity } from "$lib/activity";
+    let { regions, activeBoilerId, customerNoBoilers = false, supabase = null, profile = null } = $props<{ regions: Region[]; activeBoilerId: string | null; customerNoBoilers?: boolean; supabase?: any; profile?: any }>();
 
     let search = $state('');
+
+    let searchLogged = false;
+    let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function onSearchInput() {
+        clearTimeout(searchTimer);
+        if (!search.trim()) {
+            searchLogged = false;
+            return;
+        }
+        if (searchLogged) return;
+        searchTimer = setTimeout(() => {
+            searchLogged = true;
+            logActivity(
+                supabase,
+                profile ? { id: profile.id, role: profile.role } : null,
+                { event_type: 'page_view', path: '/app', meta: { trigger: 'boiler_search' } }
+            );
+        }, 700);
+    }
 
     let filtered = $derived(
         regions.map((region: Region) => {
@@ -25,7 +46,7 @@
     {#if customerNoBoilers}
         <p class="no-boilers">No boilers assigned yet.</p>
     {:else}
-        <input type="search" class="boiler-search" placeholder="Search boilers..." bind:value={search} />
+        <input type="search" class="boiler-search" placeholder="Search boilers..." bind:value={search} oninput={onSearchInput} />
         {#each filtered as region (region.id)}
         <details class="region">
             <summary>{region.name}</summary>

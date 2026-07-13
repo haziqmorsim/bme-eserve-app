@@ -1,7 +1,21 @@
 <script lang="ts">
     import { enhance } from "$app/forms";
+    import { untrack } from "svelte";
+
     let { form } = $props();
     let loading = $state(false);
+
+    let email = $state(untrack(() => form?.email ?? ''));
+    let password = $state('');
+    let fieldErr = $state<Record<string, string>>({});
+
+    function validate(): boolean {
+        const e: Record<string, string> = {};
+        if (!email.trim()) e.email = 'E-mail is required.';
+        if (!password) e.password = 'Password is required.';
+        fieldErr = e;
+        return Object.keys(e).length === 0;
+    }
 </script>
 
 <div class="auth">
@@ -10,7 +24,11 @@
         <h1>BME e-Serve App</h1>
         <p class="sub">Sign In</p>
 
-        <form method="POST" use:enhance={() => {
+        <form method="POST" use:enhance={({ cancel }) => {
+            if (!validate()) {
+                cancel();
+                return;
+            }
             loading = true;
             return async ({ update }) => {
                 await update();
@@ -20,11 +38,13 @@
         >
             <label>
                 <span>E-mail</span>
-                <input type="email" name="email" value={form?.email ?? ''} required autocomplete="username" />
+                <input type="email" name="email" bind:value={email} autocomplete="username" class:invalid={fieldErr.email} />
+                {#if fieldErr.email}<span class="field-err">{fieldErr.email}</span>{/if}
             </label>
             <label>
                 <span>Password</span>
-                <input type="password" name="password" required autocomplete="current-password" />
+                <input type="password" name="password" bind:value={password} autocomplete="current-password" class:invalid={fieldErr.password} />
+                {#if fieldErr.password}<span class="field-err">{fieldErr.password}</span>{/if}
             </label>
 
             <div class="forgot"><a href="/forgot-password">Forgot password?</a></div>
@@ -90,6 +110,22 @@
         color: var(--bme-ink);
     }
 
+    .field-err {
+        display: block;
+        margin-top: 4px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--bme-red);
+    }
+
+    input.invalid {
+        border-color: var(--bme-red);
+    }
+
+    input.invalid:focus {
+        outline-color: var(--bme-red);
+    }
+
     .err {
         color: var(--bme-red);
         font-size: 14px;
@@ -135,7 +171,12 @@
     }
 
     @media (max-width: 480px) {
-        .panel { padding: 26px 20px; }
-        .logo { height: 72px; }
+        .panel { 
+            padding: 26px 20px; 
+        }
+        
+        .logo { 
+            height: 72px; 
+        }
     }
 </style>

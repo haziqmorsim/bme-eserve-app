@@ -18,6 +18,14 @@
         return ROLES.find((x) => x.value === r)?.label ?? r ?? '—';
     }
 
+    function lastSignIn(ts: string | null | undefined): string {
+        if (!ts) return '—';
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return '—';
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    }
+
     let assignedByUser = $derived.by(() => {
         const m: Record<string, string[]> = {};
         for (const a of assignments) (m[a.user_id] ??= []).push(a.boiler_id);
@@ -40,6 +48,7 @@
     let busy = $state(false);
     let err = $state('');
     let form = $state<any>({});
+    let fieldErr = $state<Record<string, string>>({});
 
     let filtered = $derived(users.filter((u: any) => {
         const q = search.trim().toLowerCase();
@@ -55,18 +64,18 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { full_name: '', email: '', password: '', phone: '', company: '', role: 'customer', region_id: regions[0]?.id ?? '', boiler_ids: [] };
+        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', region_id: '', boiler_ids: [] };
     }
-    function startNew() { form = blank(); err = ''; editing = 'new'; }
+    function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
     function startEdit(u: any) {
         form = {
             full_name: u.full_name ?? '', email: u.email ?? '', password: '',
-            phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? 'customer',
+            phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? '',
             region_id: u.region_id ?? '', boiler_ids: [...(assignedByUser[u.id] ?? [])]
         };
-        err = ''; editing = u.id;
+        err = ''; fieldErr = {}; editing = u.id;
     }
-    function cancel() { editing = null; err = ''; }
+    function cancel() { editing = null; err = ''; fieldErr = {}; }
 
     async function fnError(error: any, resp: any, fallback: string): Promise<string> {
         if (resp?.error) return resp.error;
@@ -77,9 +86,24 @@
         return error?.message ?? fallback;
     }
 
+    function validate(): boolean {
+        const e: Record<string, string> = {};
+        if (!form.full_name?.toString().trim()) e.full_name = 'Full name is required.';
+        if (!form.email?.toString().trim()) e.email = 'E-mail is required.';
+        if (editing === 'new' && !form.password) e.password = 'Temporary password is required.';
+        if (!form.company?.toString().trim()) e.company = 'Company is required.';
+        if (!form.role) e.role = 'Role is required.';
+        if (!form.region_id) e.region_id = 'Region is required.';
+        if ((form.role || 'customer') === 'customer' && form.region_id) {
+            const chosen = (form.boiler_ids ?? []).filter((id: string) => regionBoilers.some((b: any) => b.id === id));
+            if (chosen.length === 0) e.boiler_ids = 'At least one boiler is required.';
+        }
+        fieldErr = e;
+        return Object.keys(e).length === 0;
+    }
+
     async function save() {
-        if (!form.email?.trim()) { err = 'Email is required.'; return; }
-        if (editing === 'new' && !form.password) { err = 'An initial password is required for a new user.'; return; }
+        if (!validate()) return;
         busy = true; err = '';
 
         const action = editing === 'new' ? 'create' : 'update';
@@ -126,7 +150,7 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Region</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Region</th><th>Last Sign In</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as u (u.id)}
@@ -137,6 +161,7 @@
                         <td style="text-align: center; vertical-align: middle;">{u.company ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{roleLabel(u.role)}</td>
                         <td style="text-align: center; vertical-align: middle;">{u.regions?.name ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{lastSignIn(u.last_sign_in_at)}</td>
                         <td>
                             <div class="adm-actions">
                                 <button class="adm-link" onclick={() => startEdit(u)}>Edit</button>
@@ -157,31 +182,40 @@
 {#if editing !== null}
     <Modal title={editing === 'new' ? 'Add User' : 'Edit User'} onclose={cancel}>
         <div class="adm-form">
-            <label>Full Name <span class="required">*</span><input bind:value={form.full_name} /></label>
-            <label>Email <span class="required">*</span><input type="email" bind:value={form.email} /></label>
+            <label>Full Name <span class="required">*</span><input bind:value={form.full_name} class:invalid={fieldErr.full_name} />
+                {#if fieldErr.full_name}<span class="field-err">{fieldErr.full_name}</span>{/if}
+            </label>
+            <label>Email <span class="required">*</span><input type="email" bind:value={form.email} class:invalid={fieldErr.email} />
+                {#if fieldErr.email}<span class="field-err">{fieldErr.email}</span>{/if}
+            </label>
             {#if editing === 'new'}
-                <label>Initial Password <span class="required">*</span><input type="text" bind:value={form.password} placeholder="Temporary password" /></label>
+                <label>Temporary Password <span class="required">*</span><input type="text" bind:value={form.password} class:invalid={fieldErr.password} />
+                    {#if fieldErr.password}<span class="field-err">{fieldErr.password}</span>{/if}
+                </label>
             {/if}
-            <label><span>Phone</span><input bind:value={form.phone} placeholder="+60..." /></label>
-            <label><span>Company</span><input bind:value={form.company} /></label>
+            <label><span>Phone Number</span><input bind:value={form.phone} placeholder="+60..." /></label>
+            <label>Company Name <span class="required">*</span><input bind:value={form.company} class:invalid={fieldErr.company} />
+                {#if fieldErr.company}<span class="field-err">{fieldErr.company}</span>{/if}
+            </label>
             <label>Role <span class="required">*</span>
-                <select bind:value={form.role}>
+                <select bind:value={form.role} class:invalid={fieldErr.role}>
                     {#each ROLES as r (r.value)}<option value={r.value}>{r.label}</option>{/each}
                 </select>
+                {#if fieldErr.role}<span class="field-err">{fieldErr.role}</span>{/if}
             </label>
-            <label><span>Region</span>
-                <select bind:value={form.region_id}>
-                    <option value="">— none —</option>
+            <label>Region <span class="required">*</span>
+                <select bind:value={form.region_id} class:invalid={fieldErr.region_id}>
                     {#each regions as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
                 </select>
+                {#if fieldErr.region_id}<span class="field-err">{fieldErr.region_id}</span>{/if}
             </label>
             {#if (form.role || 'customer') === 'customer'}
                 <div class="boiler-field">
-                    <span class="bf-label">Boilers</span>
+                    <span class="bf-label">Boiler(s) <span class="required">*</span></span>
                     {#if !form.region_id}
-                        <p class="boiler-hint">No boilers in this region yet.</p>
+                        <p class="boiler-hint">Please select a region.</p>
                     {:else}
-                        <div class="boiler-picker">
+                        <div class="boiler-picker" class:invalid={fieldErr.boiler_ids}>
                             {#each regionBoilers as b (b.id)}
                                 <label class="boiler-item">
                                     <input type="checkbox" checked={(form.boiler_ids ?? []).includes(b.id)} onchange={() => toggleBoiler(b.id)} />
@@ -191,6 +225,7 @@
                         </div>
                         <p class="boiler-hint">{(form.boiler_ids ?? []).filter((id: string) => regionBoilers.some((b: any) => b.id === id)).length} selected.</p>
                     {/if}
+                    {#if fieldErr.boiler_ids}<span class="field-err">{fieldErr.boiler_ids}</span>{/if}
                 </div>
             {/if}
             {#if err}<p class="adm-err">{err}</p>{/if}
@@ -228,6 +263,10 @@
         color: var(--bme-ink);
     }
 
+    .boiler-picker.invalid {
+        border-color: var(--bme-red);
+    }
+
     .boiler-picker {
         display: flex;
         flex-direction: column;
@@ -256,7 +295,7 @@
     }
 
     .boiler-hint {
-        margin: 0;
+        margin: 5px 0 0;
         font-size: 12.5px;
         color: var(--bme-muted);
     }

@@ -437,37 +437,6 @@ select {
     display: inline !important;
 }
 
-@media (max-width: 640px) {
-    .card table { 
-        display: block; 
-        overflow-x: auto; 
-        white-space: nowrap; 
-    }
-
-    h1 { 
-        font-size: 22px; 
-    }
-
-    h2 {
-        font-size: 20px;
-    }
-
-    .adm-form { 
-        grid-template-columns: 1fr; 
-    }
-
-    .adm-table { 
-        display: block; 
-        overflow-x: auto; 
-        white-space: nowrap; 
-    }
-
-    .adm-search { 
-        max-width: none; 
-        flex: 1; 
-    }
-}
-
 button,
 .btn-primary,
 .btn-ghost,
@@ -509,6 +478,33 @@ input:focus, select:focus, textarea:focus {
     transition: box-shadow var(--t-med) var(--ease), transform var(--t-med) var(--ease);
 }
 
+.bme-animate-in { 
+    animation: bmeFadeInUp var(--t-med) var(--ease) both; 
+}
+
+.bme-pop-in { 
+    animation: bmePopIn var(--t-med) var(--ease) both; 
+}
+
+.field-err { 
+    display: block; 
+    margin-top: 4px; 
+    font-size: 12.5px; 
+    font-weight: 600; 
+    color: var(--bme-red); 
+}
+
+.adm-form .invalid, 
+.adm-form input.invalid, 
+.adm-form select.invalid, 
+.adm-form textarea.invalid { 
+    border-color: var(--bme-red); 
+}
+
+.adm-form .invalid:focus { 
+    outline-color: var(--bme-red); 
+}
+
 @keyframes bmeFadeInUp {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: none; }
@@ -526,12 +522,35 @@ input:focus, select:focus, textarea:focus {
     to   { transform: scaleX(1); }
 }
 
-.bme-animate-in { 
-    animation: bmeFadeInUp var(--t-med) var(--ease) both; 
-}
+@media (max-width: 640px) {
+    .card table { 
+        display: block; 
+        overflow-x: auto; 
+        white-space: nowrap; 
+    }
 
-.bme-pop-in { 
-    animation: bmePopIn var(--t-med) var(--ease) both; 
+    h1 { 
+        font-size: 22px; 
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .adm-form { 
+        grid-template-columns: 1fr; 
+    }
+
+    .adm-table { 
+        display: block; 
+        overflow-x: auto; 
+        white-space: nowrap; 
+    }
+
+    .adm-search { 
+        max-width: none; 
+        flex: 1; 
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -30,8 +30,10 @@
     });
 
     afterNavigate((nav) => {
-        const path = nav.to?.url.pathname;
+        const url = nav.to?.url;
+        const path = url?.pathname;
         if (!path || !path.startsWith('/app')) return;
+        if (path === '/app' && !url?.searchParams.has('boiler')) return;
         logActivity(
             data.supabase,
             data.profile ? { id: data.profile.id, role: data.profile.role } : null,

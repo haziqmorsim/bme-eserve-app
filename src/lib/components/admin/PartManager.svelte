@@ -17,6 +17,7 @@
     let busy = $state(false);
     let err = $state('');
     let form = $state<any>({});
+    let fieldErr = $state<Record<string, string>>({});
     let uploading = $state(false);
     let fileInput = $state<HTMLInputElement | null>(null);
 
@@ -37,12 +38,12 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { boiler_id: boilers[0]?.id ?? '', component_id: '', part_number: '', name: '', description: '', price: '', image_url: '', stock_quantity: 0 };
+        return { boiler_id: '', component_id: '', part_number: '', name: '', description: '', price: '', image_url: '', stock_quantity: 0 };
     }
     function startNew() {
         form = blank();
-        form.component_id = components.find((c: any) => c.boiler_id === form.boiler_id)?.id ?? '';
-        err = ''; editing = 'new';
+        form.component_id = '';
+        err = ''; fieldErr = {}; editing = 'new';
     }
     function startEdit(p: any) {
         form = {
@@ -50,18 +51,33 @@
             part_number: p.part_number, name: p.name, description: p.description ?? '',
             price: p.price ?? '', image_url: p.image_url ?? '', stock_quantity: p.stock_quantity ?? 0
         };
-        err = ''; editing = p.id;
+        err = ''; fieldErr = {}; editing = p.id;
     }
-    function cancel() { editing = null; err = ''; }
+    function cancel() { editing = null; err = ''; fieldErr = {}; }
     function onBoilerChange() {
-        form.component_id = components.find((c: any) => c.boiler_id === form.boiler_id)?.id ?? '';
+        form.component_id = '';
+    }
+
+    function validate(): boolean {
+        const e: Record<string, string> = {};
+        if (!form.boiler_id) e.boiler_id = 'Boiler is required.';
+        if (!form.component_id) e.component_id = 'Component is required.';
+        if (!form.part_number?.toString().trim()) e.part_number = 'Part number is required.';
+        if (!form.name?.toString().trim()) e.name = 'Part name is required.';
+        if (form.price === '' || form.price === null || form.price === undefined) {
+            e.price = 'Price is required.';
+        } else {
+            const p = Number(form.price);
+            if (isNaN(p) || p < 0) e.price = 'Price must be a valid non-negative number.';
+        }
+        if (!form.image_url) e.image_url = 'Part image is required.';
+        fieldErr = e;
+        return Object.keys(e).length === 0;
     }
 
     async function save() {
-        if (!form.component_id) { err = 'Pick a boiler that has a component, then choose the component.'; return; }
-        if (!form.part_number?.trim() || !form.name?.trim()) { err = 'Part number and name are required.'; return; }
-        const price = form.price === '' ? null : Number(form.price);
-        if (price !== null && (isNaN(price) || price < 0)) { err = 'Price must be a valid non-negative number.'; return; }
+        if (!validate()) return;
+        const price = Number(form.price);
         const qty = Math.max(0, Number(form.stock_quantity) || 0);
 
         busy = true; err = '';
@@ -163,24 +179,32 @@
     <Modal title={editing === 'new' ? 'Add Part' : 'Edit Part'} onclose={cancel}>
         <div class="adm-form">
             <label>Boiler <span class="required">*</span>
-                <select bind:value={form.boiler_id} onchange={onBoilerChange}>
+                <select bind:value={form.boiler_id} onchange={onBoilerChange} class:invalid={fieldErr.boiler_id}>
                     {#each boilers as b (b.id)}<option value={b.id}>{b.code}</option>{/each}
                 </select>
+                {#if fieldErr.boiler_id}<span class="field-err">{fieldErr.boiler_id}</span>{/if}
             </label>
             <label>Component <span class="required">*</span>
-                <select bind:value={form.component_id}>
+                <select bind:value={form.component_id} class:invalid={fieldErr.component_id}>
                     {#each formComponents as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
                 </select>
+                {#if fieldErr.component_id}<span class="field-err">{fieldErr.component_id}</span>{/if}
             </label>
-            <label>Part Number <span class="required">*</span><input bind:value={form.part_number} placeholder="PB130-TB-001" /></label>
-            <label>Part Name <span class="required">*</span><input bind:value={form.name} /></label>
-            <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} /></label>
+            <label>Part Number <span class="required">*</span><input bind:value={form.part_number} placeholder="PB130-TB-001" class:invalid={fieldErr.part_number} />
+                {#if fieldErr.part_number}<span class="field-err">{fieldErr.part_number}</span>{/if}
+            </label>
+            <label>Part Name <span class="required">*</span><input bind:value={form.name} class:invalid={fieldErr.name} />
+                {#if fieldErr.name}<span class="field-err">{fieldErr.name}</span>{/if}
+            </label>
+            <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} class:invalid={fieldErr.price} />
+                {#if fieldErr.price}<span class="field-err">{fieldErr.price}</span>{/if}
+            </label>
             <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label>
-            <label class="full">Description <span class="required">*</span><textarea rows="2" bind:value={form.description}></textarea></label>
+            <label class="full">Description<textarea rows="2" bind:value={form.description}></textarea></label>
             <div class="full img-field">
-                <span class="img-label">Part Image</span>
+                <span class="img-label">Part Image  <span class="required">*</span></span>
                 <div class="img-row">
-                    <div class="img-preview">
+                    <div class="img-preview" class:invalid={fieldErr.image_url}>
                         {#if form.image_url}
                             <img src={form.image_url} alt="Part preview" />
                         {:else}
@@ -197,6 +221,7 @@
                         {/if}
                     </div>
                 </div>
+                {#if fieldErr.image_url}<span class="field-err">{fieldErr.image_url}</span>{/if}
             </div>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
@@ -221,6 +246,10 @@
 {/if}
 
 <style>
+    .img-preview.invalid {
+        border-color: var(--bme-red);
+    }
+
     .img-field { 
         margin-top: 4px; 
     }
