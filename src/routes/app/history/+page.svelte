@@ -202,16 +202,24 @@
                                 <span class="loy-req">{t.threshold} requests</span>
                             </div>
                             {#if t.earned}
-                                <button class="loy-code" onclick={() => copyCode(t.code)} title="Click to copy">
+                                <button
+                                    class="loy-code"
+                                    class:used={t.used}
+                                    onclick={() => copyCode(t.code)}
+                                    disabled={t.used}
+                                    title={t.used ? 'This coupon has been used' : 'Click to copy'}>
                                     {copied === t.code ? 'Copied!' : t.code}
                                 </button>
+                                {#if t.used}
+                                    <span class="loy-used">The discount coupon has been used</span>
+                                {/if}
                             {:else}
                                 <span class="loy-locked">Locked</span>
                             {/if}
                         </div>
                     {/each}
                 </div>
-                <p class="loy-note">Discount coupons will be applied to eligible requests. Terms to be confirmed.</p>
+                <p class="loy-note">To use the discount coupons, paste it in the quotes page for your next quotation request.</p>
             </div>
         {/if}
 
@@ -558,6 +566,20 @@
         color: var(--bme-dark-green); 
     }
 
+    .loy-code:disabled { 
+        cursor: default; 
+        opacity: 0.55; 
+        text-decoration: line-through; 
+    }
+
+    .loy-used { 
+        display: block; 
+        margin-top: 6px; 
+        font-size: 11.5px; 
+        font-weight: 600; 
+        color: var(--bme-muted); 
+    }
+
     .loy-tiers { 
         display: grid; 
         grid-template-columns: repeat(3, 1fr); 
@@ -622,6 +644,8 @@
         text-align: center; 
         font-size: 12px; 
         color: var(--bme-muted); 
+        border: 1px dashed var(--bme-muted);
+        border-radius: 8px;
         padding: 7px; 
     }
     

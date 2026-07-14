@@ -1,6 +1,8 @@
 <script lang="ts">
     import { quoteItems, removeItem, setQuantity, clearCart } from "$lib/stores/quote";
     import { formatMoney } from "$lib/price";
+    import { normaliseCode } from "$lib/coupon";
+    import { invalidateAll } from "$app/navigation";
 
     let { data } = $props();
     let notes = $state('');
@@ -12,7 +14,47 @@
         return i.price ?? i.priceMin ?? 0;
     }
 
-    let total = $derived($quoteItems.reduce((s, i) => s + unitPrice(i) * i.quantity, 0));
+    let subtotal = $derived($quoteItems.reduce((s, i) => s + unitPrice(i) * i.quantity, 0));
+
+    let couponInput = $state('');
+    let appliedCoupon = $state<{ code: string; percent: number } | null>(null);
+    let couponErr = $state('');
+
+    let earned = $derived(data.coupons ?? []);
+    let available = $derived(earned.filter((c: any) => !c.used));
+    let allCouponsUsed = $derived(earned.length > 0 && available.length === 0);
+    let couponsLocked = $derived(allCouponsUsed || !!appliedCoupon);
+
+    let discountPercent = $derived(appliedCoupon?.percent ?? 0);
+    let discountAmount = $derived(Math.round(subtotal * (discountPercent / 100) * 100) / 100);
+    let total = $derived(subtotal - discountAmount);
+
+    function applyCoupon() {
+        couponErr = '';
+        if (allCouponsUsed) return;
+
+        const code = normaliseCode(couponInput);
+        if (!code) {
+            couponErr = 'Enter a coupon code.';
+            return;
+        }
+        const match = earned.find((c: any) => c.code === code);
+        if (!match) {
+            couponErr = 'This coupon code is not valid for your account.';
+            return;
+        }
+        if (match.used) {
+            couponErr = 'The discount coupon has been used.';
+            return;
+        }
+        appliedCoupon = { code: match.code, percent: match.percent };
+    }
+
+    function removeCoupon() {
+        appliedCoupon = null;
+        couponInput = '';
+        couponErr = '';
+    }
 
     function unitLabel(i: any) {
         const up = unitPrice(i);
@@ -36,12 +78,23 @@
 
         const { data: quote, error: qErr } = await supabase
             .from('quotes')
-            .insert({ user_id: userId, notes })
+            .insert({
+                user_id: userId, 
+                notes, 
+                coupon_code: appliedCoupon?.code ?? null, 
+                discount_percent: discountPercent
+            })
             .select()
             .single();
 
         if (qErr || !quote) {
-            errorMsg = 'Could not create the quotation. Please try again.';
+            if ((qErr as any)?.code === '23505') {
+                errorMsg = 'The discount coupon has been used.';
+                appliedCoupon = null;
+                await invalidateAll();
+            } else {
+                errorMsg = 'Could not create the quotation. Please try again.';
+            }
             submitting = false;
             return;
         }
@@ -107,6 +160,44 @@
                 <span><button class="remove" onclick={() => removeItem(item.partId)} aria-label="Remove">✕</button></span>
             </div>
         {/each}
+
+        <div class="coupon">
+            <label class="coupon-label" for="coupon-code">Discount coupon</label>
+            <div class="coupon-row">
+                <input
+                    id="coupon-code"
+                    type="text"
+                    placeholder="Enter coupon code (e.g. BME5-XXXXXX)"
+                    bind:value={couponInput}
+                    disabled={couponsLocked}
+                    class:invalid={couponErr}
+                    onkeydown={(e) => { if (e.key === 'Enter') applyCoupon(); }}
+                />
+                {#if appliedCoupon}
+                    <button class="coupon-btn ghost" onclick={removeCoupon}>Remove</button>
+                {:else}
+                    <button class="coupon-btn" onclick={applyCoupon} disabled={allCouponsUsed}>Apply</button>
+                {/if}
+            </div>
+            {#if allCouponsUsed}
+                <span class="coupon-used">The discount coupon has been used.</span>
+            {/if}
+            {#if couponErr}<span class="coupon-err">{couponErr}</span>{/if}
+            {#if appliedCoupon}
+                <span class="coupon-ok">Coupon {appliedCoupon.code} applied — {appliedCoupon.percent}% off.</span>
+            {/if}
+        </div>
+
+        <div class="subtotal">
+            <span>Subtotal</span>
+            <span>RM{formatMoney(subtotal)}</span>
+        </div>
+        {#if discountPercent > 0}
+            <div class="subtotal discount">
+                <span>Discount ({discountPercent}%)</span>
+                <span>&minus;RM{formatMoney(discountAmount)}</span>
+            </div>
+        {/if}
 
         <div class="total">
             <span>Total</span>
@@ -186,6 +277,99 @@
 
     .left {
         text-align: left;
+    }
+
+    .coupon {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 16px 0 4px;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .coupon-label {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--bme-ink);
+    }
+
+    .coupon-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .coupon-row input {
+        flex: 1;
+        min-width: 220px;
+        padding: 9px 12px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        text-transform: uppercase;
+    }
+
+    .coupon-row input.invalid {
+        border-color: var(--bme-red);
+    }
+
+    .coupon-row input:disabled {
+        background: var(--bme-mint);
+        color: var(--bme-ink);
+    }
+
+    .coupon-btn {
+        font-family: inherit;
+        cursor: pointer;
+        border: 1px solid var(--bme-dark-blue);
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 9px 18px;
+    }
+
+    .coupon-btn.ghost {
+        background: #ffffff;
+        color: var(--bme-dark-blue);
+    }
+
+    .coupon-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+    }
+
+    .coupon-used {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--bme-muted);
+    }
+
+    .coupon-err {
+        font-size: 12.5px;
+        font-weight: 600;
+        text-align: left;
+        color: var(--bme-red);
+    }
+
+    .coupon-ok {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--bme-green);
+    }
+
+    .subtotal {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        color: var(--bme-ink);
+        font-size: 14.5px;
+    }
+
+    .subtotal.discount {
+        color: var(--bme-green);
+        font-weight: 600;
     }
 
     .total {

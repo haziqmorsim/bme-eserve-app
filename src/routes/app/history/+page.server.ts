@@ -1,5 +1,6 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
+import { TIERS, couponCode } from "$lib/coupon";
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
@@ -9,7 +10,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     const role = profile?.role;
     const isStaff = role === 'admin' || role === 'manager' || role === 'coo' || role === 'developer';
 
-    const { data: regionRows } = await supabase.from('regions').select('id, name').order('name');
+    const { data: regionRows } = await supabase.from('regions').select('id, name').order('sort_order');
     const regions = regionRows ?? [];
     const regionMap: Record<string, string> = {};
     for (const r of regions) regionMap[r.id] = r.name;
@@ -78,15 +79,19 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         }
     }
 
-    const TIERS = [ { threshold: 10, percent: 5 }, { threshold: 20, percent: 10 }, { threshold: 30, percent: 15 } ];
     const reqCount = quotes.length;
-    const couponCode = (percent: number): string => {
-        let h = 0;
-        const str = `${user.id}:${percent}`;
-        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-        return `BME${percent}-${h.toString(36).toUpperCase().padStart(6, '0').slice(0, 6)}`;
-    };
-    const tiers = TIERS.map((t) => ({ ...t, earned: reqCount >= t.threshold, code: couponCode(t.percent) }));
+
+    const { data: redeemed } = await supabase
+        .from('quotes')
+        .select('coupon_code')
+        .eq('user_id', user.id)
+        .not('coupon_code', 'is', null);
+    const usedCodes = new Set((redeemed ?? []).map((r: any) => r.coupon_code));
+
+    const tiers = TIERS.map((t) => {
+        const code = couponCode(user.id, t.percent);
+        return { ...t, earned: reqCount >= t.threshold, code, used: usedCodes.has(code) };
+    });
     const earnedTiers = tiers.filter((t) => t.earned);
     const currentPercent = earnedTiers.length ? earnedTiers[earnedTiers.length - 1].percent : 0;
     const nextTier = tiers.find((t) => !t.earned) ?? null;
