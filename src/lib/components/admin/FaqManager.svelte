@@ -292,6 +292,12 @@
         color: var(--bme-muted);
     }
 
+    .adm-table {
+        -webkit-text-size-adjust: 100%;
+        -moz-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
     .ans {
         color: var(--bme-muted);
         font-size: 13px;

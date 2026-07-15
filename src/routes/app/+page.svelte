@@ -85,4 +85,16 @@
             grid-template-columns: 1fr;
         }
     }
+
+    @media (max-width: 640px) {
+        .tabbar {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .tab {
+            width: 48%;
+            text-align: center;
+        }
+    }
 </style>

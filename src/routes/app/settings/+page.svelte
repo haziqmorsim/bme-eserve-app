@@ -68,7 +68,8 @@
 
     @media (max-width: 640px) {
         .tabbar {
-            gap: 12px;
+            width: 100%;
+            justify-content: space-between;
         }
     }
 </style>

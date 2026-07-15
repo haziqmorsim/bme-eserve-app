@@ -465,6 +465,15 @@
     }
 
     @media (max-width: 640px) {
+        .tabbar {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .tab {
+            width: 48%;
+        }
+
         .quote {
             padding: 16px;
         }

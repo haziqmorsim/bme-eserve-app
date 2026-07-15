@@ -288,11 +288,13 @@
     }
 
     @media (max-width: 640px) {
+        .tabs { justify-content: space-between; }
         .part { flex-direction: column; align-items: stretch; }
         .part .actions { justify-content: space-between; }
         .comp { padding: 8px 14px; }
         .design { padding: 12px; }
     }
+
     .thumb {
         flex-shrink: 0;
         width: 66px;
