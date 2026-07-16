@@ -5,7 +5,7 @@
     import { fly, fade } from "svelte/transition";
     import { cubicInOut } from "svelte/easing";
 
-    let { notifications = [], supabase } = $props<{ notifications: any[]; supabase: SupabaseClient }>();
+    let { notifications = [], supabase, label = '' } = $props<{ notifications: any[]; supabase: SupabaseClient; label?: string }>();
 
     let open = $state(false);
     let busy = $state(false);
@@ -55,11 +55,18 @@
     }
 </script>
 
-<div class="bell-wrap">
-    <button class="bell-btn" onclick={toggle} aria-label="Notifications" aria-expanded={open}>
-        <Bell size={20} />
-        {#if unread > 0}<span class="dot" aria-label="Unread Notifications"></span>{/if}
-    </button>
+<div class="bell-wrap" class:as-link={label}>
+    {#if label}
+        <button class="text-trigger" onclick={toggle} aria-label="Notifications" aria-expanded={open}>
+            <span>{label}</span>
+            {#if unread > 0}<span class="dot-inline" aria-label="Unread Notifications"></span>{/if}
+        </button>
+    {:else}
+        <button class="bell-btn" onclick={toggle} aria-label="Notifications" aria-expanded={open}>
+            <Bell size={20} />
+            {#if unread > 0}<span class="dot" aria-label="Unread Notifications"></span>{/if}
+        </button>
+    {/if}
 
     {#if open}
         <div class="panel" role="menu" transition:fly={{ y: -8, duration: 190, easing: cubicInOut }}>
@@ -97,6 +104,39 @@
     .bell-wrap {
         position: relative;
         display: inline-flex;
+    }
+
+    .bell-wrap.as-link {
+        display: block;
+        width: 100%;
+    }
+
+    .text-trigger {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 11px 12px;
+        border: none;
+        border-radius: 8px;
+        background: none;
+        color: var(--bme-dark-blue);
+        font: inherit;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .text-trigger:hover {
+        background: var(--bme-bg);
+    }
+
+    .dot-inline {
+        margin-left: auto;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--bme-red);
     }
  
     .bell-btn {

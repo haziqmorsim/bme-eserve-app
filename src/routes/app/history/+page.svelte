@@ -254,6 +254,12 @@
                     </table>
 
                     {#if q.notes}<p class="notes"><em>Notes:</em> {q.notes}</p>{/if}
+                    {#if q.attachment_url}
+                        <p class="attachment">
+                            <em>Attachment:</em>
+                            <a href={q.attachment_url} target="_blank" rel="noopener noreferrer">{q.attachment_name ?? 'Download file'}</a>
+                        </p>
+                    {/if}
 
                     <div class="meta">
                         {#if data.isStaff}
@@ -426,6 +432,17 @@
     .notes {
         margin: 12px 0 0;
         color: var(--bme-muted);
+    }
+
+    .attachment {
+        margin: 6px 0 0;
+        color: var(--bme-muted);
+    }
+
+    .attachment a {
+        color: var(--bme-dark-blue);
+        font-weight: 600;
+        word-break: break-all;
     }
 
     .meta {

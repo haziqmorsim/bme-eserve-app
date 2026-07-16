@@ -10,6 +10,36 @@
     let done = $state(false);
     let errorMsg = $state('');
 
+    let attachment = $state<File | null>(null);
+    let attachErr = $state('');
+    let fileInput = $state<HTMLInputElement | undefined>();
+
+    const MAX_ATTACH = 10 * 1024 * 1024; // 10 MB
+
+    function onFilePick(e: Event) {
+        attachErr = '';
+        const f = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
+        if (f && f.size > MAX_ATTACH) {
+            attachErr = 'File is too large (max 10 MB).';
+            attachment = null;
+            if (fileInput) fileInput.value = '';
+            return;
+        }
+        attachment = f;
+    }
+
+    function removeAttachment() {
+        attachment = null;
+        attachErr = '';
+        if (fileInput) fileInput.value = '';
+    }
+
+    function humanSize(bytes: number): string {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
     function unitPrice(i: any): number {
         return i.price ?? i.priceMin ?? 0;
     }
@@ -76,13 +106,35 @@
         const supabase = data.supabase;
         const userId = data.user?.id;
 
+        let attachment_url: string | null = null;
+        let attachment_name: string | null = null;
+        if (attachment) {
+            const safe = attachment.name.replace(/[^\w.\-]+/g, '_');
+            const path = `${userId}/${Date.now()}_${safe}`;
+            const { error: upErr } = await supabase.storage
+                .from('quote-attachments')
+                .upload(path, attachment, { upsert: false });
+            if (upErr) {
+                errorMsg = 'Could not upload the attachment. Please try again.';
+                submitting = false;
+                return;
+            }
+            const { data: signed } = await supabase.storage
+                .from('quote-attachments')
+                .createSignedUrl(path, 60 * 60 * 24 * 365);
+            attachment_url = signed?.signedUrl ?? path;
+            attachment_name = attachment.name;
+        }
+
         const { data: quote, error: qErr } = await supabase
             .from('quotes')
             .insert({
                 user_id: userId, 
                 notes, 
                 coupon_code: appliedCoupon?.code ?? null, 
-                discount_percent: discountPercent
+                discount_percent: discountPercent, 
+                attachment_url, 
+                attachment_name
             })
             .select()
             .single();
@@ -211,6 +263,26 @@
             <span>Notes (optional)</span>
             <textarea rows="3" bind:value={notes} placeholder="Delivery site, urgency, reference PO..."></textarea>
         </label>
+
+        <div class="attach">
+            <span class="attach-label">Attachment (optional)</span>
+            <input
+                class="attach-input"
+                type="file"
+                bind:this={fileInput}
+                onchange={onFilePick}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.csv,.txt"
+            />
+            {#if attachment}
+                <div class="attach-file">
+                    <span class="attach-name">{attachment.name}</span>
+                    <span class="attach-size">{humanSize(attachment.size)}</span>
+                    <button type="button" class="attach-remove" onclick={removeAttachment} aria-label="Remove attachment">Remove</button>
+                </div>
+            {/if}
+            {#if attachErr}<span class="attach-err">{attachErr}</span>{/if}
+            <span class="attach-hint">Max 10 MB. PDF, Office documents, or images.</span>
+        </div>
     </div>
 
     {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
@@ -309,6 +381,10 @@
         text-transform: uppercase;
     }
 
+    .coupon-row input::placeholder {
+        text-transform: capitalize;
+    }
+
     .coupon-row input.invalid {
         border-color: var(--bme-red);
     }
@@ -403,6 +479,70 @@
         text-align: left;
     }
 
+    .attach {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .attach-label {
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .attach-input {
+        font: inherit;
+        max-width: 100%;
+    }
+
+    .attach-file {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        background: var(--bme-sky);
+        border-radius: 8px;
+    }
+
+    .attach-name {
+        font-weight: 600;
+        color: var(--bme-ink);
+        word-break: break-all;
+        text-align: left;
+    }
+
+    .attach-size {
+        font-size: 12px;
+        color: var(--bme-muted);
+    }
+
+    .attach-remove {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--bme-red);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .attach-hint {
+        font-size: 12px;
+        color: var(--bme-muted);
+        text-align: left;
+    }
+
+    .attach-err {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--bme-red);
+        text-align: left;
+    }
+
     .submit { 
         width: 100%; 
         padding: 14px; 
@@ -426,8 +566,8 @@
 
     @media (max-width: 720px) {
         .row {
-            grid-template-columns: 1fr;
-            gap: 4px;
+            grid-template-columns: 1fr auto;
+            gap: 4px 12px;
             position: relative;
             padding-right: 28px;
         }
@@ -435,21 +575,46 @@
         .row.head { 
             display: none; 
         }
+
+        .row .left {
+            grid-column: 1 / -1;
+        }
+
+        .row > span:nth-child(2) {
+            grid-column: 1 / -1;
+            text-align: left;
+        }
+
+        .row > span:nth-child(3) {
+            grid-column: 1;
+            justify-self: start;
+        }
+
+        .row .unit {
+            grid-column: 2;
+            justify-self: end;
+            text-align: right;
+        }
+
+        .row .range {
+            grid-column: 1 / -1;
+            text-align: right;
+        }
  
         .row > span:last-child {
             position: absolute;
             top: 10px;
             right: 0;
         }
- 
+
         .total { 
-            flex-direction: column; 
-            align-items: flex-start; 
-            gap: 4px; 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: baseline; 
             font-size: 16px; 
         }
 
-        .indicative, span { 
+        .indicative { 
             text-align: left; 
         }
     }

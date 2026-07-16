@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { quoteItems } from "$lib/stores/quote";
-    import { Menu } from "@lucide/svelte";
+    import { Menu, X } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
 
     let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
@@ -9,6 +9,9 @@
 
     let open = $state(false);
     const close = () => (open = false);
+
+    // Red dot on the collapsed menu icon when any nav item has a count badge.
+    let hasBadge = $derived(count > 0 || pendingCount > 0 || enquiryCount > 0);
 
     let isStaff = $derived(
         profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo' || profile?.role === 'developer'
@@ -68,7 +71,12 @@
     </a>
 
     <button class="menu-btn" onclick={() => (open = !open)} aria-label="Toggle menu" aria-expanded={open}>
-        <Menu size={24} />
+        {#if open}
+            <X size={24} />
+        {:else}
+            <Menu size={24} />
+            {#if hasBadge}<span class="menu-dot" aria-label="Pending items"></span>{/if}
+        {/if}
     </button>
 
     <div class="side-body">
@@ -97,7 +105,7 @@
         </nav>
 
         <nav class="side-group bottom">
-            <div class="side-bell"><NotificationBell {notifications} {supabase} /></div>
+            <div class="side-bell"><NotificationBell {notifications} {supabase} label="Notifications" /></div>
             <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
             <form action="/logout" method="POST">
                 <button type="submit" class="side-link signout">Sign Out</button>
@@ -289,11 +297,12 @@
         }
 
         .sidebar.open {
-            width: 150px;
+            width: 80%;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.18);
         }
 
         .menu-btn {
+            position: relative;
             flex: 0 0 auto;
             width: 56px;
             height: 56px;
@@ -303,6 +312,18 @@
             border: none;
             color: var(--bme-dark-blue);
             cursor: pointer;
+        }
+
+        .menu-dot {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--bme-red);
+            border: 2px solid var(--bme-surface);
+            pointer-events: none;
         }
 
         .side-logo {

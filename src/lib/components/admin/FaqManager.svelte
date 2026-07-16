@@ -160,13 +160,15 @@
                     <tr class:unpublished={!f.is_published}>
                         <td style="text-align: center; vertical-align: middle;">
                             <div class="ord">
-                                <button class="ord-btn" title="Move up" aria-label="Move up" onclick={() => move(f, -1)} disabled={!!moving || (curPage === 1 && i === 0)}>
-                                    <ChevronUp size={15} />
-                                </button>
-                                <span class="ord-n">{f.sort_order ?? 0}</span>
-                                <button class="ord-btn" title="Move down" aria-label="Move down" onclick={() => move(f, 1)} disabled={!!moving || (curPage === pages && i === paged.length - 1)}>
-                                    <ChevronDown size={15} />
-                                </button>
+                                <div class="btns">
+                                    <button class="ord-btn" title="Move up" aria-label="Move up" onclick={() => move(f, -1)} disabled={!!moving || (curPage === 1 && i === 0)}>
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button class="ord-btn" title="Move down" aria-label="Move down" onclick={() => move(f, 1)} disabled={!!moving || (curPage === pages && i === paged.length - 1)}>
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
+                                <span class="ord-n">{f.sort_order ?? 0}</span>                                
                             </div>
                         </td>
                         <td style="vertical-align: middle;"><strong>{f.question}</strong></td>
@@ -196,11 +198,11 @@
     <Modal title={editing === 'new' ? 'Add Question' : 'Edit Question'} onclose={cancel}>
         <div class="adm-form">
             <label>Question <span class="required">*</span>
-                <input bind:value={form.question} placeholder="How do I request a quotation?" class:invalid={fieldErr.question} />
+                <input bind:value={form.question} placeholder="Type the question here..." class:invalid={fieldErr.question} />
                 {#if fieldErr.question}<span class="field-err">{fieldErr.question}</span>{/if}
             </label>
             <label>Answer <span class="required">*</span>
-                <textarea rows="6" bind:value={form.answer} placeholder="Write the answer here..." class:invalid={fieldErr.answer}></textarea>
+                <textarea rows="6" bind:value={form.answer} placeholder="Type the answer here..." class:invalid={fieldErr.answer}></textarea>
                 {#if fieldErr.answer}<span class="field-err">{fieldErr.answer}</span>{/if}
             </label>
             <label><span>Order</span>
@@ -262,12 +264,17 @@
         gap: 4px;
     }
 
+    .btns {
+        display: flex;
+        flex-direction: column;
+    }
+
     .ord-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         padding: 0;
         border: 1px solid var(--bme-border);
         border-radius: 6px;
@@ -305,7 +312,7 @@
 
     .ans-full {
         display: inline-block;
-        max-width: 480px;
+        max-width: 500px;
         white-space: normal;
         overflow-wrap: anywhere;
     }
@@ -324,7 +331,7 @@
     }
 
     tr.unpublished td { 
-        opacity: 0.6; 
+        opacity: 0.8; 
     }
 
     .adm-form .chk {
