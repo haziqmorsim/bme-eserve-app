@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     let query = supabase
         .from('quotes')
-        .select('id, reference, status, notes, attachment_url, attachment_name, created_at, current_level, user_id, quote_items(*)')
+        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, current_level, user_id, quote_items(*)')
         .eq('status', 'open');
 
     if (!isDeveloper) query = query.eq('current_level', myLevel as number);

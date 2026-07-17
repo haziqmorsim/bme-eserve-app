@@ -12,6 +12,12 @@
     let actionTaken = $state<Record<string, string>>({});
     let isDeveloper = $derived(data.profile?.role === 'developer');
 
+    function attachList(q: any): { url: string; name: string }[] {
+        if (Array.isArray(q.attachments) && q.attachments.length) return q.attachments;
+        if (q.attachment_url) return [{ url: q.attachment_url, name: q.attachment_name ?? 'Download file' }];
+        return [];
+    }
+
     let filters = $state(emptyFilters());
     let filtered = $derived(data.quotes.filter((q: any) => matches(filters, {
         search: [q.reference, q.customer?.company, q.customer?.full_name],
@@ -109,11 +115,15 @@
             </table>
 
             {#if q.notes}<p class="notes"><em>Customer notes:</em> {q.notes}</p>{/if}
-            {#if q.attachment_url}
-                <p class="attachment">
-                    <em>Attachment:</em>
-                    <a href={q.attachment_url} target="_blank" rel="noopener noreferrer">{q.attachment_name ?? 'Download file'}</a>
-                </p>
+            {#if attachList(q).length}
+                <div class="attachment">
+                    <em>Attachment{attachList(q).length > 1 ? 's' : ''}:</em>
+                    <ul class="attach-links">
+                        {#each attachList(q) as a (a.url)}
+                            <li><a href={a.url} target="_blank" rel="noopener noreferrer">{a.name}</a></li>
+                        {/each}
+                    </ul>
+                </div>
             {/if}
 
             {#if q.approvals.length}
@@ -266,6 +276,15 @@
         color: var(--bme-dark-blue);
         font-weight: 600;
         word-break: break-all;
+    }
+
+    .attach-links {
+        margin: 4px 0 0;
+        padding-left: 18px;
+    }
+
+    .attach-links li {
+        margin: 2px 0;
     }
 
     .prior {

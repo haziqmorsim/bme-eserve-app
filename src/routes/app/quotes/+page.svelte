@@ -10,31 +10,52 @@
     let done = $state(false);
     let errorMsg = $state('');
 
-    let attachment = $state<File | null>(null);
+    let attachments = $state<File[]>([]);
     let attachErr = $state('');
     let fileInput = $state<HTMLInputElement | undefined>();
 
-    const MAX_ATTACH = 10 * 1024 * 1024; // 10 MB
+    const MAX_ATTACH = 10 * 1024 * 1024; // 10 MB total
+    const ALLOWED_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'webp', 'csv', 'txt'];
+
+    function extOf(name: string): string {
+        const i = name.lastIndexOf('.');
+        return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
+    }
+
+    let attachTotal = $derived(attachments.reduce((n, f) => n + f.size, 0));
 
     function onFilePick(e: Event) {
         attachErr = '';
-        const f = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
-        if (f && f.size > MAX_ATTACH) {
-            attachErr = 'File is too large (max 10 MB).';
-            attachment = null;
-            if (fileInput) fileInput.value = '';
+        const input = e.currentTarget as HTMLInputElement;
+        const picked = Array.from(input.files ?? []);
+        input.value = ''; // reset so the same file can be re-picked / more added
+        if (picked.length === 0) return;
+
+        const next = [...attachments];
+        for (const f of picked) {
+            if (!ALLOWED_EXT.includes(extOf(f.name))) {
+                attachErr = `"${f.name}" is not an allowed file type.`;
+                continue;
+            }
+            // Skip exact duplicates (same name + size).
+            if (next.some((x) => x.name === f.name && x.size === f.size)) continue;
+            next.push(f);
+        }
+
+        const total = next.reduce((n, f) => n + f.size, 0);
+        if (total > MAX_ATTACH) {
+            attachErr = 'Total attachment size exceeds 10 MB.';
             return;
         }
-        attachment = f;
+        attachments = next;
     }
 
-    function removeAttachment() {
-        attachment = null;
+    function removeAttachment(idx: number) {
+        attachments = attachments.filter((_, i) => i !== idx);
         attachErr = '';
-        if (fileInput) fileInput.value = '';
     }
 
-    function humanSize(bytes: number): string {
+    function fileSize(bytes: number): string {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -70,7 +91,7 @@
         }
         const match = earned.find((c: any) => c.code === code);
         if (!match) {
-            couponErr = 'This coupon code is not valid for your account.';
+            couponErr = 'This coupon code is invalid.';
             return;
         }
         if (match.used) {
@@ -106,24 +127,22 @@
         const supabase = data.supabase;
         const userId = data.user?.id;
 
-        let attachment_url: string | null = null;
-        let attachment_name: string | null = null;
-        if (attachment) {
-            const safe = attachment.name.replace(/[^\w.\-]+/g, '_');
-            const path = `${userId}/${Date.now()}_${safe}`;
+        const uploaded: { url: string; name: string }[] = [];
+        for (const file of attachments) {
+            const safe = file.name.replace(/[^\w.\-]+/g, '_');
+            const path = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`;
             const { error: upErr } = await supabase.storage
                 .from('quote-attachments')
-                .upload(path, attachment, { upsert: false });
+                .upload(path, file, { upsert: false });
             if (upErr) {
-                errorMsg = 'Could not upload the attachment. Please try again.';
+                errorMsg = 'Could not upload the attachment(s). Please try again.';
                 submitting = false;
                 return;
             }
             const { data: signed } = await supabase.storage
                 .from('quote-attachments')
                 .createSignedUrl(path, 60 * 60 * 24 * 365);
-            attachment_url = signed?.signedUrl ?? path;
-            attachment_name = attachment.name;
+            uploaded.push({ url: signed?.signedUrl ?? path, name: file.name });
         }
 
         const { data: quote, error: qErr } = await supabase
@@ -133,8 +152,7 @@
                 notes, 
                 coupon_code: appliedCoupon?.code ?? null, 
                 discount_percent: discountPercent, 
-                attachment_url, 
-                attachment_name
+                attachments: uploaded
             })
             .select()
             .single();
@@ -219,7 +237,7 @@
                 <input
                     id="coupon-code"
                     type="text"
-                    placeholder="Enter coupon code (e.g. BME5-XXXXXX)"
+                    placeholder="Enter coupon code..."
                     bind:value={couponInput}
                     disabled={couponsLocked}
                     class:invalid={couponErr}
@@ -265,30 +283,36 @@
         </label>
 
         <div class="attach">
-            <span class="attach-label">Attachment (optional)</span>
+            <span class="attach-label">Attachments (optional)</span>
             <input
                 class="attach-input"
                 type="file"
+                multiple
                 bind:this={fileInput}
                 onchange={onFilePick}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.csv,.txt"
             />
-            {#if attachment}
-                <div class="attach-file">
-                    <span class="attach-name">{attachment.name}</span>
-                    <span class="attach-size">{humanSize(attachment.size)}</span>
-                    <button type="button" class="attach-remove" onclick={removeAttachment} aria-label="Remove attachment">Remove</button>
+            {#if attachments.length}
+                <div class="attach-list">
+                    {#each attachments as f, i (f.name + f.size)}
+                        <div class="attach-file">
+                            <span class="attach-name">{f.name}</span>
+                            <span class="attach-size">{fileSize(f.size)}</span>
+                            <button type="button" class="attach-remove" onclick={() => removeAttachment(i)} aria-label="Remove {f.name}">Remove</button>
+                        </div>
+                    {/each}
+                    <div class="attach-total">Total: {fileSize(attachTotal)} of 10 MB</div>
                 </div>
             {/if}
             {#if attachErr}<span class="attach-err">{attachErr}</span>{/if}
-            <span class="attach-hint">Max 10 MB. PDF, Office documents, or images.</span>
+            <span class="attach-hint">Max total files size: 10 MB. Supported file types: .pdf, .doc, .docx, .csv, .xls, .xlsx, .png, .jpg, .jpeg, .webp, .txt</span>
         </div>
     </div>
 
     {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
 
     <button class="btn-primary submit" onclick={submitQuote} disabled={submitting}>
-        {submitting ? 'Submitting...' : 'Get a Quotation'}
+        {submitting ? 'Submitting...' : 'Request for Quotation'}
     </button>
 {/if}
 
@@ -382,7 +406,7 @@
     }
 
     .coupon-row input::placeholder {
-        text-transform: capitalize;
+        text-transform: none;
     }
 
     .coupon-row input.invalid {
@@ -498,6 +522,12 @@
         max-width: 100%;
     }
 
+    .attach-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
     .attach-file {
         display: flex;
         align-items: center;
@@ -506,6 +536,13 @@
         padding: 8px 12px;
         background: var(--bme-sky);
         border-radius: 8px;
+    }
+
+    .attach-total {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--bme-muted);
+        text-align: left;
     }
 
     .attach-name {

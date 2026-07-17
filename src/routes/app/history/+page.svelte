@@ -9,6 +9,12 @@
 
     let { data } = $props();
 
+    function attachList(q: any): { url: string; name: string }[] {
+        if (Array.isArray(q.attachments) && q.attachments.length) return q.attachments;
+        if (q.attachment_url) return [{ url: q.attachment_url, name: q.attachment_name ?? 'Download file' }];
+        return [];
+    }
+
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     let myLevel = $derived(ROLE_LEVEL[data.profile?.role] ?? 0);
     let working = $state<string | null>(null);
@@ -254,11 +260,15 @@
                     </table>
 
                     {#if q.notes}<p class="notes"><em>Notes:</em> {q.notes}</p>{/if}
-                    {#if q.attachment_url}
-                        <p class="attachment">
-                            <em>Attachment:</em>
-                            <a href={q.attachment_url} target="_blank" rel="noopener noreferrer">{q.attachment_name ?? 'Download file'}</a>
-                        </p>
+                    {#if attachList(q).length}
+                        <div class="attachment">
+                            <em>Attachment{attachList(q).length > 1 ? 's' : ''}:</em>
+                            <ul class="attach-links">
+                                {#each attachList(q) as a (a.url)}
+                                    <li><a href={a.url} target="_blank" rel="noopener noreferrer">{a.name}</a></li>
+                                {/each}
+                            </ul>
+                        </div>
                     {/if}
 
                     <div class="meta">
@@ -443,6 +453,15 @@
         color: var(--bme-dark-blue);
         font-weight: 600;
         word-break: break-all;
+    }
+
+    .attach-links {
+        margin: 4px 0 0;
+        padding-left: 18px;
+    }
+
+    .attach-links li {
+        margin: 2px 0;
     }
 
     .meta {
