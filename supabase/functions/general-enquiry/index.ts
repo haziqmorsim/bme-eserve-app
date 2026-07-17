@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/email.ts";
+import { appUrl, ctaButton } from "../_shared/email-ui.ts";
 
 const BRAND = {
     blue: '#004b8d',
@@ -39,7 +40,7 @@ function buildConfirmationEmail(name: string, message: string, logoUrl: string |
                         <p style="margin:0 0 14px;">Hi ${esc(name)},</p>
                         <p style="margin:0 0 14px;">Thank you for contacting BoilerMech. Your enquiry has been received and our team will get back to you shortly.</p>
                         <p style="margin:0 0 6px;color:${BRAND.muted};font-size:13px;">Your message:</p>
-                        <div style="border-left:3px solid ${BRAND.green};padding:8px 14px;background:${BRAND.bg};border-radius:6px;color:${BRAND.ink};font-size:14px;white-space:pre-wrap;">${esc(message)}</div>
+                        <div style="min-height:48px;padding:12px 14px;background:${BRAND.bg};border-radius:6px;color:${BRAND.ink};font-size:14px;white-space:pre-wrap;text-align:center;">${esc(message)}</div>
                         <p style="margin:18px 0 0;color:${BRAND.ink};font-size:15px;">Regards,<br />BME e-Serve App</p>
                     </td></tr>
                     <tr><td style="padding:24px 36px 28px;">
@@ -77,21 +78,19 @@ Deno.serve(async (req) => {
         });
         if (insErr) return json(400, { error: insErr.message });
 
-        const replyUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email.trim())}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`;
-
         const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
-            <h2 style="color:#2F5E18">New general enquiry — BME e-Serve</h2>
+            <h2 style="color:#004b8d">New general enquiry — BME e-Serve</h2>
             <table cellpadding="6" style="font-size:14px">
-                <tr><td><strong>Name</strong></td><td>${esc(name)}</td></tr>
-                <tr><td><strong>E-mail</strong></td><td>${esc(email)}</td></tr>
-                ${company?.trim() ? `<tr><td><strong>Company</strong></td><td>${esc(company)}</td></tr>` : ''}
+                <tr><td valign="top"><strong>Name</strong></td><td>${esc(name)}</td></tr>
+                <tr><td valign="top"><strong>E-mail</strong></td><td>${esc(email)}</td></tr>
+                ${company?.trim() ? `<tr><td valign="top"><strong>Company</strong></td><td>${esc(company)}</td></tr>` : ''}
+                <tr><td valign="top"><strong>Message</strong></td><td style="white-space:pre-wrap">${esc(message)}</td></tr>
             </table>
-            <p style="margin-top:16px"><strong>Message</strong></p>
-            <p style="white-space:pre-wrap">${esc(message)}</p>
             <p style="color:#6B7A63;font-size:13px;margin-top:24px">
-                Reply directly to <a href="${esc(replyUrl)}">${esc(email)}</a> to respond to this enquiry.
+                Reply this enquiry here directly or in the BME e-Serve Enquiries page.
             </p>
+            ${ctaButton('Reply Enquiry', appUrl('/app/enquiries'), '#004b8d')}
         </div>`;
 
         const logoUrl = Deno.env.get('LOGO_URL') ?? null;

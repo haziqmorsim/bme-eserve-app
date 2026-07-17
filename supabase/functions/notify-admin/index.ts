@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
         const itemsTable = `
             <table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:14px">
-            <thead><tr style="background:#EEF3EA">
+            <thead><tr style="background:#e7f0f8">
                 <th align="left">Part No.</th><th align="left">Name</th><th align="left">Boiler</th>
                 <th>Qty</th>
             </tr></thead>
@@ -45,12 +45,12 @@ Deno.serve(async (req) => {
 
         const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
-            <h2 style="color:#2F5E18">New quotation request — ${quote.reference}</h2>
+            <h2 style="color:#004b8d">New quotation request — ${quote.reference}</h2>
             <p>From: <strong>${customerEmail ?? 'unknown'}</strong></p>
             ${quote.notes ? `<p><em>Notes:</em> ${quote.notes}</p>` : ''}
             ${itemsTable}
             <p style="margin-top:20px">Review this request in the BME e-Serve Requests page.</p>
-            ${ctaButton('Review Request', appUrl('/app/requests'), '#2F5E18')}
+            ${ctaButton('Review Request', appUrl('/app/requests'), '#004b8d')}
         </div>`;
 
         try {
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
         if (customerEmail) {
             const customerHtml = `
             <div style="font-family:Arial,sans-serif;color:#1C2A14">
-                <h2 style="color:#2F5E18">We've received your quotation request</h2>
+                <h2 style="color:#004b8d">We've received your quotation request</h2>
                 <p>Thank you for your request. Your reference number is
                    <strong>${quote.reference}</strong>.</p>
                 <p>Here is a summary of the parts you requested:</p>
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
                     Our team will review your request shortly. Once it is approved, you will
                     receive a confirmation email with the official quotation attached as a PDF.
                 </p>
-                ${ctaButton('View History', appUrl('/app/history'), '#2F5E18')}
+                ${ctaButton('View History', appUrl('/app/history'), '#004b8d')}
                 <p style="color:#6B7A63;font-size:13px;margin-top:24px">
                     This email was sent automatically by BME e-Serve. Please do not reply.
                 </p>

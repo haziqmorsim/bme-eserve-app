@@ -5,7 +5,7 @@ export function appUrl(path: string): string {
     return `${base}${clean}`;
 }
 
-export function ctaButton(label: string, url: string, color: '#2F5E18'): string {
+export function ctaButton(label: string, url: string, color = '#004b8d'): string {
     if (!url) return '';
     return `
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0">
