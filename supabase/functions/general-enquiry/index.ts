@@ -23,32 +23,33 @@ function buildConfirmationEmail(name: string, message: string, logoUrl: string |
     const logo = logoUrl
         ? `<img src="${logoUrl}" alt="BME e-Serve" width="120" style="display:block;height:auto;border:0;margin:0 auto 6px;" />`
         : '';
-    return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-<body style="margin:0;padding:0;background:${BRAND.bg};">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.bg};padding:24px 0;">
-        <tr><td align="center">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid ${BRAND.border};border-radius:14px;overflow:hidden;font-family:Segoe UI,Arial,Helvetica,sans-serif;">
-                <tr><td style="background:${BRAND.blue};height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>
-                <tr><td style="padding:28px 36px 8px;text-align:center;">
-                    ${logo}
-                    <h1 style="margin:8px 0 0;font-size:20px;color:${BRAND.blue};">We've received your enquiry</h1>
-                </td></tr>
-                <tr><td style="padding:14px 36px 0;color:${BRAND.ink};font-size:15px;line-height:1.6;">
-                    <p style="margin:0 0 14px;">Hi ${esc(name)},</p>
-                    <p style="margin:0 0 14px;">Thank you for contacting BoilerMech. Your enquiry has been received and our team will get back to you shortly.</p>
-                    <p style="margin:0 0 6px;color:${BRAND.muted};font-size:13px;">Your message:</p>
-                    <div style="border-left:3px solid ${BRAND.green};padding:8px 14px;background:${BRAND.bg};border-radius:6px;color:${BRAND.ink};font-size:14px;white-space:pre-wrap;">${esc(message)}</div>
-                    <p style="margin:18px 0 0;color:${BRAND.ink};font-size:15px;">Regards,<br />BME e-Serve App</p>
-                </td></tr>
-                <tr><td style="padding:24px 36px 28px;">
-                    <hr style="border:none;border-top:1px solid ${BRAND.border};margin:0 0 14px;" />
-                    <p style="margin:0;color:${BRAND.muted};font-size:12px;">This is an automated confirmation — please do not reply to this email.</p>
-                </td></tr>
-            </table>
-        </td></tr>
-    </table>
-</body></html>`;
+    return `
+    <!DOCTYPE html>
+    <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+    <body style="margin:0;padding:0;background:${BRAND.bg};">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.bg};padding:24px 0;">
+            <tr><td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid ${BRAND.border};border-radius:14px;overflow:hidden;font-family:Segoe UI,Arial,Helvetica,sans-serif;">
+                    <tr><td style="background:${BRAND.blue};height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>
+                    <tr><td style="padding:28px 36px 8px;text-align:center;">
+                        ${logo}
+                        <h1 style="margin:8px 0 0;font-size:20px;color:${BRAND.blue};">We've received your enquiry</h1>
+                    </td></tr>
+                    <tr><td style="padding:14px 36px 0;color:${BRAND.ink};font-size:15px;line-height:1.6;">
+                        <p style="margin:0 0 14px;">Hi ${esc(name)},</p>
+                        <p style="margin:0 0 14px;">Thank you for contacting BoilerMech. Your enquiry has been received and our team will get back to you shortly.</p>
+                        <p style="margin:0 0 6px;color:${BRAND.muted};font-size:13px;">Your message:</p>
+                        <div style="border-left:3px solid ${BRAND.green};padding:8px 14px;background:${BRAND.bg};border-radius:6px;color:${BRAND.ink};font-size:14px;white-space:pre-wrap;">${esc(message)}</div>
+                        <p style="margin:18px 0 0;color:${BRAND.ink};font-size:15px;">Regards,<br />BME e-Serve App</p>
+                    </td></tr>
+                    <tr><td style="padding:24px 36px 28px;">
+                        <hr style="border:none;border-top:1px solid ${BRAND.border};margin:0 0 14px;" />
+                        <p style="margin:0;color:${BRAND.muted};font-size:12px;">This is an automated confirmation — please do not reply to this email.</p>
+                    </td></tr>
+                </table>
+            </td></tr>
+        </table>
+    </body></html>`;
 }
 
 Deno.serve(async (req) => {
@@ -76,6 +77,8 @@ Deno.serve(async (req) => {
         });
         if (insErr) return json(400, { error: insErr.message });
 
+        const replyUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email.trim())}&subject=${encodeURIComponent('Re: Your enquiry to Boilermech')}`;
+
         const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
             <h2 style="color:#2F5E18">New general enquiry — BME e-Serve</h2>
@@ -87,7 +90,7 @@ Deno.serve(async (req) => {
             <p style="margin-top:16px"><strong>Message</strong></p>
             <p style="white-space:pre-wrap">${esc(message)}</p>
             <p style="color:#6B7A63;font-size:13px;margin-top:24px">
-                Reply directly to <a href="mailto:${esc(email)}">${esc(email)}</a> to respond to this enquiry.
+                Reply directly to <a href="${esc(replyUrl)}">${esc(email)}</a> to respond to this enquiry.
             </p>
         </div>`;
 

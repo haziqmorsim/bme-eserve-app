@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/email.ts";
+import { appUrl, ctaButton } from "../_shared/email-ui.ts";
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
         const itemsTable = `
             <table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:14px">
             <thead><tr style="background:#EEF3EA">
-                <th align="left">Part #</th><th align="left">Name</th><th align="left">Boiler</th>
+                <th align="left">Part No.</th><th align="left">Name</th><th align="left">Boiler</th>
                 <th>Qty</th>
             </tr></thead>
             <tbody>${rows}</tbody>
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
             ${quote.notes ? `<p><em>Notes:</em> ${quote.notes}</p>` : ''}
             ${itemsTable}
             <p style="margin-top:20px">Review this request in the BME e-Serve Requests page.</p>
+            ${ctaButton('Review Request', appUrl('/app/requests'), '#2F5E18')}
         </div>`;
 
         try {
@@ -71,6 +73,7 @@ Deno.serve(async (req) => {
                     Our team will review your request shortly. Once it is approved, you will
                     receive a confirmation email with the official quotation attached as a PDF.
                 </p>
+                ${ctaButton('View History', appUrl('/app/history'), '#2F5E18')}
                 <p style="color:#6B7A63;font-size:13px;margin-top:24px">
                     This email was sent automatically by BME e-Serve. Please do not reply.
                 </p>
