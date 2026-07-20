@@ -1,5 +1,5 @@
 <footer class="footer">
-    <a href="/app/faq" class="faq-link">Frequently Asked Questions</a>
+    <a href="/app/policy" class="link">Privacy Policy</a>&nbsp;|&nbsp;<a href="/app/faq" class="link">Frequently Asked Questions</a>
     <p>© 2026 Boilermech Sdn Bhd. All rights reserved.</p>
 </footer>
 
@@ -18,7 +18,7 @@
         color: var(--bme-muted);
     }
 
-    .faq-link {
+    .link {
         display: inline-block;
         margin-bottom: 8px;
         font-size: 13px;
@@ -27,7 +27,7 @@
         text-decoration: none;
     }
 
-    .faq-link:hover {
+    .link:hover {
         text-decoration: underline;
     }
 </style>
