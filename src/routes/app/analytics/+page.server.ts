@@ -1,16 +1,14 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { slaState, slaStateBusiness } from "$lib/sla";
+import { slaStateWeekday } from "$lib/sla";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
 
 const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
-const WORK_START_MIN = 8 * 60 + 30; // 08:30
-const WORK_END_MIN = 18 * 60;       // 18:00
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function businessMs(startUtcMs: number, endUtcMs: number): number {
+function weekdayMs(startUtcMs: number, endUtcMs: number): number {
     if (!(endUtcMs > startUtcMs)) return 0;
     const s = startUtcMs + MYT_OFFSET_MS;
     const e = endUtcMs + MYT_OFFSET_MS;
@@ -23,10 +21,8 @@ function businessMs(startUtcMs: number, endUtcMs: number): number {
     for (; dayMs < e; dayMs += DAY_MS) {
         const dow = new Date(dayMs).getUTCDay();
         if (dow === 0 || dow === 6) continue;
-        const winStart = dayMs + WORK_START_MIN * 60000;
-        const winEnd = dayMs + WORK_END_MIN * 60000;
-        const from = Math.max(s, winStart);
-        const to = Math.min(e, winEnd);
+        const from = Math.max(s, dayMs);
+        const to = Math.min(e, dayMs + DAY_MS);
         if (to > from) total += to - from;
     }
     return total;
@@ -109,7 +105,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         let arrival = createdAt[qid] ?? list[0].created_at;
         for (const a of list) {
             if (a.action === 'closed' && (a.level === 1 || a.level === 2 || a.level === 3)) {
-                const dur = businessMs(new Date(arrival).getTime(), new Date(a.created_at).getTime());
+                const dur = weekdayMs(new Date(arrival).getTime(), new Date(a.created_at).getTime());
                 if (dur >= 0) {
                     levelSum[a.level] += dur;
                     levelN[a.level]++;
@@ -158,7 +154,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const q of quotes) {
         if (q.status !== 'open') continue;
         const since = latestApproval[q.id] ?? q.created_at;
-        const st = slaStateBusiness(since, now);
+        const st = slaStateWeekday(since, now);
         if (st === 'overdue') overdueCount++;
         else if (st === 'aging') agingCount++;
         else onTrack++;
@@ -183,7 +179,9 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         '/app/history': 'History',
         '/app/analytics': 'Analytics',
         '/app/enquiries': 'Enquiries',
-        '/app/settings': 'Settings'
+        '/app/settings': 'Settings',
+        '/app/faq': 'FAQ', 
+        '/app/policy': 'Policy'
     };
     const pageLabel = (path: string | null): string => {
         if (!path) return 'Unknown';

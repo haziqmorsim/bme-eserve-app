@@ -79,7 +79,7 @@
                 <div>
                     <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
-                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} businessHours /></span>
+                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} weekdays /></span>
                 </div>
                 <small>{when(q.created_at)}</small>
             </div>

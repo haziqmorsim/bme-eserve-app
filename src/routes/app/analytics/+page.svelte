@@ -116,7 +116,7 @@
                     <li class="ag-row">
                         <span class="ag-ref">{a.reference} &middot; {a.boiler} ({a.region})</span>
                         <span class="ag-meta">{a.levelLabel}</span>
-                        <span class="ag-sla"><SlaBadge since={a.since} businessHours /></span>
+                        <span class="ag-sla"><SlaBadge since={a.since} weekdays /></span>
                     </li>
                 {/each}
             </ol>
