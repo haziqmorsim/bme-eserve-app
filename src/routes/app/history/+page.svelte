@@ -46,7 +46,7 @@
     })));
 
     const PAGE_SIZE = 10;
-    let tab = $state<'reviews' | 'requests'>(untrack(() => (data.isStaff ? 'reviews' : 'requests')));
+    let tab = $state<'reviews' | 'requests' | 'chats'>(untrack(() => (data.isStaff ? 'reviews' : 'requests')));
     let reviewPage = $state(1);
     let requestPage = $state(1);
 
@@ -102,6 +102,7 @@
         <button class="tab" class:active={tab === 'reviews'} onclick={() => { tab = 'reviews'; }}>Reviews</button>
     {/if}
     <button class="tab" class:active={tab === 'requests'} onclick={() => { tab = 'requests'; }}>Requests</button>
+    <button class="tab" class:active={tab === 'chats'} onclick={() => { tab = 'chats'; }}>Chats</button>
 </div>
 
 {#if data.isStaff && tab === 'reviews'}
@@ -178,7 +179,7 @@
     </section>
 {/if}
 
-{#if !data.isStaff || tab === 'requests'}
+{#if tab === 'requests'}
     <section class="block">
 
         {#if data.loyalty}
@@ -281,6 +282,56 @@
         {/if}
         {#if filteredQuotes.length > 0}
             <Pagination total={filteredQuotes.length} page={requestCur} pageSize={PAGE_SIZE} onpage={(p) => (requestPage = p)} />
+        {/if}
+    </section>
+{/if}
+
+{#if tab === 'chats'}
+    <section class="block">
+        {#if !data.chats || data.chats.length === 0}
+            <div class="card empty">You have no chatbot conversations yet.</div>
+        {:else}
+            {#each data.chats as c (c.id)}
+                <div class="card chat-session">
+                    <div class="cs-head">
+                        <div class="cs-times">
+                            <span class="cs-label">Started</span>
+                            <span class="cs-val">{when(c.started_at)}</span>
+                        </div>
+                        <div class="cs-times">
+                            <span class="cs-label">Ended</span>
+                            {#if c.ended_at}
+                                <span class="cs-val">{when(c.ended_at)}</span>
+                            {:else}
+                                <span class="cs-val ongoing">Ongoing</span>
+                            {/if}
+                        </div>
+                    </div>
+
+                    {#if c.chat_messages.length === 0}
+                        <p class="cs-empty">No messages in this conversation.</p>
+                    {:else}
+                        <div class="cs-thread">
+                            {#each c.chat_messages as m (m.id)}
+                                <div class="cm {m.role}">
+                                    <div class="cm-bubble">
+                                        <div class="cm-top">
+                                            <span class="cm-who">{m.role === 'assistant' ? 'Assistant' : 'You'}</span>
+                                            <span class="cm-time">{when(m.created_at)}</span>
+                                        </div>
+                                        {#if m.image_url}
+                                            <a href={m.image_url} target="_blank" rel="noopener noreferrer" class="cm-img">
+                                                <img src={m.image_url} alt="Uploaded in chat" />
+                                            </a>
+                                        {/if}
+                                        {#if m.content}<p class="cm-text">{m.content}</p>{/if}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+            {/each}
         {/if}
     </section>
 {/if}
@@ -700,10 +751,132 @@
         color: var(--bme-muted); 
     }
 
+    .chat-session {
+        margin-bottom: 14px;
+        padding: 14px;
+    }
+
+    .cs-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 32px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--bme-border);
+        margin-bottom: 14px;
+    }
+
+    .cs-times {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .cs-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--bme-muted);
+        font-weight: 600;
+    }
+
+    .cs-val {
+        font-size: 14px;
+        color: var(--bme-ink);
+        font-weight: 600;
+    }
+
+    .cs-val.ongoing {
+        color: var(--bme-green);
+    }
+
+    .cs-reason {
+        color: var(--bme-muted);
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .cs-empty {
+        color: var(--bme-muted);
+        margin: 0;
+    }
+
+    .cs-thread {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .cm {
+        display: flex;
+    }
+
+    .cm.user {
+        justify-content: flex-end;
+    }
+
+    .cm.assistant {
+        justify-content: flex-start;
+    }
+
+    .cm-bubble {
+        max-width: 78%;
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--bme-border);
+    }
+
+    .cm.user .cm-bubble {
+        background: var(--bme-sky);
+        border-color: var(--bme-sky);
+    }
+
+    .cm.assistant .cm-bubble {
+        background: var(--bme-light-grey);
+    }
+
+    .cm-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
+    .cm-who {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--bme-dark-blue);
+    }
+
+    .cm-time {
+        font-size: 11px;
+        color: var(--bme-muted);
+    }
+
+    .cm-text {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--bme-ink);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .cm-img {
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .cm-img img {
+        max-width: 200px;
+        max-height: 200px;
+        border-radius: 8px;
+        display: block;
+    }
+
     @media (max-width: 640px) {
         .loy-tiers { 
             grid-template-columns: 1fr; 
         }
     }
-
 </style>

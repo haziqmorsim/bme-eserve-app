@@ -6,6 +6,64 @@
 
     type Msg = { role: 'user' | 'assistant'; content: string; image?: string };
 
+    let { supabase = null, user = null } = $props<{ supabase?: any; user?: any }>();
+
+    let sessionId: string | null = null;
+
+    async function ensureSession(): Promise<string | null> {
+        if (!supabase || !user) return null;
+        if (sessionId) return sessionId;
+        const { data: existing } = await supabase
+            .from('chat_sessions')
+            .select('id')
+            .eq('user_id', user.id)
+            .is('ended_at', null)
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (existing?.id) { sessionId = existing.id; return sessionId; }
+        const { data: created } = await supabase
+            .from('chat_sessions')
+            .insert({ user_id: user.id })
+            .select('id')
+            .single();
+        sessionId = created?.id ?? null;
+        return sessionId;
+    }
+
+    async function persistMessage(role: 'user' | 'assistant', content: string, imageUrl: string | null = null) {
+        if (!supabase || !user || !sessionId) return;
+        try {
+            await supabase.from('chat_messages').insert({
+                session_id: sessionId, 
+                user_id: user.id, 
+                role, 
+                content, 
+                image_url: imageUrl
+            });
+        } catch (e) {
+            console.error('Could not save chat message:', e);
+        }
+    }
+
+    async function uploadChatImage(dataUrl: string, name: string): Promise<string | null> {
+        if (!supabase || !user || !sessionId) return null;
+        try {
+            const blob = await (await fetch(dataUrl)).blob();
+            const path = `${user.id}/${sessionId}/${Date.now()}.jpg`;
+            const { error } = await supabase.storage.from('chat-uploads').upload(path, blob, {
+                contentType: 'image/jpeg', 
+                upsert: false
+            });
+            if (error) return null;
+            const { data } = await supabase.storage.from('chat-uploads').createSignedUrl(path, 60 * 60 * 24 * 365);
+            return data?.signedUrl ?? null;
+        } catch (e) {
+            console.error('Could not upload chat image:', e);
+            return null;
+        }
+    }
+
     let open = $state(false);
     let input = $state('');
     let loading = $state(false);
@@ -94,6 +152,7 @@
         if ((!text && !pendingImage) || loading) return;
         input = '';
         const image = pendingImage?.dataUrl ?? undefined;
+        const imageName = pendingImage?.name ?? 'photo.jpg';
         pendingImage = null;
 
         messages.push({ role: 'user', content: text, image });
@@ -101,6 +160,11 @@
         messages.push({ role: 'assistant', content: '' });
         const idx = messages.length - 1;
         loading = true;
+
+        await ensureSession();
+        let imageUrl: string | null = null;
+        if (image) imageUrl = await uploadChatImage(image, imageName);
+        await persistMessage('user', text, imageUrl);
 
         try {
             const res = await fetch('/api/chat', {
@@ -121,6 +185,7 @@
             messages[idx].content = 'Sorry, something went wrong. Please try again or chat with us in WhatsApp.';
         } finally {
             loading = false;
+            await persistMessage('assistant', messages[idx].content);
         }
     }
 

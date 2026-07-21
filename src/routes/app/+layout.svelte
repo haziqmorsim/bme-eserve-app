@@ -12,6 +12,17 @@
     let { supabase } = $derived(data);
 
     async function handleTimeout() {
+        if (data.profile?.id) {
+            try {
+                await supabase
+                    .from('chat_sessions')
+                    .update({ ended_at: new Date().toISOString(), end_reason: 'timeout' })
+                    .eq('user_id', data.profile.id)
+                    .is('ended_at', null);
+            } catch (e) {
+                console.error('Could not close chat session on timeout:', e);
+            }
+        }
         await supabase.auth.signOut();
     }
 

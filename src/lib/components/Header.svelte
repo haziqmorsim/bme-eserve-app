@@ -10,8 +10,24 @@
     let open = $state(false);
     const close = () => (open = false);
 
-    // Red dot on the collapsed menu icon when any nav item has a count badge.
     let hasBadge = $derived(count > 0 || pendingCount > 0 || enquiryCount > 0);
+
+    async function endChatThenLogout(e: SubmitEvent) {
+        e.preventDefault();
+        const form = e.currentTarget as HTMLFormElement;
+        if (profile?.id && supabase) {
+            try {
+                await supabase
+                    .from('chat_sessions')
+                    .update({ ended_at: new Date().toISOString(), end_reason: 'signout' })
+                    .eq('user_id', profile.id)
+                    .is('ended_at', null);
+            } catch (err) {
+                console.error('Could not close chat session on sign out:', err);
+            }
+        }
+        form.submit();
+    }
 
     let isStaff = $derived(
         profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo' || profile?.role === 'developer'
@@ -57,7 +73,7 @@
             <div class="actions">
                 <NotificationBell {notifications} {supabase} />
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
-                <form action="/logout" method="POST">
+                <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
                     <button type="submit" class="btn-ghost signout">Sign Out</button>
                 </form>
             </div>
@@ -107,7 +123,7 @@
         <nav class="side-group bottom">
             <div class="side-bell"><NotificationBell {notifications} {supabase} label="Notifications" /></div>
             <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
-            <form action="/logout" method="POST">
+            <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
                 <button type="submit" class="side-link signout">Sign Out</button>
             </form>
         </nav>

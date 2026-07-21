@@ -7,7 +7,7 @@
     import PageSkeleton from '$lib/components/PageSkeleton.svelte';
 
     let { data, children } = $props();
-    let { session, supabase } = $derived(data);
+    let { session, supabase, user } = $derived(data);
 
     onMount(() => {
         const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -25,5 +25,5 @@
 
 {@render children()}
 
-<Chatbot />
+<Chatbot {supabase} {user} />
 <PageSkeleton />

@@ -104,11 +104,25 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         toNext: nextTier ? nextTier.threshold - reqCount : 0, progressPct
     };
 
+    const { data: chatRows } = await supabase
+        .from('chat_sessions')
+        .select('id, started_at, ended_at, end_reason, chat_messages(id, role, content, image_url, created_at)')
+        .eq('user_id', user.id)
+        .order('started_at', { ascending: false });
+
+    const chats = (chatRows ?? []).map((ssn: any) => ({
+        ...ssn, 
+        chat_messages: [...(ssn.chat_messages ?? [])].sort(
+            (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+    }));
+
     return {
         quotes,
         reviewGroups, isStaff,
         regions,
         loyalty,
+        chats,
         title: "History"
     };
 };
