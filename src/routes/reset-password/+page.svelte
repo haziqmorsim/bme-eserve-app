@@ -130,7 +130,7 @@
 
             {#if err}<p class="err">{err}</p>{/if}
 
-            <button type="button" class="btn-prima" onclick={submit} disabled={busy} style="width: 100%; margin-top: 6px;">
+            <button type="button" class="btn-primary" onclick={submit} disabled={busy} style="width: 100%; margin-top: 6px;">
                 {busy ? 'Resetting...' : 'Reset Password'}
             </button>
         {/if}
@@ -196,7 +196,7 @@
         list-style: none;
         margin: 4px 0 14px;
         padding: 14px 16px;
-        background: var(--bme-bg);
+        background: var(--bme-light-grey);
         border: 1px solid var(--bme-border);
         border-radius: 10px;
         font-size: 13px;
