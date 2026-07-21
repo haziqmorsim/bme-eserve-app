@@ -12,19 +12,36 @@
 
     async function submit() {
         if (!email.trim()) {
-            err: 'Please enter your e-mail address.';
+            err = 'Please enter your e-mail address.';
             return;
         }
         busy = true;
         err = '';
 
-        await supabase.functions.invoke('reset-password', { body: {
+        const { error } = await supabase.functions.invoke('reset-password', { body: {
             email: email.trim()
         }});
 
         busy = false;
+
+        if (error) {
+            let message = 'Something went wrong. Please try again.';
+            try {
+                const body = await (error as any).context?.json();
+                if (body?.error === 'not_found') {
+                    message = 'An account with this e-mail address does not exist.';
+                } else if (body?.message) {
+                    message = body.message;
+                }
+            } catch {
+                // Keep the default message if the error body can't be parsed.
+            }
+            err = message;
+            return;
+        }
+
         sent = true;
-        addToast('If the e-mail is registered, a reset link has been sent.')
+        addToast('A password reset link has been sent.');
     }
 
     function onKey(e: KeyboardEvent) {
@@ -40,7 +57,7 @@
 
         {#if sent}
             <div class="sent">
-                <p>If an account exists for <strong>{email.trim()}</strong>, a passowrd reset link has been sent to the e-mail address.</p>
+                <p>A password reset link has been sent to <strong>{email.trim()}</strong>.</p>
                 <p class="hint">The link expires in 30 minutes.</p>
             </div>
         {:else}

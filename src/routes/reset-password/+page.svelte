@@ -28,23 +28,44 @@
 
     onMount(() => {
         const hash = window.location.hash ?? '';
-        if (hash.includes('error')) {
-            const params = new URLSearchParams(hash.replace(/^#/, ''));
+        const params = new URLSearchParams(hash.replace(/^#/, ''));
+
+        if (params.get('error') || hash.includes('error')) {
             linkError = (params.get('error_description') ?? 'This reset link is invalid or has expired.').replace(/\+/g, ' ');
             checking = false;
             return;
         }
 
-        const { data: sub } = supabase.auth.onAuthStateChange(() => {});
-        supabase.auth.getSession().finally(() => {
-            checking = false;
-        });
+        let settled = false;
+        const safety = setTimeout(() => {
+            if (!settled) { settled = true; checking = false; }
+        }, 4000);
 
-        const t = setTimeout(() => (checking = false), 1500);
-        return () => { 
-            sub.subscription.unsubscribe();
-            clearTimeout(t);
-        };
+        (async () => {
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+
+            if (accessToken && refreshToken) {
+                const { error } = await supabase.auth.setSession({
+                    access_token: accessToken, 
+                    refresh_token: refreshToken
+                });
+                if (error) {
+                    linkError = 'This reset link is invalid or has expired. Please request a new one.';
+                } else {
+                    history.replaceState(null, '', window.location.pathname);
+                }
+            } else {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    linkError = 'This reset link is invalid or has expired. Please request a new one.';
+                }
+            }
+
+            if (!settled) { settled = true; checking = false; }
+        })();
+
+        return () => clearTimeout(safety);
     });
 
     async function submit() {
