@@ -40,6 +40,24 @@
         })
         .filter((region: Region) => (region.boilers ?? []).length > 0)
     )
+
+    let openIds = $state<Set<string>>(new Set());
+
+    $effect(() => {
+        if (!activeBoilerId) return;
+        const owner = regions.find((r: Region) => (r.boilers ?? []).some((b: Boiler) => b.id === activeBoilerId));
+        if (owner && !openIds.has(owner.id)) {
+            openIds = new Set(openIds).add(owner.id);
+        }
+    });
+
+    function onToggle(regionId: string, e: Event) {
+        const isOpen = (e.currentTarget as HTMLDetailsElement).open;
+        const next = new Set(openIds);
+        if (isOpen) next.add(regionId);
+        else next.delete(regionId);
+        openIds = next;
+    }
 </script>
 
 <aside class="card sidebar">
@@ -48,7 +66,7 @@
     {:else}
         <input type="search" class="boiler-search" placeholder="Search boilers..." bind:value={search} oninput={onSearchInput} />
         {#each filtered as region (region.id)}
-        <details class="region">
+        <details class="region" open={openIds.has(region.id)} ontoggle={(e) => onToggle(region.id, e)}>
             <summary>{region.name}</summary>
             <ul>
                 {#each region.boilers ?? [] as boiler (boiler.id)}

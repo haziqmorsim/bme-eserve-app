@@ -1,5 +1,5 @@
 import type { PageLoad } from "./$types";
-import type { Region, Boiler, Component } from "$lib/types";
+import type { Region, Boiler, Component, Part } from "$lib/types";
 
 export const load: PageLoad = async ({ parent, url }) => {
     const { supabase, profile } = await parent();
@@ -35,6 +35,7 @@ export const load: PageLoad = async ({ parent, url }) => {
 
     let boiler: Boiler | null = null;
     let components: Component[] = [];
+    let parts: Part[] = [];
 
     const canViewBoiler = !!boilerId && (!isCustomer || assignedIds!.has(boilerId));
     if (canViewBoiler) {
@@ -50,12 +51,23 @@ export const load: PageLoad = async ({ parent, url }) => {
             .eq('boiler_id', boilerId)
             .order('name', { ascending: true });
         components = c ?? [];
+
+        if (components.length) {
+            const componentIds = components.map((c) => c.id);
+            const { data: p } = await supabase
+                .from('parts')
+                .select('*')
+                .in('component_id', componentIds)
+                .order('part_number', { ascending: true });
+            parts = p ?? [];
+        }
     }
 
     return {
         regions, 
         boiler, 
         components, 
+        parts,
         boilerId: canViewBoiler ? boilerId : null, 
         tab, 
         customerNoBoilers, 

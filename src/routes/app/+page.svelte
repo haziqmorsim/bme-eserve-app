@@ -18,11 +18,11 @@
         {:else}
             <div class="tabbar">
                 <a href={`/app?boiler=${data.boilerId}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
-                <a href={`/app?boiler=${data.boilerId}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Parts</a>
+                <a href={`/app?boiler=${data.boilerId}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
             </div>
             <div class="panel">
                 {#if data.tab === 'parts'}
-                    <PartsExplorer boiler={data.boiler} components={data.components} supabase={data.supabase} />
+                    <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} />
                 {:else}
                     <Dashboard boiler={data.boiler} />
                 {/if}
