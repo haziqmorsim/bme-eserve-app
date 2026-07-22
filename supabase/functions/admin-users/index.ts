@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
             });
             if (pErr) return json(400, { error: pErr.message });
 
-            const bErr = await syncBoilers(admin, created.user_id, role, body.boiler_ids);
+            const bErr = await syncBoilers(admin, created.user.id, role, body.boiler_ids);
             if (bErr) return json(400, { error: bErr });
 
             return json(200, { ok: true, id: created.user.id });

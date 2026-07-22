@@ -51,7 +51,12 @@
             await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
             await invalidateAll();
         }
-        goto('/app/history');
+        const dest =
+            n.type === 'request_reminder' ? '/app/requests'
+            : n.type === 'enquiry_reminder' ? '/app/enquiries'
+            : n.type === 'cart_reminder' ? '/app/quotes'
+            : '/app/history';
+        goto(dest);
     }
 </script>
 

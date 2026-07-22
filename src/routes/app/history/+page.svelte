@@ -551,41 +551,6 @@
         color: #97700a;
     }
 
-    @media (max-width: 640px) {
-        .tabbar {
-            width: 100%;
-            justify-content: space-between;
-        }
-
-        .tab {
-            width: 48%;
-        }
-
-        .quote {
-            padding: 16px;
-        }
-
-        .qhead {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 6px;
-        }
-
-        .meta-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        table {
-            font-size: 13px;
-        }
-
-        th, td {
-            padding: 6px;
-        }
-    }
-
     .loyalty {
         padding: 20px;
         margin-bottom: 16px;
@@ -875,6 +840,39 @@
     }
 
     @media (max-width: 640px) {
+        .tabbar {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .tab {
+            width: 30%;
+        }
+
+        .quote {
+            padding: 16px;
+        }
+
+        .qhead {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .meta-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        table {
+            font-size: 13px;
+        }
+
+        th, td {
+            padding: 6px;
+        }
+
         .loy-tiers { 
             grid-template-columns: 1fr; 
         }

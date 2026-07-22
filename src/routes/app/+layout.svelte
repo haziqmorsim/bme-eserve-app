@@ -7,6 +7,7 @@
     import { navigating } from "$app/stores";
     import { afterNavigate } from "$app/navigation";
     import { logActivity } from "$lib/activity";
+    import { quoteItems } from "$lib/stores/quote";
 
     let { data, children } = $props();
     let { supabase } = $derived(data);
@@ -25,6 +26,26 @@
         }
         await supabase.auth.signOut();
     }
+
+    let cartSyncTimer: ReturnType<typeof setTimeout> | undefined;
+    $effect(() => {
+        const items = $quoteItems;
+        const userId = data.profile?.id;
+        clearTimeout(cartSyncTimer);
+        if (!userId) return;
+        cartSyncTimer = setTimeout(async () => {
+            try {
+                await supabase.from('cart_state').upsert({
+                    user_id: userId, 
+                    items, 
+                    updated_at: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error('Could not sync cart state:', e);
+            }
+        }, 2000);
+        return () => clearTimeout(cartSyncTimer);
+    });
 
     let showSkeleton = $state(false);
     let skTimer: ReturnType<typeof setTimeout> | undefined;
