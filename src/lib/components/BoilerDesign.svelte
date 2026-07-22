@@ -18,7 +18,9 @@
         onselect?: (componentId: string, key: string) => void;
     }>();
 
-    let open = $state<string |null>(null);
+    let open = $state<string | null>(null);
+    let tip = $state<{ key: string; left: number; top: number; placement: 'above' | 'below' } | null>(null);
+    let tipEl = $state<HTMLDivElement>();
 
     const telemetry = $derived(
         Object.fromEntries(
@@ -30,24 +32,93 @@
         return mode === 'parts' && !!s.componentId;
     }
 
-    function handleClick(s: ResolvedSection) {
+    const TIP_MARGIN = 10;
+    const TIP_EST_WIDTH = 210;
+    const TIP_EST_HEIGHT = 140;
+
+    function openTip(s: ResolvedSection, btn: HTMLElement) {
+        open = s.key;
+        const r = btn.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        let left = r.left + r.width / 2;
+        left = Math.min(vw - TIP_MARGIN - TIP_EST_WIDTH / 2, Math.max(TIP_MARGIN + TIP_EST_WIDTH / 2, left));
+
+        const spaceAbove = r.top;
+        const placement: 'above' | 'below' = spaceAbove >= TIP_EST_HEIGHT + TIP_MARGIN ? 'above' : 'below';
+        const top = placement === 'above' ? r.top - 8 : r.bottom + 8;
+
+        tip = { key: s.key, left, top: Math.max(TIP_MARGIN, Math.min(vh - TIP_MARGIN, top)), placement };
+    }
+
+    function closeTip() {
+        open = null;
+        tip = null;
+    }
+
+    function handleClick(s: ResolvedSection, e: MouseEvent) {
         if (mode === 'parts') {
             if (s.componentId) onselect?.(s.componentId, s.key);
+        } else if (open === s.key) {
+            closeTip();
         } else {
-            open = open === s.key ? null : s.key;
+            openTip(s, e.currentTarget as HTMLElement);
         }
     }
 
-    function tipStyle(s: ResolvedSection) {
-        const cx = Math.min(85, Math.max(15, s.rect.l + s.rect.w / 2));
-        const below = s.rect.t < 42;
-        const y = below ? `top:${s.rect.t + s.rect.h + 1.5}%;` : `bottom:${100 - s.rect.t + 1.5}%;`;
-        return `left:${cx}%;${y}`;
+    function onHotEnter(s: ResolvedSection, e: PointerEvent) {
+        if (e.pointerType === 'mouse') openTip(s, e.currentTarget as HTMLElement);
     }
-    function tipPlacement(s: ResolvedSection) {
-        return s.rect.t < 42 ? 'below' : 'above';
+    function onHotLeave(s: ResolvedSection, e: PointerEvent) {
+        if (e.pointerType === 'mouse' && open === s.key) closeTip();
     }
+    function onHotFocus(s: ResolvedSection, e: FocusEvent) {
+        openTip(s, e.currentTarget as HTMLElement);
+    }
+
+    function onWindowClick(e: MouseEvent) {
+        if (mode !== 'dashboard' || open === null) return;
+        const target = e.target as HTMLElement;
+        if (target.closest?.('.hot') || target.closest?.('.tip')) return;
+        closeTip();
+    }
+
+    function onWindowScrollOrResize() {
+        if (open !== null) closeTip();
+    }
+
+    $effect(() => {
+        if (!tip || !tipEl) return;
+        const el = tipEl;
+        const t = tip;
+        requestAnimationFrame(() => {
+            if (open !== t.key) return;
+            const r = el.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            let { left, top, placement } = t;
+
+            const halfW = r.width / 2;
+            if (left + halfW > vw - TIP_MARGIN) left = vw - TIP_MARGIN - halfW;
+            if (left - halfW < TIP_MARGIN) left = TIP_MARGIN + halfW;
+
+            const height = r.height;
+            if (placement === 'above' && top - height < TIP_MARGIN) {
+                placement = 'below';
+                top = top + 8 + height;
+            } else if (placement === 'below' && top + height > vh - TIP_MARGIN) {
+                top = Math.max(TIP_MARGIN, vh - TIP_MARGIN - height);
+            }
+
+            if (left !== t.left || top !== t.top || placement !== t.placement) {
+                tip = { ...t, left, top, placement };
+            }
+        });
+    });
 </script>
+
+<svelte:window onclick={onWindowClick} onscroll={onWindowScrollOrResize} onresize={onWindowScrollOrResize} />
 
 <div class="bd" class:wide={mode === 'parts'}>
     <div class="stage" class:parts={mode === 'parts'}>
@@ -64,33 +135,28 @@
             style={`left:${s.rect.l}%;top:${s.rect.t}%;width:${s.rect.w}%;height:${s.rect.h}%;`} 
             aria-label={s.label} 
             aria-pressed={mode === 'parts' ? activeKey === s.key : undefined} 
-            onpointerenter={() => (open = s.key)} 
-            onpointerleave={() => (open = open === s.key ? null : open)} 
-            onfocus={() => (open = s.key)} 
-            onblur={() => (open = null)} 
-            onclick={() => handleClick(s)}
+            onpointerenter={(e) => onHotEnter(s, e)} 
+            onpointerleave={(e) => onHotLeave(s, e)} 
+            onfocus={(e) => onHotFocus(s, e)} 
+            onclick={(e) => handleClick(s, e)}
             >
                 <span class="dot"></span>
                 <span class="tag">{s.label}</span>
             </button>
         {/each}
 
-        {#if mode === 'dashboard'}
-            {#each sections as s (s.key)}
-                {#if open === s.key}
-                    <div class="tip {tipPlacement(s)}" style={tipStyle(s)} role="tooltip">
-                        <div class="tip-head">
-                            <span class="tip-title">{s.label}</span>
-                            <span class="badge {telemetry[s.key].state.toLowerCase()}">{telemetry[s.key].state}</span>
-                        </div>
-                        <dl class="tip-metrics">
-                            {#each telemetry[s.key].metrics as m}
-                                <div class="row"><dt>{m.label}</dt><dd>{m.value}</dd></div>
-                            {/each}
-                        </dl>
-                    </div>
-                {/if}
-            {/each}
+        {#if mode === 'dashboard' && open && tip}
+            <div class="tip {tip.placement}" style={`left:${tip.left}px; top:${tip.top}px;`} bind:this={tipEl} role="tooltip">
+                <div class="tip-head">
+                    <span class="tip-title">{sections.find((s: ResolvedSection) => s.key === open)?.label}</span>
+                    <span class="badge {telemetry[open].state.toLowerCase()}">{telemetry[open].state}</span>
+                </div>
+                <dl class="tip-metrics">
+                    {#each telemetry[open].metrics as m}
+                        <div class="row"><dt>{m.label}</dt><dd>{m.value}</dd></div>
+                    {/each}
+                </dl>
+            </div>
         {/if}
     </div>
 
@@ -241,10 +307,11 @@
 	}
 
 	.tip {
-		position: absolute;
-		z-index: 5;
+		position: fixed;
+		z-index: 1000;
 		transform: translateX(-50%);
-		width: 230px;
+		min-width: 168px;
+		max-width: 230px;
 		background: #fff;
 		border: 1px solid var(--border);
 		border-radius: 10px;
@@ -252,6 +319,10 @@
 		padding: 10px 12px;
 		animation: tip-in 140ms ease;
 		pointer-events: none;
+	}
+
+	.tip.above {
+		transform: translateX(-50%) translateY(-100%);
 	}
 
 	@keyframes tip-in {
@@ -356,7 +427,6 @@
 	.caption {
 		display: flex;
 		align-items: baseline;
-        justify-content: center;
 		gap: 10px;
 		margin-top: 10px;
 		flex-wrap: wrap;
@@ -377,13 +447,32 @@
 		.bd {
             width: 100%;
         }
-        
-        .tip {
-			min-width: 150px;
-			max-width: 200px;
-		}
+
 		.hot .tag {
 			font-size: 10px;
+		}
+
+		.tip {
+			position: fixed !important;
+			left: 12px !important;
+			right: 12px !important;
+			top: auto !important;
+			bottom: 14px !important;
+			transform: none !important;
+			width: auto !important;
+			min-width: 0 !important;
+			max-width: none !important;
+			max-height: min(60vh, 320px);
+			overflow-y: auto;
+			pointer-events: auto;
+		}
+
+		.tip.above {
+			transform: none !important;
+		}
+
+		.tip::after {
+			display: none;
 		}
 	}
 </style>

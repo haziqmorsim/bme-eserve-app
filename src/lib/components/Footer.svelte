@@ -1,5 +1,5 @@
 <footer class="footer">
-    <a href="/app/policy" class="link">Privacy Policy</a>&nbsp;|&nbsp;<a href="/app/faq" class="link">Frequently Asked Questions</a>
+    <a href="/app/policy" class="link">Privacy Policy</a>&nbsp;|&nbsp;<a href="/app/faq" class="link">FAQ</a>
     <p>© 2026 Boilermech Sdn Bhd. All rights reserved.</p>
 </footer>
 
