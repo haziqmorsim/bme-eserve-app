@@ -456,8 +456,6 @@
 			position: fixed !important;
 			left: 12px !important;
 			right: 12px !important;
-			top: auto !important;
-			bottom: 14px !important;
 			transform: none !important;
 			width: auto !important;
 			min-width: 0 !important;
@@ -468,7 +466,7 @@
 		}
 
 		.tip.above {
-			transform: none !important;
+			transform: translateY(-100%) !important;
 		}
 
 		.tip::after {
