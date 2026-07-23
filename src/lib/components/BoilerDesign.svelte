@@ -19,7 +19,8 @@
     }>();
 
     let open = $state<string | null>(null);
-    let tip = $state<{ key: string; left: number; top: number; placement: 'above' | 'below' } | null>(null);
+    let tip = $state<{ key: string; left: number; top: number; placement: 'above' | 'below'; arrowX: number } | null>(null);
+    let tipVisible = $state(false);
     let tipEl = $state<HTMLDivElement>();
 
     const telemetry = $derived(
@@ -33,28 +34,58 @@
     }
 
     const TIP_MARGIN = 10;
+    const TIP_GAP = 8;
     const TIP_EST_WIDTH = 210;
     const TIP_EST_HEIGHT = 140;
+    const DOT_RADIUS = 9;
 
-    function openTip(s: ResolvedSection, btn: HTMLElement) {
-        open = s.key;
-        const r = btn.getBoundingClientRect();
+    type Anchor = { top: number; bottom: number; centerX: number };
+
+    function computePlacement(anchor: Anchor, w: number, h: number) {
         const vw = window.innerWidth;
         const vh = window.innerHeight;
 
-        let left = r.left + r.width / 2;
-        left = Math.min(vw - TIP_MARGIN - TIP_EST_WIDTH / 2, Math.max(TIP_MARGIN + TIP_EST_WIDTH / 2, left));
+        let left = anchor.centerX;
+        left = Math.min(vw - TIP_MARGIN - w / 2, Math.max(TIP_MARGIN + w / 2, left));
 
-        const spaceAbove = r.top;
-        const placement: 'above' | 'below' = spaceAbove >= TIP_EST_HEIGHT + TIP_MARGIN ? 'above' : 'below';
-        const top = placement === 'above' ? r.top - 8 : r.bottom + 8;
+        const spaceAbove = anchor.top;
+        const spaceBelow = vh - anchor.bottom;
+        const needed = h + TIP_GAP + TIP_MARGIN;
 
-        tip = { key: s.key, left, top: Math.max(TIP_MARGIN, Math.min(vh - TIP_MARGIN, top)), placement };
+        let placement: 'above' | 'below';
+        if (spaceAbove >= needed) placement = 'above';
+        else if (spaceBelow >= needed) placement = 'below';
+        else placement = spaceAbove >= spaceBelow ? 'above' : 'below';
+
+        const top =
+            placement === 'above'
+                ? Math.max(TIP_MARGIN + h, anchor.top - TIP_GAP)
+                : Math.min(vh - TIP_MARGIN - h, anchor.bottom + TIP_GAP);
+
+        const arrowX = Math.min(w - 14, Math.max(14, anchor.centerX - (left - w / 2)));
+
+        return { left, top, placement, arrowX };
+    }
+
+    let anchor: Anchor | null = null;
+
+    function openTip(s: ResolvedSection, btn: HTMLElement) {
+        open = s.key;
+        tipVisible = false;
+        const r = btn.getBoundingClientRect();
+
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        anchor = { top: cy - DOT_RADIUS, bottom: cy + DOT_RADIUS, centerX: cx };
+
+        tip = { key: s.key, ...computePlacement(anchor, TIP_EST_WIDTH, TIP_EST_HEIGHT) };
     }
 
     function closeTip() {
         open = null;
         tip = null;
+        tipVisible = false;
+        anchor = null;
     }
 
     function handleClick(s: ResolvedSection, e: MouseEvent) {
@@ -89,31 +120,15 @@
     }
 
     $effect(() => {
-        if (!tip || !tipEl) return;
+        if (!tip || !tipEl || !anchor) return;
         const el = tipEl;
         const t = tip;
+        const a = anchor;
         requestAnimationFrame(() => {
             if (open !== t.key) return;
             const r = el.getBoundingClientRect();
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            let { left, top, placement } = t;
-
-            const halfW = r.width / 2;
-            if (left + halfW > vw - TIP_MARGIN) left = vw - TIP_MARGIN - halfW;
-            if (left - halfW < TIP_MARGIN) left = TIP_MARGIN + halfW;
-
-            const height = r.height;
-            if (placement === 'above' && top - height < TIP_MARGIN) {
-                placement = 'below';
-                top = top + 8 + height;
-            } else if (placement === 'below' && top + height > vh - TIP_MARGIN) {
-                top = Math.max(TIP_MARGIN, vh - TIP_MARGIN - height);
-            }
-
-            if (left !== t.left || top !== t.top || placement !== t.placement) {
-                tip = { ...t, left, top, placement };
-            }
+            tip = { ...t, ...computePlacement(a, r.width, r.height) };
+            tipVisible = true;
         });
     });
 </script>
@@ -146,7 +161,7 @@
         {/each}
 
         {#if mode === 'dashboard' && open && tip}
-            <div class="tip {tip.placement}" style={`left:${tip.left}px; top:${tip.top}px;`} bind:this={tipEl} role="tooltip">
+            <div class="tip {tip.placement}" class:visible={tipVisible} style={`left:${tip.left}px; top:${tip.top}px; --arrow-x:${tip.arrowX}px;`} bind:this={tipEl} role="tooltip">
                 <div class="tip-head">
                     <span class="tip-title">{sections.find((s: ResolvedSection) => s.key === open)?.label}</span>
                     <span class="badge {telemetry[open].state.toLowerCase()}">{telemetry[open].state}</span>
@@ -317,29 +332,23 @@
 		border-radius: 10px;
 		box-shadow: 0 10px 30px rgba(12, 51, 88, 0.18);
 		padding: 10px 12px;
-		animation: tip-in 140ms ease;
 		pointer-events: none;
+		opacity: 0;
+		transition: opacity 140ms ease;
+	}
+
+	.tip.visible {
+		opacity: 1;
 	}
 
 	.tip.above {
 		transform: translateX(-50%) translateY(-100%);
 	}
 
-	@keyframes tip-in {
-		from {
-			opacity: 0;
-			transform: translateX(-50%) translateY(4px) scale(0.98);
-		}
-		to {
-			opacity: 1;
-			transform: translateX(-50%) translateY(0) scale(1);
-		}
-	}
-
 	.tip::after {
 		content: '';
 		position: absolute;
-		left: 50%;
+		left: var(--arrow-x, 50%);
 		width: 10px;
 		height: 10px;
 		background: #fff;
@@ -454,7 +463,7 @@
 
 		.tip {
 			position: fixed !important;
-			left: 12px !important;
+			left: 120px !important;
 			right: 12px !important;
 			transform: none !important;
 			width: auto !important;
