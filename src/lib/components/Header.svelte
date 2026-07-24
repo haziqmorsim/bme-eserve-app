@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { quoteItems } from "$lib/stores/quote";
-    import { Menu, X } from "@lucide/svelte";
+    import { Menu, X, UserRound } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
 
     let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
@@ -71,6 +71,14 @@
                 <p class="greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             </div>
             <div class="actions">
+                <a
+                    href="/app/profile"
+                    class="profile-icon"
+                    class:active={$page.url.pathname.startsWith('/app/profile')}
+                    aria-label="Profile"
+                    title="Profile">
+                    <UserRound size={20} />
+                </a>
                 <NotificationBell {notifications} {supabase} />
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
                 <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
@@ -121,6 +129,7 @@
         </nav>
 
         <nav class="side-group bottom">
+            <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
             <div class="side-bell"><NotificationBell {notifications} {supabase} label="Notifications" /></div>
             <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
             <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
@@ -192,8 +201,30 @@
     .actions {
         display: flex;
         justify-content: end;
+        align-items: center;
         margin-top: 15px;
         gap: 20px;
+    }
+
+    .profile-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--bme-dark-blue);
+    }
+
+    .profile-icon:hover {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .profile-icon.active {
+        background: var(--bme-sky);
+        border-color: var(--bme-dark-blue);
     }
 
     .pages {
