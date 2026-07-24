@@ -14,7 +14,6 @@
 
     let boilerId = $state<string>('');
 
-    // Default to the first boiler once the list arrives.
     $effect(() => {
         if (!boilerId && boilers.length) boilerId = boilers[0].id;
     });
@@ -33,8 +32,10 @@
             .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     );
 
-    // Sections that exist on this boiler schematic, so staff pick a valid key.
     let sectionOptions = $derived(boiler ? grateFor(boiler.code).sections : []);
+
+    let usedKeys = $derived(new Set(myReadings.map((r: any) => r.section_key)));
+    let freeSections = $derived(sectionOptions.filter((s: any) => !usedKeys.has(s.key)));
 
     function sectionLabel(key: string): string {
         return sectionOptions.find((s: any) => s.key === key)?.label ?? key;
@@ -43,8 +44,6 @@
     let busy = $state(false);
     let err = $state('');
     let fieldErr = $state<Record<string, string>>({});
-
-    /* ----------------------------- specifications ---------------------------- */
 
     let editSpec = $state<string | 'new' | null>(null);
     let deleteSpec = $state<any | null>(null);
@@ -98,8 +97,6 @@
         await invalidateAll();
     }
 
-    /* ---------------------------- section readings --------------------------- */
-
     const STATES = ['Normal', 'Warning', 'Attention'];
 
     let editReading = $state<string | 'new' | null>(null);
@@ -108,10 +105,8 @@
 
     function newReading() {
         const maxOrder = myReadings.reduce((m: number, r: any) => Math.max(m, r.sort_order ?? 0), 0);
-        const used = new Set(myReadings.map((r: any) => r.section_key));
-        const firstFree = sectionOptions.find((s: any) => !used.has(s.key));
         readingForm = {
-            section_key: firstFree?.key ?? sectionOptions[0]?.key ?? '', 
+            section_key: freeSections[0]?.key ?? sectionOptions[0]?.key ?? '', 
             state: 'Normal', 
             metrics: [{ label: '', value: '' }], 
             sort_order: maxOrder + 1
@@ -228,7 +223,7 @@
                         <tr>
                             <td style="text-align:center; vertical-align:middle;">{s.sort_order ?? 0}</td>
                             <td style="vertical-align:middle;"><strong>{s.label}</strong></td>
-                            <td style="vertical-align:middle;">{s.value}</td>
+                            <td style="text-align:center; vertical-align:middle;">{s.value}</td>
                             <td>
                                 <div class="adm-actions">
                                     <button class="adm-link" onclick={() => startEditSpec(s)}>Edit</button>
@@ -244,7 +239,10 @@
 
     <div class="adm-bar">
         <h3 class="sec-title">Schematic Section Readings</h3>
-        <button class="btn-primary" onclick={newReading}>Add Readings</button>
+        <div class="sec-right">
+            <span class="sec-count">{myReadings.length} of {sectionOptions.length} sections configured</span>
+            <button class="btn-primary" onclick={newReading} disabled={freeSections.length === 0}>Add Readings</button>
+        </div>
     </div>
 
     <div class="card" style="padding:14px; overflow:hidden;">
@@ -306,7 +304,11 @@
         <div class="adm-form stack">
             <label>Section <span class="required">*</span>
                 <select bind:value={readingForm.section_key} class:invalid={fieldErr.section_key}>
-                    {#each sectionOptions as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
+                    {#each sectionOptions as s (s.key)}
+                        <option value={s.key} disabled={usedKeys.has(s.key) && s.key !== readingForm.section_key}>
+                            {s.label}{usedKeys.has(s.key) && s.key !== readingForm.section_key ? ' (already added)' : ''}
+                        </option>
+                    {/each}
                 </select>
                 {#if fieldErr.section_key}<span class="field-err">{fieldErr.section_key}</span>{/if}
             </label>
@@ -401,6 +403,18 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+        color: var(--bme-muted);
+    }
+
+    .sec-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .sec-count {
+        font-size: 12.5px;
         color: var(--bme-muted);
     }
 

@@ -191,8 +191,8 @@
 	}
 
 	.bd.wide {
-		width: 100%;
-		margin: 0;
+		width: 70%;
+		margin: 0 auto;
 	}
 
 	.stage {
@@ -434,6 +434,7 @@
 	.caption {
 		display: flex;
 		align-items: baseline;
+		justify-content: center;
 		gap: 10px;
 		margin-top: 10px;
 		flex-wrap: wrap;

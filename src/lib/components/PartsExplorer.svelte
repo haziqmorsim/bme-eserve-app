@@ -65,9 +65,9 @@
 	);
 
 	function priceLabel(p: Part) {
-		if (p.price != null) return `RM ${Number(p.price).toFixed(2)}`;
+		if (p.price != null) return `RM${Number(p.price).toFixed(2)}`;
 		if (p.price_min != null && p.price_max != null) {
-			return `RM ${Number(p.price_min).toFixed(2)} – RM ${Number(p.price_max).toFixed(2)}`;
+			return `RM${Number(p.price_min).toFixed(2)} – RM${Number(p.price_max).toFixed(2)}`;
 		}
 		return 'Price on request';
 	}
@@ -78,7 +78,6 @@
 			onadd(p, q);
 			return;
 		}
-		// No onadd handler was passed in — add straight to the quote cart.
 		const componentName = components.find((c: Component) => c.id === p.component_id)?.name ?? '';
 		addItem({
 			partId: p.id,
@@ -96,11 +95,16 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && lightbox && (lightbox = null)} />
 
+<h2 class="title">{boiler.code} {#if boiler.name}- {boiler.name}{/if}</h2>
+{#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
+
 <div class="explorer">
 	<div class="design card">
-		<h3>Boiler Design</h3>
+		<div class="design-head">
+			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
+			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no catalogued parts.</span>
+		</div>
 		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
-		<p class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no catalogued parts.</p>
 	</div>
 
 	<div class="side">
@@ -188,10 +192,18 @@
 {/if}
 
 <style>
+	.title {
+		margin: 0 0 6px;
+		font-size: 22px;
+	}
+
+	.desc {
+		color: var(--bme-muted);
+		margin: 0 0 20px;
+		max-width: 60ch;
+	}
+
 	.explorer {
-		display: grid;
-		grid-template-columns: 1fr 1.2fr;
-		gap: 20px;
 		align-items: start;
 	}
 
@@ -205,14 +217,56 @@
 		color: var(--bme-muted);
 	}
 
-	.legend {
-		margin: 12px 0 0;
+	.design-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 12px;
+		flex-wrap: wrap;
+	}
+
+	.design-head h3 {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: var(--bme-darker-blue, #0c3358);
+	}
+
+	.design-head .legend {
 		font-size: 12px;
-        text-align: center;
 		color: var(--bme-muted);
 	}
 
+	.live-dot {
+		display: inline-block;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: #e0342a;
+		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
+		animation: live-blink 1.6s ease-in-out infinite;
+	}
+
+	@keyframes live-blink {
+		0% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.55);
+		}
+		70% {
+			opacity: 0.35;
+			box-shadow: 0 0 0 6px rgba(224, 52, 42, 0);
+		}
+		100% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0);
+		}
+	}
+
 	.side {
+		margin-top: 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 14px;

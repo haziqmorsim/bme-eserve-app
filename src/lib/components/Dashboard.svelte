@@ -34,7 +34,7 @@
 	<div class="card design-card">
 		<div class="design-head">
 			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
-			<span class="hint">Hover or tap a section to view its readings</span>
+			<span class="hint">Hover or tap a section to view its readings.</span>
 		</div>
 		<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} {readings} />
 	</div>

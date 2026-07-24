@@ -187,7 +187,7 @@ const METRICS: Record<string, MetricSpec[]> = {
     furnace: [
         { label: 'Bed/Flame Temp', unit: '°C', min: 820, max: 1050 },
         { label: 'Furnace Pressure', unit: 'mbar', min: -3, max: 2, dp: 1 },
-        { label: 'O₂', unit: '°C', min: 4, max: 8, dp: 1 }
+        { label: 'O₂', unit: '%', min: 4, max: 8, dp: 1 }
     ],
     fixed_grate: [
         { label: 'Grate Temp', unit: '°C', min: 600, max: 850 },

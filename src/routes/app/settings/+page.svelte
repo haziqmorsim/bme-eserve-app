@@ -47,7 +47,6 @@
 <style>
     .bd-section {
         margin-top: 34px;
-        padding-top: 26px;
         border-top: 1px solid var(--bme-border);
     }
 
