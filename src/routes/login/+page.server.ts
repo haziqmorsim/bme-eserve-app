@@ -12,10 +12,20 @@ export const actions: Actions = {
         const email = String(formData.get('email') ?? '');
         const password = String(formData.get('password') ?? '');
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password});
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password});
         if (error) {
             return fail(400, { email, error: 'Invalid e-mail or password.' });
         }
+
+        if (data.user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('must_change_password')
+                .eq('id', data.user.id)
+                .maybeSingle();
+            if (profile?.must_change_password) throw redirect(303, '/change-password');
+        }
+
         throw redirect(303, '/app');
     }
 };

@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
                 company: company ?? null,
                 phone: phone ?? null,
                 email,
-                region_id: region_id ?? null
+                region_id: region_id ?? null,
+                must_change_password: true
             });
             if (pErr) return json(400, { error: pErr.message });
 
