@@ -7,9 +7,11 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, role, region_id')
+        .select('id, full_name, company, role, region_id, must_change_password')
         .eq('id', user.id)
         .single();
+
+    if (profile?.must_change_password) throw redirect(303, '/change-password');
 
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
