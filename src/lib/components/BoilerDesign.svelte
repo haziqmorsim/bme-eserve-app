@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { GrateDef, ResolvedSection } from "$lib/boiler-design";
-    import { sectionTelemetry } from "$lib/boiler-design";
+    import type { GrateDef, ResolvedSection, SectionReadingRow } from "$lib/boiler-design";
+    import { readingsFor } from "$lib/boiler-design";
 
     let {
         def, 
@@ -8,6 +8,7 @@
         mode = 'dashboard', 
         boilerCode = '', 
         activeKey = null, 
+        readings = [], 
         onselect
     } = $props<{
         def: GrateDef;
@@ -15,6 +16,7 @@
         mode?: 'dashboard' | 'parts';
         boilerCode?: string;
         activeKey?: string | null;
+        readings?: SectionReadingRow[];
         onselect?: (componentId: string, key: string) => void;
     }>();
 
@@ -23,11 +25,7 @@
     let tipVisible = $state(false);
     let tipEl = $state<HTMLDivElement>();
 
-    const telemetry = $derived(
-        Object.fromEntries(
-            sections.map((s: ResolvedSection) => [s.key, sectionTelemetry(boilerCode, s.key)])
-        )
-    );
+    const telemetry = $derived(readingsFor(boilerCode, sections, readings));
 
     function clickable(s: ResolvedSection) {
         return mode === 'parts' && !!s.componentId;

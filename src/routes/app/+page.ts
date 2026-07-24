@@ -36,6 +36,8 @@ export const load: PageLoad = async ({ parent, url }) => {
     let boiler: Boiler | null = null;
     let components: Component[] = [];
     let parts: Part[] = [];
+    let boilerSpecs: any[] = [];
+    let sectionReadings: any[] = [];
 
     const canViewBoiler = !!boilerId && (!isCustomer || assignedIds!.has(boilerId));
     if (canViewBoiler) {
@@ -61,6 +63,21 @@ export const load: PageLoad = async ({ parent, url }) => {
                 .order('part_number', { ascending: true });
             parts = p ?? [];
         }
+
+        const [specsRes, readingsRes] = await Promise.all([
+            supabase
+                .from('boiler_specs')
+                .select('id, label, value, sort_order')
+                .eq('boiler_id', boilerId)
+                .order('sort_order', { ascending: true }), 
+            supabase
+                .from('boiler_section_readings')
+                .select('id, section_key, state, metrics, sort_order')
+                .eq('boiler_id', boilerId)
+                .order('sort_order', { ascending: true })
+        ]);
+        boilerSpecs = specsRes.data ?? [];
+        sectionReadings = readingsRes.data ?? [];
     }
 
     return {
@@ -68,6 +85,8 @@ export const load: PageLoad = async ({ parent, url }) => {
         boiler, 
         components, 
         parts,
+        boilerSpecs, 
+        sectionReadings, 
         boilerId: canViewBoiler ? boilerId : null, 
         tab, 
         customerNoBoilers, 

@@ -271,3 +271,62 @@ export function sectionTelemetry(boilerCode: string, sectionKey: string): Sectio
 
     return { state, metrics };
 }
+
+export type SpecRow = {
+    id?: string;
+    boiler_id?: string;
+    label: string;
+    value: string;
+    sort_order?: number;
+};
+
+export type SectionReadingRow = {
+    id?: string;
+    boiler_id?: string;
+    section_key: string;
+    state: SectionState;
+    metrics: Metric[];
+    sort_order?: number;
+};
+
+export function specsFor(boilerCode: string, rows: SpecRow[] = []): Metric[] {
+    if (rows.length) {
+        return [...rows]
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            .map((r) => ({ label: r.label, value: r.value }));
+    }
+    return sampleSpecs(boilerCode);
+}
+
+export function readingFor(
+    boilerCode: string,
+    sectionKey: string,
+    rows: SectionReadingRow[] = []
+): SectionTelemetry {
+    const hit = rows.find((r) => r.section_key === sectionKey);
+    if (hit) {
+        return {
+            state: hit.state ?? 'Normal',
+            metrics: Array.isArray(hit.metrics) ? hit.metrics : []
+        };
+    }
+    return sectionTelemetry(boilerCode, sectionKey);
+}
+
+export function readingsFor(
+    boilerCode: string,
+    sections: { key: string }[],
+    rows: SectionReadingRow[] = []
+): Record<string, SectionTelemetry> {
+    return Object.fromEntries(
+        sections.map((s) => [s.key, readingFor(boilerCode, s.key, rows)])
+    );
+}
+
+export function allSectionKeys(): { key: string; label: string }[] {
+    const seen = new Map<string, string>();
+    for (const def of Object.values(GRATES)) {
+        for (const s of def.sections) if (!seen.has(s.key)) seen.set(s.key, s.label);
+    }
+    return [...seen.entries()].map(([key, label]) => ({ key, label }));
+}

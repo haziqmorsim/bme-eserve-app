@@ -22,9 +22,9 @@
             </div>
             <div class="panel">
                 {#if data.tab === 'parts'}
-                    <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} />
+                    <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} readings={data.sectionReadings} />
                 {:else}
-                    <Dashboard boiler={data.boiler} />
+                    <Dashboard boiler={data.boiler} specs={data.boilerSpecs} readings={data.sectionReadings} />
                 {/if}
             </div>
         {/if}

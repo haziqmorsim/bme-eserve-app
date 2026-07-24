@@ -1,9 +1,14 @@
 <script lang="ts">
 	import type { Boiler } from '$lib/types';
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
-	import { grateFor, resolveSections, sampleSpecs } from '$lib/boiler-design';
+	import { grateFor, resolveSections, specsFor } from '$lib/boiler-design';
+	import type { SpecRow, SectionReadingRow } from '$lib/boiler-design';
 
-	let { boiler } = $props<{ boiler: Boiler }>();
+	let { boiler, specs: specRows = [], readings = [] } = $props<{
+		boiler: Boiler;
+		specs?: SpecRow[];
+		readings?: SectionReadingRow[];
+	}>();
 
 	const def = $derived(grateFor(boiler.code));
 	const sections = $derived(resolveSections(def, []));
@@ -17,7 +22,7 @@
 		{ label: 'Status', value: boiler.status }
 	]);
 
-	const extraSpecs = $derived(sampleSpecs(boiler.code));
+	const extraSpecs = $derived(specsFor(boiler.code, specRows));
 
 	const specs = $derived([...dbSpecs.filter((s) => s.value), ...extraSpecs]);
 </script>
@@ -31,7 +36,7 @@
 			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
 			<span class="hint">Hover or tap a section to view its readings</span>
 		</div>
-		<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} />
+		<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} {readings} />
 	</div>
 
 	<div class="grid">

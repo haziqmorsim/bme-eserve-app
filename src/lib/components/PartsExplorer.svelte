@@ -8,11 +8,13 @@
 
 	let {
 		boiler,
+		readings = [],
 		components = [],
 		parts = [],
 		onadd
 	} = $props<{
 		boiler: Boiler;
+		readings?: any[];
 		components?: Component[];
 		parts?: Part[];
 		onadd?: (part: Part, qty: number) => void;
@@ -97,7 +99,7 @@
 <div class="explorer">
 	<div class="design card">
 		<h3>Boiler Design</h3>
-		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} onselect={onSectionSelect} />
+		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
 		<p class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no catalogued parts.</p>
 	</div>
 

@@ -3,6 +3,7 @@
     import PartManager from "$lib/components/admin/PartManager.svelte";
     import UserManager from "$lib/components/admin/UserManager.svelte";
     import FaqManager from "$lib/components/admin/FaqManager.svelte";
+    import BoilerDataManager from "$lib/components/admin/BoilerDataManager.svelte";
 
     let { data } = $props();
     let tab = $state<'boilers' | 'parts' | 'users' | 'faq'>('boilers');
@@ -21,6 +22,14 @@
     <section>
         <BoilerManager boilers={data.boilers} regions={data.regions} supabase={data.supabase} />
     </section>
+
+    <section class="bd-section">
+        <BoilerDataManager
+            boilers={data.boilers}
+            specs={data.boilerSpecs}
+            readings={data.boilerReadings}
+            supabase={data.supabase} />
+    </section>
 {:else if tab === 'parts'}
     <section>
         <PartManager parts={data.parts} components={data.components} boilers={data.boilers} supabase={data.supabase} />
@@ -36,6 +45,12 @@
 {/if}
 
 <style>
+    .bd-section {
+        margin-top: 34px;
+        padding-top: 26px;
+        border-top: 1px solid var(--bme-border);
+    }
+
     h1 {
         margin: 5px 0 15px;
     }
