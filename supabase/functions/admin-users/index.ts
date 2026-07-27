@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
             .select('role')
             .eq('id', user.id)
             .single();
-        if (me?.role !== 'admin' && me?.role !== 'developer') return json(403, { error: 'Admins only' });
+        if (me?.role !== 'admin' && me?.role !== 'developer') return json(403, { error: 'Forbidden' });
 
         const body = await req.json();
         const action = body.action;

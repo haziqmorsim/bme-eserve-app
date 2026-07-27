@@ -3,7 +3,7 @@ import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
-    if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Admins only');
+    if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Forbidden');
 
     const [regions, boilers, components, parts, users, assignments, lastSignIns, faqs, boilerSpecs, boilerReadings] = await Promise.all([
         supabase.from('regions').select('id, name').order('sort_order'),

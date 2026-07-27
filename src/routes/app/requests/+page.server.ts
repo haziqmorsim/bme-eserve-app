@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const isDeveloper = role === 'developer';
     const myLevel = role ? ROLE_LEVEL[role] : undefined;
 
-    if (!myLevel && !isDeveloper) throw error(403, 'Only reviewers (Admin, Manager, COO) have access.');
+    if (!myLevel && !isDeveloper) throw error(403, 'Forbidden');
 
     let query = supabase
         .from('quotes')

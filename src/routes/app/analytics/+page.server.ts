@@ -30,7 +30,7 @@ function weekdayMs(startUtcMs: number, endUtcMs: number): number {
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
-    if (!profile || !STAFF.has(profile.role)) throw error(403, 'Staff only');
+    if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
     const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
@@ -181,7 +181,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         '/app/enquiries': 'Enquiries',
         '/app/settings': 'Settings',
         '/app/faq': 'FAQ', 
-        '/app/policy': 'Policy'
+        '/app/policy': 'Policy', 
+        '/app/profile': 'Profile'
     };
     const pageLabel = (path: string | null): string => {
         if (!path) return 'Unknown';
