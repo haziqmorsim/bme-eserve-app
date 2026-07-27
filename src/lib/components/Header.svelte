@@ -223,8 +223,8 @@
     }
 
     .profile-icon.active {
-        background: var(--bme-sky);
-        border-color: var(--bme-dark-blue);
+        background: var(--bme-dark-blue);
+        color: #ffffff;
     }
 
     .pages {

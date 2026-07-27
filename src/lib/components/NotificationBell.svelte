@@ -160,6 +160,11 @@
     .bell-btn:hover { 
         background: var(--bme-bg);
     }
+
+    .bell-btn:active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+    }
  
     .dot {
         position: absolute;

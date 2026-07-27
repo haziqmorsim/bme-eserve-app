@@ -4,6 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
+    import { Plus } from "@lucide/svelte";
 
     let { boilers, regions, supabase } = $props<{ boilers: any[]; regions: any[]; supabase: SupabaseClient }>();
 
@@ -90,7 +91,9 @@
 
 <div class="adm-bar">
     <input class="adm-search" type="search" placeholder="Search boilers..." bind:value={search} />
-    <button class="btn-primary" onclick={startNew}>Add Boiler</button>
+    <button class="btn-primary" onclick={startNew}>
+        <Plus size={16} /> Add Boiler
+    </button>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
@@ -182,3 +185,11 @@
         </div>
     </Modal>
 {/if}
+
+<style>
+    .adm-bar .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>

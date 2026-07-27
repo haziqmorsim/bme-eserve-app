@@ -4,6 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
+    import { Plus } from "@lucide/svelte";
 
     let { parts, components, boilers, supabase } = $props<{
         parts: any[]; components: any[]; boilers: any[]; supabase: SupabaseClient;
@@ -139,7 +140,9 @@
 
 <div class="adm-bar">
     <input class="adm-search" type="search" placeholder="Search parts..." bind:value={search} />
-    <button class="btn-primary" onclick={startNew}>Add Part</button>
+    <button class="btn-primary" onclick={startNew}>
+        <Plus size={16} /> Add Part
+    </button>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
@@ -246,6 +249,12 @@
 {/if}
 
 <style>
+    .adm-bar .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
     .img-preview.invalid {
         border-color: var(--bme-red);
     }

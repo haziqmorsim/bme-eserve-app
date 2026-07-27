@@ -4,7 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { ChevronUp, ChevronDown } from "@lucide/svelte";
+    import { Plus, ChevronUp, ChevronDown } from "@lucide/svelte";
 
     let { faqs, supabase } = $props<{ faqs: any[]; supabase: SupabaseClient }>();
 
@@ -144,7 +144,9 @@
 
 <div class="adm-bar">
     <input type="search" class="adm-search" placeholder="Search questions..." bind:value={search} />
-    <button class="btn-primary" onclick={startNew}>Add Question</button>
+    <button class="btn-primary" onclick={startNew}>
+        <Plus size={16} /> Add Question
+    </button>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden">
@@ -256,6 +258,12 @@
         width: 100%;
         box-sizing: border-box;
         margin-top: 4px;
+    }
+
+    .adm-bar .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .ord {
