@@ -4,6 +4,8 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import { fly, fade } from "svelte/transition";
     import { cubicInOut } from "svelte/easing";
+    import { addItem } from "$lib/stores/quote";
+    import { addToast } from "$lib/stores/toast";
 
     let { notifications = [], supabase, label = '' } = $props<{ notifications: any[]; supabase: SupabaseClient; label?: string }>();
 
@@ -54,9 +56,61 @@
         const dest =
             n.type === 'request_reminder' ? '/app/requests'
             : n.type === 'enquiry_reminder' ? '/app/enquiries'
-            : n.type === 'cart_reminder' ? '/app/quotes'
+            : n.type === 'cart_reminder' || n.type === 'quote_suggestion' ? '/app/quotes'
             : '/app/history';
         goto(dest);
+    }
+
+    function suggestedParts(n: any): any[] {
+        const list = n?.data?.parts;
+        return Array.isArray(list) ? list : [];
+    }
+
+    async function respond(n: any, response: 'accepted' | 'declined') {
+        busy = true;
+        const { error } = await supabase
+            .from('notifications')
+            .update({ response, responded_at: new Date().toISOString(), is_read: true })
+            .eq('id', n.id);
+        busy = false;
+        if (error) {
+            addToast('Sorry, we could not record your response. Please try again.');
+            return false;
+        }
+        await invalidateAll();
+        return true;
+    }
+
+    async function acceptSuggestion(n: any) {
+        const parts = suggestedParts(n);
+        const d = n.data ?? {};
+        if (!(await respond(n, 'accepted'))) return;
+
+        for (const p of parts) {
+            addItem({
+                partId: p.partId, 
+                partNumber: p.partNumber, 
+                partName: p.partName, 
+                boilerCode: d.boiler_code ?? '', 
+                componentName: d.component_name ?? '', 
+                price: p.price ?? undefined, 
+                priceMin: p.priceMin ?? p.price ?? 0, 
+                priceMax: p.priceMax ?? p.price ?? 0, 
+                quantity: p.quantity ?? 1
+            });
+        }
+
+        shut();
+        addToast(
+            parts.length === 1
+                ? '1 suggested part added to your quote list.'
+                : `${parts.length} suggested parts added to your quote list.`
+        );
+    }
+
+    async function declineSuggestion(n: any) {
+        if (!(await respond(n, 'declined'))) return;
+        addToast('Suggestion declined. You can still add these parts yourself any time.');
     }
 </script>
 
@@ -87,13 +141,44 @@
                     <p class="empty">You have no notifications.</p>
                 {:else}
                     {#each notifications as n (n.id)}
-                        <button class="item" class:unread={!n.is_read} onclick={() => openItem(n)}>
-                            <span class="item-top">
-                                <span class="item-title">{n.title}</span>
-                                <span class="item-time">{timeAgo(n.created_at)}</span>
-                            </span>
-                            <span class="item-body">{n.body}</span>
-                        </button>
+                        {#if n.type === 'quote_suggestion' && !n.response}
+                            <div class="item suggestion" class:unread={!n.is_read}>
+                                <span class="item-top">
+                                    <span class="item-title">{n.title}</span>
+                                    <span class="item-time">{timeAgo(n.created_at)}</span>
+                                </span>
+                                <span class="item-body">{n.body}</span>
+
+                                {#if suggestedParts(n).length > 0}
+                                    <ul class="sg-parts">
+                                        {#each suggestedParts(n).slice(0, 4) as p (p.partId)}
+                                            <li><span class="sg-no">{p.partNumber}</span> <span>{p.partName}</span></li>
+                                        {/each}
+                                        {#if suggestedParts(n).length > 4}
+                                            <li class="sg-more">+{suggestedParts(n).length - 4} more</li>
+                                        {/if}
+                                    </ul>
+                                {/if}
+
+                                <span class="sg-actions">
+                                    <button class="sg-accept" onclick={() => acceptSuggestion(n)} disabled={busy}>Accept</button>
+                                    <button class="sg-decline" onclick={() => declineSuggestion(n)} disabled={busy}>Decline</button>
+                                </span>
+                            </div>
+                        {:else}
+                            <button class="item" class:unread={!n.is_read} onclick={() => openItem(n)}>
+                                <span class="item-top">
+                                    <span class="item-title">{n.title}</span>
+                                    <span class="item-time">{timeAgo(n.created_at)}</span>
+                                </span>
+                                <span class="item-body">{n.body}</span>
+                                {#if n.type === 'quote_suggestion' && n.response}
+                                    <span class="sg-status {n.response}">
+                                        {n.response === 'accepted' ? 'Added to your quote list' : 'Declined'}
+                                    </span>
+                                {/if}
+                            </button>
+                        {/if}
                     {/each}
                 {/if}
             </div>
@@ -291,6 +376,100 @@
         font-size: 13px;
         color: var(--bme-muted);
         line-height: 1.4;
+    }
+
+    .item.suggestion {
+        cursor: default;
+        gap: 8px;
+    }
+
+    .item.suggestion:hover {
+        background: #ffffff;
+    }
+
+    .item.suggestion.unread:hover {
+        background: #eef5fb;
+    }
+
+    .sg-parts {
+        list-style: none;
+        margin: 0;
+        padding: 8px 10px;
+        background: var(--bme-bg);
+        border-radius: 8px;
+        font-size: 12.5px;
+        color: var(--bme-ink);
+    }
+
+    .sg-parts li {
+        display: flex;
+        gap: 6px;
+        padding: 2px 0;
+    }
+
+    .sg-no {
+        flex: 0 0 auto;
+        font-weight: 700;
+        color: var(--bme-dark-blue);
+    }
+
+    .sg-more {
+        color: var(--bme-muted);
+    }
+
+    .sg-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .sg-accept,
+    .sg-decline {
+        flex: 1;
+        padding: 7px 10px;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .sg-accept {
+        background: var(--bme-dark-blue);
+        border: 1px solid var(--bme-dark-blue);
+        color: #ffffff;
+    }
+
+    .sg-accept:hover:not(:disabled) {
+        background: var(--bme-darker-blue);
+    }
+
+    .sg-decline {
+        background: #ffffff;
+        border: 1px solid var(--bme-border);
+        color: var(--bme-ink);
+    }
+
+    .sg-decline:hover:not(:disabled) {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .sg-accept:disabled,
+    .sg-decline:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    .sg-status {
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .sg-status.accepted {
+        color: var(--bme-green);
+    }
+
+    .sg-status.declined {
+        color: var(--bme-muted);
     }
  
     .bell-backdrop {

@@ -38,7 +38,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: notifications } = await supabase
         .from('notifications')
-        .select('id, type, title, body, is_read, created_at, quote_id')
+        .select('id, type, title, body, is_read, created_at, quote_id, data, response, responded_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(30);
