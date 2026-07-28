@@ -31,6 +31,10 @@
         return mode === 'parts' && !!s.componentId;
     }
 
+    function stateClass(key: string): string {
+        return (telemetry[key]?.state ?? 'Normal').toLowerCase();
+    }
+
     const TIP_MARGIN = 10;
     const TIP_GAP = 8;
     const TIP_EST_WIDTH = 210;
@@ -145,6 +149,7 @@
             class:active={mode === 'parts' && activeKey === s.key} 
             class:hovered={open === s.key} 
             class:can-click={clickable(s)} 
+            data-state={stateClass(s.key)} 
             style={`left:${s.rect.l}%;top:${s.rect.t}%;width:${s.rect.w}%;height:${s.rect.h}%;`} 
             aria-label={s.label} 
             aria-pressed={mode === 'parts' ? activeKey === s.key : undefined} 
@@ -231,11 +236,15 @@
 		height: 12px;
 		transform: translate(-50%, -50%);
 		border-radius: 50%;
-		background: var(--blue);
+		background: var(--dot, var(--blue));
 		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 1px 4px rgba(0, 0, 0, 0.3);
 		opacity: 0.55;
 		transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 	}
+
+	.hot[data-state='normal'] { --dot: #1f9d4d; }
+	.hot[data-state='warning'] { --dot: #e0a400; }
+	.hot[data-state='attention'] { --dot: #e0342a; }
 
 	.hot .tag {
 		position: absolute;
@@ -455,6 +464,10 @@
 		.bd {
             width: 100%;
         }
+
+		.bd.wide {
+			width: 100%;
+		}
 
 		.hot .tag {
 			font-size: 10px;

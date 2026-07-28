@@ -725,7 +725,19 @@
     
     @media (max-width: 720px) {
         .ua-stats { 
-            grid-template-columns: repeat(2, 1fr); 
+            grid-template-columns: repeat(6, 1fr); 
+        }
+
+        .ua {
+            grid-column: span 2;
+        }
+
+        .ua:nth-child(4) {
+            grid-column: 2 / span 2;
+        }
+
+        .ua:nth-child(5) {
+            grid-column: 4 / span 2;
         }
 
         .spark { 

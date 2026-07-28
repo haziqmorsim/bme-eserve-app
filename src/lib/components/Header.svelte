@@ -44,20 +44,16 @@
         </div>
         <div class="pages">
             <a class="btn-ghost" class:active={$page.url.pathname === '/app'} href="/app">Home</a>
-
             <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Quotes{#if count > 0}<span class="badge">{count}</span>{/if}</a>
-
             {#if isStaff}
                 <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
             {/if}
+            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
             {#if isStaff}
                 <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
-            {/if}
-            {#if isAdmin}
-                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
             {/if}
         </div>
     </div>
@@ -80,7 +76,9 @@
                     <UserRound size={20} />
                 </a>
                 <NotificationBell {notifications} {supabase} />
-                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
+                {#if isAdmin}
+                    <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
+                {/if}
                 <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
                     <button type="submit" class="btn-ghost signout">Sign Out</button>
                 </form>
@@ -107,31 +105,29 @@
         <nav class="side-group top">
             <p class="side-greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             <a href="/app" class="side-link" class:active={$page.url.pathname === '/app'} onclick={close}>Home</a>
-
             <a href="/app/quotes" class="side-link" class:active={$page.url.pathname === '/app/quotes'} onclick={close}>
                 <span>Quotes</span>{#if count > 0}<span class="badge">{count}</span>{/if}
             </a>
-
             {#if isStaff}
                 <a href="/app/requests" class="side-link" class:active={$page.url.pathname.startsWith('/app/requests')} onclick={close}>
                     <span>Requests</span>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}
                 </a>
             {/if}
+            <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
             {#if isStaff}
                 <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}><span>Enquiries</span>{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
             {/if}
-            {#if isAdmin}
-                <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
-            {/if}
         </nav>
 
         <nav class="side-group bottom">
             <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
             <div class="side-bell"><NotificationBell {notifications} {supabase} label="Notifications" /></div>
-            <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
+            {#if isAdmin}
+                <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
+            {/if}
             <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
                 <button type="submit" class="side-link signout">Sign Out</button>
             </form>

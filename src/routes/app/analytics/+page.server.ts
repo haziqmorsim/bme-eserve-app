@@ -129,7 +129,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const volumeByRegion = Object.entries(regionCount)
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => b.count - a.count);
 
     const boilerCount: Record<string, number> = {};
     for (const q of quotes) {
@@ -138,7 +138,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const volumeByBoiler = Object.entries(boilerCount)
         .map(([code, count]) => ({ code, count }))
-        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
+        .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
     const latestApproval: Record<string, string> = {};
@@ -219,7 +219,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const e of activityEvents) if (e.user_id) userCount[e.user_id] = (userCount[e.user_id] ?? 0) + 1;
     const topUsers = Object.entries(userCount)
         .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
     const pathCount: Record<string, number> = {};
@@ -229,7 +229,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const topPages = Object.entries(pathCount)
         .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => a.label.localeCompare(b.label))
+        .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
     const quoteRef: Record<string, string> = {};

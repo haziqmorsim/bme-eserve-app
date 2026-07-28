@@ -5,6 +5,7 @@
 	import { addItem } from '$lib/stores/quote';
 	import { fade, fly } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
+	import { Funnel, Search, Check } from '@lucide/svelte';
 
 	let {
 		boiler,
@@ -23,31 +24,62 @@
 	const def = $derived(grateFor(boiler.code));
 	const sections = $derived(resolveSections(def, components));
 
-	let activeComponentId = $state<string | null>(null);
 	let activeKey = $state<string | null>(null);
 	let search = $state('');
 	let qty = $state<Record<string, number>>({});
 	let lightbox = $state<Part | null>(null);
 
-	$effect(() => {
-		const hit = sections.find((s) => s.componentId && s.componentId === activeComponentId);
-		activeKey = hit ? hit.key : null;
+	let selected = $state<Set<string>>(new Set());
+	let filterOpen = $state(false);
+	let compSearch = $state('');
+
+	const countByComponent = $derived.by(() => {
+		const m: Record<string, number> = {};
+		for (const p of parts) {
+			const id = (p as Part).component_id;
+			if (id) m[id] = (m[id] ?? 0) + 1;
+		}
+		return m;
 	});
 
-	function selectComponent(id: string | null) {
-		activeComponentId = id;
-		search = '';
-	}
+	const filterComponents = $derived.by(() => {
+		const q = compSearch.trim().toLowerCase();
+		const list = components.filter((c: Component) => !q || (c.name ?? '').toLowerCase().includes(q));
+		return [...list].sort((a: Component, b: Component) => (a.name ?? '').localeCompare(b.name ?? ''));
+	});
+
+	const selectedCount = $derived(selected.size);
 
 	function onSectionSelect(componentId: string, key: string) {
-		activeComponentId = componentId;
+		selected = new Set([componentId]);
 		activeKey = key;
 	}
+
+	$effect(() => {
+		if (selected.size === 1) {
+			const only = [...selected][0];
+			const hit = sections.find((s) => s.componentId && s.componentId === only);
+			activeKey = hit ? hit.key : null;
+		} else {
+			activeKey = null;
+		}
+	});
+
+	function toggleComponent(id: string) {
+		const next = new Set(selected);
+		if (next.has(id)) next.delete(id); else next.add(id);
+		selected = next;
+	}
+
+	function clearAllFilters() {
+		selected = new Set();
+	}
+
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
 		return parts.filter((p: Part) => {
-			const inComp = !activeComponentId || p.component_id === activeComponentId;
+			const inComp = selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
 			if (!inComp) return false;
 			if (!q) return true;
 			const comp = components.find((c: Component) => c.id === p.component_id);
@@ -60,8 +92,8 @@
 		});
 	});
 
-	const activeComponentName = $derived(
-		activeComponentId ? components.find((c: Component) => c.id === activeComponentId)?.name : null
+	const selectedNames = $derived(
+		components.filter((c: Component) => selected.has(c.id)).map((c: Component) => c.name)
 	);
 
 	function priceLabel(p: Part) {
@@ -93,7 +125,12 @@
 	}
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && lightbox && (lightbox = null)} />
+<svelte:window
+	onkeydown={(e) => e.key === 'Escape' && (lightbox ? (lightbox = null) : (filterOpen = false))}
+	onclick={(e) => {
+		if (filterOpen && !(e.target as HTMLElement)?.closest?.('.filter-wrap')) filterOpen = false;
+	}}
+/>
 
 <h2 class="title">{boiler.code} {#if boiler.name}- {boiler.name}{/if}</h2>
 {#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
@@ -115,20 +152,53 @@
 			bind:value={search}
 		/>
 
-		<div class="tabs">
-			<button class="comp" class:active={activeComponentId === null} onclick={() => selectComponent(null)}>
-				All Parts
+		<div class="filter-wrap">
+			<button
+				type="button"
+				class="filter-trigger"
+				class:on={selectedCount > 0}
+				onclick={() => (filterOpen = !filterOpen)}
+				aria-expanded={filterOpen}
+			>
+				<Funnel size={16} />
+				<span>{selectedCount > 0 ? `Components (${selectedCount})` : 'Filter by component'}</span>
 			</button>
-			{#each components as c (c.id)}
-				<button class="comp" class:active={activeComponentId === c.id} onclick={() => selectComponent(c.id)}>
-					{c.name}
-				</button>
-			{/each}
+
+			{#if filterOpen}
+				<div class="filter-pop" transition:fade={{ duration: 120 }}>
+					<div class="fp-search">
+						<Search size={15} />
+						<input type="search" placeholder="Search components…" bind:value={compSearch} />
+					</div>
+
+					<div class="fp-list">
+						{#each filterComponents as c (c.id)}
+							<button type="button" class="fp-item" onclick={() => toggleComponent(c.id)}>
+								<span class="box" class:checked={selected.has(c.id)}>{#if selected.has(c.id)}<Check size={13} />{/if}</span>
+								<span class="fp-name">{c.name}</span>
+								<span class="fp-count">({countByComponent[c.id] ?? 0})</span>
+							</button>
+						{:else}
+							<p class="fp-empty">No components match.</p>
+						{/each}
+					</div>
+
+					<div class="fp-foot">
+						<span class="fp-sel">{selectedCount} Selected</span>
+						<button
+							type="button"
+							class="fp-clear"
+							onclick={clearAllFilters}
+							disabled={selectedCount === 0}
+						>Clear All Filters</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 
-		{#if activeComponentName}
+		{#if selectedCount > 0}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{activeComponentName}</strong> parts
+				Showing <strong>{selectedNames.join(', ')}</strong> — {filtered.length} part{filtered.length === 1 ? '' : 's'}
 			</div>
 		{/if}
 
@@ -136,6 +206,7 @@
 			<p class="hint" in:fade={{ duration: 150 }}>No parts match your selection.</p>
 		{:else}
 			<div class="parts">
+				<p class="indicative">All prices are indicative.</p>
 				{#each filtered as p (p.id)}
 					<div
 						class="part card"
@@ -286,29 +357,162 @@
 		box-shadow: 0 0 0 3px rgba(16, 69, 110, 0.12);
 	}
 
-	.tabs {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
+	.filter-wrap {
+		position: relative;
 	}
 
-	.comp {
+	.filter-trigger {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 		background: #fff;
 		border: 1px solid var(--bme-border, #e2e8ef);
 		color: var(--bme-ink, #1b2733);
 		padding: 9px 16px;
-		border-radius: 999px;
+		border-radius: 10px;
+		font: inherit;
+		font-weight: 600;
 		cursor: pointer;
-		transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+		transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 	}
 
-	.comp:hover {
+	.filter-trigger:hover {
 		border-color: var(--bme-dark-blue, #10456e);
 	}
-	.comp.active {
+
+	.filter-trigger.on {
 		background: var(--bme-dark-blue, #10456e);
 		color: #fff;
 		border-color: var(--bme-dark-blue, #10456e);
+	}
+
+	.filter-pop {
+		position: absolute;
+		top: calc(100% + 6px);
+		left: 0;
+		z-index: 30;
+		width: min(340px, 88vw);
+		background: #fff;
+		border: 1px solid var(--bme-border, #e2e8ef);
+		border-radius: 12px;
+		box-shadow: 0 16px 40px rgba(12, 20, 30, 0.16);
+		padding: 12px;
+	}
+
+	.fp-search {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border: 1px solid var(--bme-border, #e2e8ef);
+		border-radius: 8px;
+		color: var(--bme-muted);
+	}
+
+	.fp-search input {
+		border: none;
+		outline: none;
+		flex: 1;
+		font: inherit;
+		color: var(--bme-ink, #1b2733);
+		background: transparent;
+	}
+
+	.fp-list {
+		max-height: 240px;
+		overflow-y: auto;
+		margin-top: 8px;
+	}
+
+	.fp-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font: inherit;
+		color: var(--bme-ink, #1b2733);
+		padding: 9px 6px;
+		text-align: left;
+		border-radius: 6px;
+	}
+
+	.fp-item:hover {
+		background: var(--bme-sky, #eef4fb);
+	}
+
+	.fp-name {
+		flex: 1;
+	}
+
+	.fp-count {
+		color: var(--bme-muted);
+		font-size: 13px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.box {
+		display: inline-grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		flex: 0 0 auto;
+		border: 2px solid var(--bme-border, #cdd7e1);
+		border-radius: 4px;
+		color: #fff;
+	}
+
+	.box.checked {
+		background: var(--bme-dark-blue, #10456e);
+		border-color: var(--bme-dark-blue, #10456e);
+	}
+
+	.fp-empty {
+		color: var(--bme-muted);
+		font-size: 13px;
+		padding: 12px 6px;
+		margin: 0;
+	}
+
+	.fp-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: 8px;
+		padding-top: 10px;
+		border-top: 1px solid var(--bme-border, #e2e8ef);
+	}
+
+	.fp-sel {
+		font-size: 13px;
+		color: var(--bme-muted);
+	}
+
+	.fp-clear {
+		background: #fff;
+		color: var(--bme-dark-blue, #10456e);
+		border: 1px solid var(--bme-dark-blue, #10456e);
+		cursor: pointer;
+		font: inherit;
+		font-weight: 700;
+		padding: 8px 16px;
+		border-radius: 8px;
+		transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+	}
+
+	.fp-clear:hover:not(:disabled) {
+		background: var(--bme-dark-blue, #10456e);
+		color: #fff;
+	}
+
+	.fp-clear:disabled {
+		opacity: 0.45;
+		cursor: default;
+		border-color: var(--bme-border, #e2e8ef);
+		color: var(--bme-muted);
 	}
 
 	.crumb {
@@ -319,6 +523,11 @@
 	.hint {
 		color: var(--bme-muted);
 		padding: 24px 0;
+	}
+
+	.indicative {
+		color: var(--bme-muted);
+		margin: 0;
 	}
 
 	.parts {
