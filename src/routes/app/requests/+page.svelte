@@ -18,8 +18,11 @@
         return [];
     }
 
+    let tab = $state<'open' | 'closed'>('open');
+    let source = $derived(tab === 'open' ? data.openQuotes : data.closedQuotes);
+
     let filters = $state(emptyFilters());
-    let filtered = $derived(data.quotes.filter((q: any) => matches(filters, {
+    let filtered = $derived(source.filter((q: any) => matches(filters, {
         search: [q.reference, q.customer?.company, q.customer?.full_name],
         status: q.status,
         region: q.customer?.region,
@@ -68,8 +71,19 @@
 
 <RequestFilters bind:filters regions={data.regions} showStatus={false} placeholder="Search by reference or customer..." />
 
-{#if data.quotes.length === 0}
-    <div class="card empty">No requests are awaiting your action.</div>
+<div class="tabbar">
+    <button class="tab" class:active={tab === 'open'} onclick={() => { tab = 'open'; }}>
+        Open ({data.openQuotes.length})
+    </button>
+    <button class="tab" class:active={tab === 'closed'} onclick={() => { tab = 'closed'; }}>
+        Closed ({data.closedQuotes.length})
+    </button>
+</div>
+
+{#if source.length === 0}
+    <div class="card empty">
+        {tab === 'open' ? 'No requests are awaiting your action.' : 'No requests have been closed yet.'}
+    </div>
 {:else if filtered.length === 0}
     <div class="card empty">No requests match your filters.</div>
 {:else}
@@ -79,7 +93,9 @@
                 <div>
                     <strong class="reference">{q.reference}</strong>
                     <span class="status {q.status}">{q.status}</span>
-                    <span class="sla-wrap"><SlaBadge since={levelSince(q)} weekdays /></span>
+                    {#if q.status === 'open'}
+                        <span class="sla-wrap"><SlaBadge since={levelSince(q)} weekdays /></span>
+                    {/if}
                 </div>
                 <small>{when(q.created_at)}</small>
             </div>
@@ -144,30 +160,36 @@
                 </div>
             {/if}
 
-            <label class="action-field">
-                <p class="field-label">Action Taken ({data.levelLabel}) <span class="req">*</span></p>
-                <textarea
-                    rows="3"
-                    placeholder="Describe the action you have taken..."
-                    bind:value={actionTaken[q.id]}
-                    disabled={data.isDeveloper}
-                ></textarea>
-            </label>
+            {#if q.status === 'open'}
+                <label class="action-field">
+                    <p class="field-label">Action Taken ({data.levelLabel}) <span class="req">*</span></p>
+                    <textarea
+                        rows="3"
+                        placeholder="Describe the action you have taken..."
+                        bind:value={actionTaken[q.id]}
+                        disabled={data.isDeveloper}
+                    ></textarea>
+                </label>
 
-            {#if formError === q.id}
-                <p class="form-err">Action Taken is required before closing this request.</p>
-            {/if}
+                {#if formError === q.id}
+                    <p class="form-err">Action Taken is required before closing this request.</p>
+                {/if}
 
-            <div class="actions">
-                <button class="btn-primary" disabled={data.isDeveloper || working === q.id} onclick={() => close(q)}>
-                    {working === q.id ? 'Processing...' : 'Close'}
-                </button>
-                <button class="btn-ghost" disabled={data.isDeveloper || working === q.id} onclick={() => cancel(q)}>
-                    Cancel
-                </button>
-            </div>
-            {#if isDeveloper}
-                <p class="hint">Read-only for the developer role.</p>
+                <div class="actions">
+                    <button class="btn-primary" disabled={data.isDeveloper || working === q.id} onclick={() => close(q)}>
+                        {working === q.id ? 'Processing...' : 'Close'}
+                    </button>
+                    <button class="btn-ghost" disabled={data.isDeveloper || working === q.id} onclick={() => cancel(q)}>
+                        Cancel
+                    </button>
+                </div>
+                {#if isDeveloper}
+                    <p class="hint">Read-only for the developer role.</p>
+                {/if}
+            {:else}
+                <p class="closed-note">
+                    This request was closed{q.reviewed_at ? ` on ${when(q.reviewed_at)}` : ''}. No further action is required.
+                </p>
             {/if}
         </div>
     {/each}
@@ -186,6 +208,39 @@
     .empty {
         padding: 36px;
         text-align: center;
+        color: var(--bme-muted);
+    }
+
+    .tabbar {
+        display: inline-flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .tab {
+        padding: 9px 22px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-weight: 700;
+        background-color: #ffffff;
+        color: var(--bme-muted);
+        cursor: pointer;
+        transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .tab.active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-color: var(--bme-dark-blue);
+    }
+
+    .closed-note {
+        margin: 14px 0 0;
+        padding: 10px 14px;
+        background: var(--bme-bg);
+        border-radius: 8px;
+        font-size: 13.5px;
         color: var(--bme-muted);
     }
 
@@ -406,6 +461,16 @@
     }
 
     @media (max-width: 640px) {
+        .tabbar {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 9px 10px;
+        }
+
         .quote { 
             padding: 16px; 
         }

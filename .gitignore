@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 
 # Migrations
 supabase/migrations
+
+# Schedule
+supabase/schedule

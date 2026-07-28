@@ -2,8 +2,7 @@
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import Stepper from "$lib/components/Stepper.svelte";
-    import RequestFilters from "$lib/components/RequestFilters.svelte";
-    import { emptyFilters, matches } from "$lib/filters";
+    import { Search, X } from "@lucide/svelte";
     import Pagination from "$lib/components/admin/Pagination.svelte";
     import { untrack } from "svelte";
 
@@ -26,32 +25,59 @@
         setTimeout(() => { if (copied === code) copied = null; }, 1500);
     }
 
-    let filters = $state(emptyFilters());
+    let search = $state('');
+
+    function hit(values: (string | null | undefined)[]): boolean {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        return values.some((v) => (v ?? '').toString().toLowerCase().includes(q));
+    }
 
     let groups = $derived(data.reviewGroups ?? []);
     let myQuotes = $derived(data.quotes ?? []);
 
-    let filteredGroups = $derived(groups.filter((g: any) => matches(filters, {
-        search: [g.quote?.reference, g.customer?.company, g.customer?.full_name],
-        status: g.quote?.status,
-        region: g.customer?.region,
-        date: g.lastActivity
-    })));
+    let chats = $derived(data.chats ?? []);
 
-    let filteredQuotes = $derived(myQuotes.filter((q: any) => matches(filters, {
-        search: [q.reference],
-        status: q.status,
-        region: q.region,
-        date: q.created_at
-    })));
+    function itemText(q: any): string[] {
+        return (q?.quote_items ?? []).flatMap((it: any) => [it.part_number, it.part_name, it.boiler_code]);
+    }
+
+    function chatText(c: any): string[] {
+        return [...(c?.chat_messages ?? []).map((m: any) => m.content), c?.end_reason];
+    }
+
+    let filteredGroups = $derived(groups.filter((g: any) => hit([
+        g.quote?.reference, 
+        g.customer?.company, 
+        g.customer?.full_name, 
+        g.quote?.status, 
+        ...itemText(g.quote)
+    ])));
+
+    let filteredQuotes = $derived(myQuotes.filter((q: any) => hit([
+        q.reference, 
+        q.notes, 
+        q.status, 
+        ...itemText(q)
+    ])));
+
+    let filteredChats = $derived(chats.filter((c: any) => hit(chatText(c))));
 
     const PAGE_SIZE = 10;
     let tab = $state<'reviews' | 'requests' | 'chats'>(untrack(() => (data.isStaff ? 'reviews' : 'requests')));
     let reviewPage = $state(1);
     let requestPage = $state(1);
 
+    let searchPlaceholder = $derived(
+        tab === 'chats'
+            ? 'Search chat messages...'
+            : tab === 'reviews'
+                ? 'Search by reference, customer, status or part...'
+                : 'Search by reference, notes, status or part...'
+    );
+
     $effect(() => {
-        filters.q; filters.status; filters.region; filters.from; filters.to;
+        search;
         reviewPage = 1;
         requestPage = 1;
     });
@@ -95,7 +121,19 @@
 
 <h1>History</h1>
 
-<RequestFilters bind:filters regions={data.regions} showRegion={data.isStaff} placeholder="Search by reference or customer..." />
+<div class="searchbar">
+    <Search size={17} />
+    <input
+        type="search"
+        bind:value={search}
+        placeholder={searchPlaceholder}
+        aria-label="Search history" />
+    {#if search}
+        <button class="clear" onclick={() => (search = '')} aria-label="Clear search">
+            <X size={15} />
+        </button>
+    {/if}
+</div>
 
 <div class="tabbar">
     {#if data.isStaff}
@@ -111,7 +149,7 @@
         {#if groups.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
         {:else if filteredGroups.length === 0}
-            <div class="card empty">No reviews match your filters.</div>
+            <div class="card empty">No reviews match your search.</div>
         {:else}
             {#each pagedGroups as g (g.quote?.id)}
                 <div class="card quote">
@@ -233,7 +271,7 @@
         {#if myQuotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>
         {:else if filteredQuotes.length === 0}
-            <div class="card empty">No requests match your filters.</div>
+            <div class="card empty">No requests match your search.</div>
         {:else}
             {#each pagedQuotes as q (q.id)}
                 <div class="card quote">
@@ -288,10 +326,12 @@
 
 {#if tab === 'chats'}
     <section class="block">
-        {#if !data.chats || data.chats.length === 0}
+        {#if chats.length === 0}
             <div class="card empty">You have no chatbot conversations yet.</div>
+        {:else if filteredChats.length === 0}
+            <div class="card empty">No conversations match your search.</div>
         {:else}
-            {#each data.chats as c (c.id)}
+            {#each filteredChats as c (c.id)}
                 <div class="card chat-session">
                     <div class="cs-head">
                         <div class="cs-times">
@@ -337,6 +377,53 @@
 {/if}
 
 <style>
+    .searchbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        background: #ffffff;
+        border: 1px solid var(--bme-border);
+        border-radius: 10px;
+        color: var(--bme-muted);
+    }
+
+    .searchbar:focus-within {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .searchbar input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        font: inherit;
+        color: var(--bme-ink);
+    }
+
+    .searchbar input::-webkit-search-cancel-button {
+        display: none;
+    }
+
+    .clear {
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: 50%;
+        background: var(--bme-bg);
+        color: var(--bme-muted);
+        cursor: pointer;
+    }
+
+    .clear:hover {
+        color: var(--bme-ink);
+    }
+
     .tabbar {
         display: inline-flex;
         gap: 8px;

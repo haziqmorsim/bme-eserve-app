@@ -10,18 +10,33 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const isDeveloper = role === 'developer';
     const myLevel = role ? ROLE_LEVEL[role] : undefined;
 
-    if (!myLevel && !isDeveloper) throw error(403, 'Forbidden');
+    if (!myLevel && !isDeveloper) throw error(403, 'Only reviewers (Admin, Manager, COO) have access.');
 
-    let query = supabase
+    const COLUMNS =
+        'id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, current_level, user_id, quote_items(*)';
+
+    let openQuery = supabase
         .from('quotes')
-        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, current_level, user_id, quote_items(*)')
+        .select(COLUMNS)
         .eq('status', 'open');
 
-    if (!isDeveloper) query = query.eq('current_level', myLevel as number);
+    if (!isDeveloper) openQuery = openQuery.eq('current_level', myLevel as number);
 
-    const { data: quotes } = await query.order('created_at', { ascending: false });
+    const closedQuery = supabase
+        .from('quotes')
+        .select(COLUMNS)
+        .eq('status', 'closed')
+        .order('reviewed_at', { ascending: false, nullsFirst: false });
 
-    const list = quotes ?? [];
+    const [openRes, closedRes] = await Promise.all([
+        openQuery.order('created_at', { ascending: false }), 
+        closedQuery
+    ]);
+
+    const openList = openRes.data ?? [];
+    const closedList = closedRes.data ?? [];
+    const list = [...openList, ...closedList];
+
     const quoteIds = list.map((q) => q.id);
     const userIds = [...new Set(list.map((q) => q.user_id).filter(Boolean))];
 
@@ -54,14 +69,15 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     const { data: regions } = await supabase.from('regions').select('id, name').order('name');
 
-    const withMeta = list.map((q) => ({
+    const withMeta = (rows: any[]) => rows.map((q) => ({
         ...q,
         customer: profileMap[q.user_id] ?? { full_name: null, company: null, region: null },
         approvals: approvalsMap[q.id] ?? []
     }));
 
     return {
-        quotes: withMeta,
+        openQuotes: withMeta(openList), 
+        closedQuotes: withMeta(closedList), 
         regions: regions ?? [],
         level: myLevel ?? null,
         levelLabel: isDeveloper ? 'Developer' : LEVEL_LABEL[myLevel as number],

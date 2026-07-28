@@ -442,9 +442,10 @@
 
 	.caption {
 		display: flex;
-		align-items: baseline;
+		flex-direction: column;
+		align-items: center;
 		justify-content: center;
-		gap: 10px;
+		gap: 5px;
 		margin-top: 10px;
 		flex-wrap: wrap;
 	}

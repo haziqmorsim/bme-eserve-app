@@ -341,7 +341,7 @@
     }
 
     .split-closed {
-        background: var(--bme-green);
+        background: var(--bme-dark-green);
     }
 
     .legend {
@@ -365,7 +365,7 @@
     }
 
     .legend .sw.closed {
-        background: var(--bme-green);
+        background: var(--bme-dark-green);
     }
 
     .bars {
