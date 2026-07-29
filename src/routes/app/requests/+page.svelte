@@ -18,6 +18,42 @@
         return [];
     }
 
+    let downloading = $state<string | null>(null);
+
+    async function downloadPdf(q: any) {
+        downloading = q.id;
+        try {
+            const { data: resp, error } = await data.supabase.functions.invoke('quote-pdf', {
+                body: { quote_id: q.id }
+            });
+
+            if (error || !resp?.ok || !resp?.pdf_base64) {
+                addToast(resp?.error ?? 'Could not generate the quotation PDF. Please try again.');
+                return;
+            }
+
+            const binary = atob(resp.pdf_base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+            const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${resp.reference ?? q.reference ?? 'quotation'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+            addToast('Quotation PDF downloaded.');
+        } catch (e) {
+            console.error('Quotation PDF download failed:', e);
+            addToast('Could not generate the quotation PDF. Please try again.');
+        } finally {
+            downloading = null;
+        }
+    }
+
     let tab = $state<'open' | 'closed'>('open');
     let source = $derived(tab === 'open' ? data.openQuotes : data.closedQuotes);
 
@@ -190,6 +226,12 @@
                 <p class="closed-note">
                     This request was closed{q.reviewed_at ? ` on ${when(q.reviewed_at)}` : ''}. No further action is required.
                 </p>
+
+                <div class="qfoot">
+                    <button class="pdf-btn" onclick={() => downloadPdf(q)} disabled={downloading === q.id}>
+                        {downloading === q.id ? 'Preparing...' : 'Download Quotation PDF'}
+                    </button>
+                </div>
             {/if}
         </div>
     {/each}
@@ -233,6 +275,34 @@
         background: var(--bme-dark-blue);
         color: #ffffff;
         border-color: var(--bme-dark-blue);
+    }
+
+    .qfoot {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+    }
+
+    .pdf-btn {
+        padding: 9px 18px;
+        border: 1px solid var(--bme-dark-blue);
+        border-radius: 8px;
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: background 140ms ease;
+    }
+
+    .pdf-btn:hover:not(:disabled) {
+        background: var(--bme-darker-blue);
+    }
+
+    .pdf-btn:disabled {
+        opacity: 0.6;
+        cursor: default;
     }
 
     .closed-note {

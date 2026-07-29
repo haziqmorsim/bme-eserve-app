@@ -1,13 +1,13 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { corsHeaders, json } from '../_shared/cors.ts';
+import { appUrl } from '../_shared/email-ui.ts';
 
 const BLUE = rgb(0, 0.29, 0.55);
-const GREEN = rgb(0.184, 0.369, 0.094);
 const INK = rgb(0.11, 0.16, 0.08);
 const MUTED = rgb(0.45, 0.45, 0.45);
 const LINE = rgb(0.89, 0.91, 0.87);
-const HEADBG = rgb(0.93, 0.95, 0.91);
+const WHITE = rgb(1, 1, 1);
 
 function money(n:number): string {
     return 'RM' + Math.round(n).toLocaleString('en-MY', { maximumFractionDigits: 0 });
@@ -20,14 +20,35 @@ Deno.serve(async (req) => {
         const { quote_id } = await req.json();
         if (!quote_id) return json(400, { error: 'quote_id is required.' });
 
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) return json(401, { error: 'Missing token' });
+
+        const userClient = createClient(
+            Deno.env.get('SUPABASE_URL')!, 
+            Deno.env.get('SUPABASE_ANON_KEY')!, 
+            { global: { headers: { Authorization: authHeader } } }
+        );
+        const { data: { user } } = await userClient.auth.getUser();
+        if (!user) return json(401, { error: 'Unauthorized' });
+
         const admin = createClient(
             Deno.env.get('SUPABASE_URL')!, 
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
 
+        const { data: me } = await admin
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+        const STAFF = ['admin', 'manager', 'coo', 'developer'];
+        if (!me || !STAFF.includes(me.role)) {
+            return json(403, { error: 'Only staff can download quotation PDFs.' });
+        }
+
         const { data: quote, error } = await admin
             .from('quotes')
-            .select('id, references, notes, created_at, user_id, quote_items(*)')
+            .select('id, reference, notes, created_at, user_id, quote_items(*)')
             .eq('id', quote_id)
             .single();
         if (error || !quote) return json(404, { error: 'Quote not found.' });
@@ -52,12 +73,12 @@ Deno.serve(async (req) => {
                 .in('id', partIds);
             for (const p of parts ?? []) partPrice[p.id] = p.price ?? 0;
         }
-        const unit = (i: any): number => (p.unit_price ?? partPrice[i.part_id] ?? 0);
+        const unit = (i: any): number => (i.unit_price ?? partPrice[i.part_id] ?? 0);
         const total = items.reduce((s: number, i: any) => s + unit(i) * i.quantity, 0);
 
         const doc = await PDFDocument.create();
         const font = await doc.embedFont(StandardFonts.Helvetica);
-        const bold = await doc.embedFont(StandardFonts, HelveticaBold);
+        const bold = await doc.embedFont(StandardFonts.HelveticaBold);
         const W = 595.28, H = 841.89, M = 44;
         let page = doc.addPage([W, H]);
         let y = H - M;
@@ -66,42 +87,75 @@ Deno.serve(async (req) => {
             page.drawText(s ?? '', { x, y: yy, size, font: f, color });
         const rightText = (s: string, xRight: number, yy: number, size = 10, f = font, color = INK) => 
             page.drawText(s ?? '', { x: xRight - f.widthOfTextAtSize(s ?? '', size), y: yy, size, font: f, color });
+        const centerText = (s: string, cx: number, yy: number, size = 10, f = font, color = INK) => 
+            page.drawText(s ?? '', { x: cx - f.widthOfTextAtSize(s ?? '', size) / 2, y: yy, size, font: f, color });
 
-        page.drawRectangle({ x: 0, y: H - 8, width: W, height: 8, color: BLUE });
-        text('Boilermech Sdn Bhd', M, y - 8, 15, bold, BLUE);
-        text('BME e-Serve — Spare Parts Quotation', M, y - 26, 10, font, MUTED);
-        rightText('QUOTATION', W - M, y - 8, 18, bold, GREEN);
-        rightText(quote.reference ?? '', W - M, y - 28, 11, bold, INK);
-        y -= 58;
+        let logoDrawn = false;
+        try {
+            const logoUrl = appUrl('/images/bme-logo.jpg');
+            if (logoUrl) {
+                const res = await fetch(logoUrl);
+                if (res.ok) {
+                    const img = await doc.embedJpg(new Uint8Array(await res.arrayBuffer()));
+                    const logoH = 50;
+                    const logoW = img.width * (logoH / img.height);
+                    page.drawImage(img, { x: M, y: y - logoH, width: logoW, height: logoH });
+                    y -= logoH + 16;
+                    logoDrawn = true;
+                }
+            }
+        } catch (e) {
+            console.error('Logo could not be embedded:', e);
+        }
+        if (!logoDrawn) {
+            text('Boilermech Sdn Bhd', M, y - 12, 15, bold, BLUE);
+            y -= 30;
+        }
+
+        text('BME e-Serve — Spare Parts Quotation', M, y, 10, font, MUTED);
+        rightText(quote.reference ?? '', W - M, y, 12, bold, INK);
+        y -= 18;
 
         page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1, color: LINE });
         y -= 20;
-        const dateStr = new Date(quote.created_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'short', day: 'numeric' });
+
+        const dateStr = new Date(quote.created_at).toLocaleDateString('en-MY', {
+            year: 'numeric', month: 'short', day: 'numeric'
+        });
         text('Date', M, y, 9, bold, MUTED);
-        text('Billed To', W / 2, y, 9, bold, MUTED);
-        text(prof?.company || prof?.full_name || customerEmail || '—', W / 2, y - 14, 10);
-        if (prof?.company && prof?.full_name) text(prof.full_name, W / 2, y - 28, 9, font, MUTED);
-        y -= 48;
+        text(dateStr, M, y - 14, 10);
 
-        const cPart = M, cName = M + 92, cBoiler = 330, cQty = 410, cUnit = 476, cAmt = W - M;
-        page.drawRectangle({ x: M - 6, y: y - 6, width: W - 2 * M + 12, height: 22, color: HEADBG });
-        text('Part No.', cPart, y, 9, bold, INK);
-        text('Description', cName, y, 9, bold, INK);
-        text('Boiler', cBoiler, y, 9, bold, INK);
-        rightText('Qty', cQty, y, 9, bold, INK);
-        rightText('Unit', cUnit, y, 9, bold, INK);
-        rightText('Amount', cAmt, y, 9, bold, INK);
-        y -= 26;
+        rightText('Billed To', W - M, y, 9, bold, MUTED);
+        rightText(prof?.company || prof?.full_name || customerEmail || '—', W - M, y - 14, 10);
+        if (prof?.company && prof?.full_name) rightText(prof.full_name, W - M, y - 28, 9, font, MUTED);
+        y -= 52;
 
-        const ensureSpace = () => {
+        const cPart = M, cName = M + 92, cBoiler = 320;
+        const qtyC = 392, unitC = 452, amtC = 516;
+
+        const drawTableHeader = () => {
+            page.drawRectangle({ x: M - 6, y: y - 7, width: W - 2 * M + 12, height: 22, color: BLUE });
+            text('Part No.', cPart, y, 9, bold, WHITE);
+            text('Description', cName, y, 9, bold, WHITE);
+            text('Boiler', cBoiler, y, 9, bold, WHITE);
+            centerText('Qty', qtyC, y, 9, bold, WHITE);
+            centerText('Unit', unitC, y, 9, bold, WHITE);
+            centerText('Amount', amtC, y, 9, bold, WHITE);
+            y -= 26;
+        };
+
+        drawTableHeader();
+
+        const ensureSpace = (withHeader = false) => {
             if (y < M + 90) {
                 page = doc.addPage([W, H]);
                 y = H - M;
+                if (withHeader) drawTableHeader();
             }
         };
 
         for (const i of items) {
-            ensureSpace();
+            ensureSpace(true);
             const amt = unit(i) * i.quantity;
             text(i.part_number ?? '', cPart, y, 9, bold);
             let name = i.part_name ?? '';
@@ -110,18 +164,25 @@ Deno.serve(async (req) => {
             if (name !== (i.part_name ?? '')) name = name.slice(0, -1) + '...';
             text(name, cName, y, 9);
             text(i.boiler_code ?? '', cBoiler, y, 9);
-            rightText(String(i.quantity), cQty, y, 9);
-            rightText(unit(i) ? money(unit(i)) : '—', cUnit, y, 9);
-            rightText(amt ? money(amt) : '—', cAmt, y, 9);
+            centerText(String(i.quantity), qtyC, y, 9);
+            centerText(unit(i) ? money(unit(i)) : '—', unitC, y, 9);
+            centerText(amt ? money(amt) : '—', amtC, y, 9);
             y -= 16;
             page.drawLine({ start: { x: M, y: y + 4 }, end: { x: W - M, y: y + 4 }, thickness: 0.5, color: LINE });
             y -= 4;
         }
 
-        y -= 8;
-        page.drawRectangle({ x: cUnit - 60, y: y - 6, width: (W- M) - (cUnit - 60), height: 24, color: BLUE });
-        rightText('Total', cUnit, y, 11, bold, rgb(1, 1, 1));
-        rightText(money(total), cAmt, y, 11, bold, rgb(1, 1, 1));
+        y -= 10;
+        const totalX = unitC - 46;
+        page.drawRectangle({
+            x: totalX, 
+            y: y - 7, 
+            width: (W - M + 6) - totalX, 
+            height: 22, 
+            color: BLUE
+        });
+        centerText('Total', unitC, y, 9, bold, WHITE);
+        centerText(money(total), amtC, y, 9, bold, WHITE);
         y -= 40;
 
         if (quote.notes) {
@@ -134,36 +195,57 @@ Deno.serve(async (req) => {
             let line = '';
             for (const w of words) {
                 const test = line ? line + ' ' + w : w;
-                if (font.widthOfTextAtSize(test, 9) > maxW) { 
+                if (line && font.widthOfTextAtSize(test, 9) > maxW) {
                     text(line, M, y, 9);
                     y -= 12;
                     ensureSpace();
+                    line = w;
+                } else {
+                    line = test;
                 }
-                else line = test;
             }
             if (line) {
-                text(line, M, n, y, 9);
+                text(line, M, y, 9);
                 y -= 12;
             }
             y -= 10;
         }
-
-        text('Prices are indicative and subject to confirmation by Boilermech Sdn Bhd.', M, M, 8, font, MUTED);
 
         const bytes = await doc.save();
 
         const path = `${quote.id}.pdf`;
         const { error: upErr } = await admin.storage.from('quotes')
             .upload(path, bytes, { contentType: 'application/pdf', upsert: true });
-        if (upErr) return js(400, { error: `Upload failed: ${upErr.message}` });
+        if (upErr) return json(400, { error: `Upload failed: ${upErr.message}` });
 
-        const { data: pub } = admin.storage.from('quotes').getPublicUrl(path);
-        const pdf_url = pub.publicUrl;
-        await admin.from('quotes').update({ pdf_url }).eq('id', quote.id);
+        let pdf_url: string | null = null;
+        const { data: signed } = await admin.storage
+            .from('quotes')
+            .createSignedUrl(path, 60 * 60 * 24 * 7);
+        if (signed?.signedUrl) {
+            pdf_url = signed.signedUrl;
+        } else {
+            const { data: pub } = admin.storage.from('quotes').getPublicUrl(path);
+            pdf_url = pub?.publicUrl ?? null;
+        }
+        if (pdf_url) await admin.from('quotes').update({ pdf_url }).eq('id', quote.id);
 
-        return json(200, { ok: true, pdf_url, total });
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        const pdf_base64 = btoa(binary);
+
+        return json(200, {
+            ok: true, 
+            pdf_url, 
+            total, 
+            reference: quote.reference ?? null, 
+            pdf_base64
+        });
     } catch (e) {
         console.error('quote-pdf failed.', e);
         return json(400, { error: String(e) });
     }
-})
+});

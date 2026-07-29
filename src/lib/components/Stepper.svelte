@@ -99,11 +99,13 @@
         border-radius: 2px;
     }
 
-    .bar.done { background: var(--bme-green); }
+    .bar.done { 
+        background: var(--bme-dark-green); 
+    }
 
     .step.done .dot {
-        background: var(--bme-green);
-        border-color: var(--bme-green);
+        background: var(--bme-dark-green);
+        border-color: var(--bme-dark-green);
     }
 
     .step.active .dot {
@@ -117,8 +119,8 @@
     }
 
     .step.final.closed .dot {
-        background: var(--bme-green);
-        border-color: var(--bme-green);
+        background: var(--bme-dark-green);
+        border-color: var(--bme-dark-green);
     }
 
     .step.upcoming .dot,

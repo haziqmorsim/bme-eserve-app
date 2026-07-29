@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
         if (componentIds.length) {
             const { data: parts } = await admin
                 .from('parts')
-                .select('id, component_id, part_number, name, price, price_min, price_max, in stock')
+                .select('id, component_id, part_number, name, price, price_min, price_max, in_stock')
                 .in('component_id', componentIds)
-                .oder('part_number', { ascending: true });
+                .order('part_number', { ascending: true });
             for (const p of parts ?? []) {
                 (partsByComponent[p.component_id] ??= []).push(p);
             }

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
+    import { addItem } from "$lib/stores/quote";
     import Stepper from "$lib/components/Stepper.svelte";
     import { Search, X } from "@lucide/svelte";
     import Pagination from "$lib/components/admin/Pagination.svelte";
@@ -23,6 +24,75 @@
         try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
         copied = code;
         setTimeout(() => { if (copied === code) copied = null; }, 1500);
+    }
+
+    let readding = $state<string | null>(null);
+
+    async function requestAgain(q: any) {
+        const items = q.quote_items ?? [];
+        if (items.length === 0) {
+            addToast('This request has no parts to add.');
+            return;
+        }
+
+        readding = q.id;
+        const ids = [...new Set(items.map((i: any) => i.part_id).filter(Boolean))];
+
+        let current: any[] = [];
+        if (ids.length) {
+            const { data: rows, error } = await data.supabase
+                .from('parts')
+                .select('id, part_number, name, price, price_min, price_max, components(name)')
+                .in('id', ids);
+
+            if (error) {
+                readding = null;
+                addToast('Could not add these parts to your quote list. Please try again.');
+                return;
+            }
+            current = rows ?? [];
+        }
+
+        const byId: Record<string, any> = {};
+        for (const p of current) byId[p.id] = p;
+
+        let added = 0;
+        let missing = 0;
+
+        for (const it of items) {
+            const part = it.part_id ? byId[it.part_id] : null;
+            if (!part) { missing++; continue; }
+
+            const comp: any = part.components;
+            const componentName = Array.isArray(comp) ? (comp[0]?.name ?? '') : (comp?.name ?? '');
+
+            addItem({
+                partId: part.id, 
+                partNumber: part.part_number ?? it.part_number ?? '', 
+                partName: part.name ?? it.part_name ?? '', 
+                boilerCode: it.boiler_code ?? '', 
+                componentName, 
+                price: part.price ?? undefined, 
+                priceMin: part.price_min ?? part.price ?? 0, 
+                priceMax: part.price_max ?? part.price ?? 0, 
+                quantity: it.quantity ?? 1
+            });
+            added++;
+        }
+
+        readding = null;
+
+        if (added === 0) {
+            addToast('None of these parts are currently available.');
+        } else if (missing > 0) {
+            addToast(`${added} part(s) added to your quote list. ${missing} part(s) are no longer available.`);
+        } else {
+            addToast(
+                added === 1
+                    ? '1 part added to your quote list.'
+                    : `${added} parts added to your quote list.`
+            );
+        }
     }
 
     let search = $state('');
@@ -315,6 +385,15 @@
                             <Stepper status={q.status} level={q.current_level} />
                         {/if}
                     </div>
+
+                    <div class="qfoot">
+                        <button
+                            class="again"
+                            onclick={() => requestAgain(q)}
+                            disabled={readding === q.id || (q.quote_items ?? []).length === 0}>
+                            {readding === q.id ? 'Adding...' : 'Request Again'}
+                        </button>
+                    </div>
                 </div>
             {/each}
         {/if}
@@ -379,6 +458,37 @@
 {/if}
 
 <style>
+    .qfoot {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .again {
+        padding: 8px 18px;
+        border: 1px solid var(--bme-dark-blue);
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--bme-dark-blue);
+        font: inherit;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: background 140ms ease, color 140ms ease;
+    }
+
+    .again:hover:not(:disabled) {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+    }
+
+    .again:disabled {
+        opacity: 0.55;
+        cursor: default;
+    }
+
     .searchbar {
         display: flex;
         align-items: center;
