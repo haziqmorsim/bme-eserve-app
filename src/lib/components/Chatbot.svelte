@@ -10,18 +10,45 @@
 
     let sessionId: string | null = null;
 
+    const IDLE_MS = 3 * 60 * 60 * 1000;
+
     async function ensureSession(): Promise<string | null> {
         if (!supabase || !user) return null;
         if (sessionId) return sessionId;
         const { data: existing } = await supabase
             .from('chat_sessions')
-            .select('id')
+            .select('id, started_at')
             .eq('user_id', user.id)
             .is('ended_at', null)
             .order('started_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-        if (existing?.id) { sessionId = existing.id; return sessionId; }
+
+        if (existing?.id) {
+            const { data: last } = await supabase
+                .from('chat_messages')
+                .select('created_at')
+                .eq('session_id', existing.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            const actedAt = new Date(last?.created_at ?? existing.started_at).getTime();
+            if (Date.now() - actedAt < IDLE_MS) {
+                sessionId = existing.id;
+                return sessionId;
+            }
+
+            try {
+                await supabase
+                    .from('chat_sessions')
+                    .update({ ended_at: new Date(actedAt).toISOString(), end_reason: 'idle' })
+                    .eq('id', existing.id);
+            } catch (e) {
+                console.error('Could not close idle chat session:', e);
+            }
+        }
+
         const { data: created } = await supabase
             .from('chat_sessions')
             .insert({ user_id: user.id })
@@ -68,7 +95,7 @@
     let input = $state('');
     let loading = $state(false);
     let messages = $state<Msg[]>([ 
-        { role: 'assistant', content: 'Hi! I can help you find your way around BME e-Serve. You can also upload a photo of a boiler part and I will try to identify the right spare part. What are you looking for?' }
+        { role: 'assistant', content: 'Hi! I can help you find your way around BME e-Serve App. You can also upload a photo of a boiler part and I will try to identify the right spare part. What are you looking for?' }
     ]);
 
     let pendingImage = $state<{ dataUrl: string; name: string } | null>(null);

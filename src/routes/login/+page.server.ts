@@ -4,6 +4,10 @@ import type { Actions, PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
     const { session } = await safeGetSession();
     if (session) throw redirect(303, '/app');
+
+    return {
+        title: "Sign In"
+    }
 };
 
 export const actions: Actions = {

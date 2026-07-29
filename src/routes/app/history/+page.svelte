@@ -341,7 +341,9 @@
                         <div class="cs-times">
                             <span class="cs-label">Ended</span>
                             {#if c.ended_at}
-                                <span class="cs-val">{when(c.ended_at)}</span>
+                                <span class="cs-val">
+                                    {when(c.ended_at)}{#if c.end_reason}<span class="cs-reason"> ({c.end_reason})</span>{/if}
+                                </span>
                             {:else}
                                 <span class="cs-val ongoing">Ongoing</span>
                             {/if}

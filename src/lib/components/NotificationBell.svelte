@@ -54,9 +54,10 @@
             await invalidateAll();
         }
         const dest =
-            n.type === 'request_reminder' ? '/app/requests'
+            n.type === 'request_reminder' || n.type === 'request_escalation' ? '/app/requests'
             : n.type === 'enquiry_reminder' ? '/app/enquiries'
             : n.type === 'cart_reminder' || n.type === 'quote_suggestion' ? '/app/quotes'
+            : n.type === 'data_quality' ? '/app/settings'
             : '/app/history';
         goto(dest);
     }

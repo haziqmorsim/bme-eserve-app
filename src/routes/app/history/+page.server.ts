@@ -10,19 +10,13 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     const role = profile?.role;
     const isStaff = role === 'admin' || role === 'manager' || role === 'coo' || role === 'developer';
 
-    const { data: regionRows } = await supabase.from('regions').select('id, name').order('sort_order');
-    const regions = regionRows ?? [];
-    const regionMap: Record<string, string> = {};
-    for (const r of regions) regionMap[r.id] = r.name;
-    const myRegion = profile?.region_id ? (regionMap[profile.region_id] ?? null) : null;
-
     const { data: quoteRows } = await supabase
         .from('quotes')
         .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, pdf_url, current_level, quote_items(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-    const quotes = (quoteRows ?? []).map((q) => ({ ...q, region: myRegion }));
+    const quotes = quoteRows ?? [];
 
     let reviewGroups: any[] = [];
     if (isStaff) {
@@ -50,17 +44,16 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
             for (const a of allActions ?? []) (actionsByQuote[a.quote_id] ??= []).push(a);
 
             const ownerIds = [...new Set(Object.values(quoteById).map((q: any) => q.user_id).filter(Boolean))];
-            const custMap: Record<string, { full_name: string | null; company: string | null; region: string | null }> = {};
+            const custMap: Record<string, { full_name: string | null; company: string | null }> = {};
             if (ownerIds.length) {
                 const { data: profs } = await supabase
                     .from('profiles')
-                    .select('id, full_name, company, region_id')
+                    .select('id, full_name, company')
                     .in('id', ownerIds);
                 for (const p of profs ?? []) {
                     custMap[p.id] = {
                         full_name: p.full_name,
-                        company: p.company,
-                        region: p.region_id ? (regionMap[p.region_id] ?? null) : null
+                        company: p.company
                     };
                 }
             }
@@ -71,7 +64,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
                 const lastActivity = actions.length ? actions[actions.length - 1].created_at : q?.created_at;
                 return {
                     quote: q,
-                    customer: custMap[q?.user_id] ?? { full_name: null, company: null, region: null },
+                    customer: custMap[q?.user_id] ?? { full_name: null, company: null },
                     actions,
                     lastActivity
                 };
@@ -120,7 +113,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
     return {
         quotes,
         reviewGroups, isStaff,
-        regions,
         loyalty,
         chats,
         title: "History"
