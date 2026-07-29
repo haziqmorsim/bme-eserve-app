@@ -99,10 +99,10 @@ Deno.serve(async (req) => {
 
         if (total === 0) return json(200, { ok: true, findings: 0, emailed: 0 });
 
-        const admins = await recipientsByRole(admin. ['admin']);
+        const admins = await recipientsByRole(admin, ['admin']);
         if (admins.length === 0) return json(200, { ok: true, findings: total, emailed: 0 });
 
-        await notifyRecipients(admin, admins {
+        await notifyRecipients(admin, admins, {
             type: 'data_quality', 
             quote_id: null, 
             title: `Weekly data check: ${total} item(s) to review`, 
