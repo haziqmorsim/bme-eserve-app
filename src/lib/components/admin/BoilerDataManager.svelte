@@ -377,6 +377,11 @@
 {/if}
 
 <style>
+    .btn-primary:disabled {
+        background-color: #9fabbc;
+        cursor: not-allowed;
+    }
+
     .bd-head {
         display: flex;
         align-items: flex-end;

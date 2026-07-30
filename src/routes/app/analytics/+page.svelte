@@ -618,9 +618,9 @@
     }
 
     .feed-dot.request { background: var(--bme-dark-blue); }
-    .feed-dot.closed { background: var(--bme-green); }
+    .feed-dot.closed { background: var(--bme-dark-green); }
     .feed-dot.reopened { background: var(--bme-orange); }
-    .feed-dot.enquiry { background: var(--bme-teal); }
+    .feed-dot.enquiry { background: var(--bme-purple); }
     .feed-dot.page_view { background: var(--bme-dark-blue); }
     .feed-dot.login { background: var(--bme-green); }
 

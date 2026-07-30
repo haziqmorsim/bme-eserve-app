@@ -421,7 +421,7 @@
                             <span class="cs-label">Ended</span>
                             {#if c.ended_at}
                                 <span class="cs-val">
-                                    {when(c.ended_at)}{#if c.end_reason}<span class="cs-reason"> ({c.end_reason})</span>{/if}
+                                    {when(c.ended_at)} {#if c.end_reason}<span class="cs-reason">({c.end_reason})</span>{/if}
                                 </span>
                             {:else}
                                 <span class="cs-val ongoing">Ongoing</span>
@@ -1006,10 +1006,16 @@
         margin-bottom: 4px;
     }
 
-    .cm-who {
+    .cm.user .cm-who {
         font-size: 12px;
         font-weight: 700;
         color: var(--bme-dark-blue);
+    }
+
+    .cm.assistant .cm-who {
+        font-size: 12px;
+        font-weight: 700;
+        color: #000000;
     }
 
     .cm-time {
