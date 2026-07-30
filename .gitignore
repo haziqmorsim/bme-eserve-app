@@ -29,3 +29,9 @@ supabase/migrations
 
 # Schedule
 supabase/schedule
+
+# Python
+services/forecast/.env
+services/forecast/.venv/
+services/forecast/__pycache__/
+*.pyc
