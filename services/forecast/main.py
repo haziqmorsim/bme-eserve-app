@@ -8,6 +8,8 @@ from fastapi import FastAPI, Header, HTTPException
 from supabase import Client, create_client
 
 from forecast import compute_forecasts
+from replacement import compute_replacements
+
 load_dotenv(Path(__file__).with_name(".env"))
 
 
@@ -39,6 +41,37 @@ def _guard(x_eserve_key: str | None) -> None:
 @app.get("/health")
 def health():
     return {"ok": True}
+
+@app.post("/replacements/run")
+def run_replacements(x_eserve_key: str | None = Header(default=None)):
+    _guard(x_eserve_key)
+    sb = _client()
+
+    quotes = (
+        sb.table("quotes").select("id, user_id, created_at, status").execute().data or []
+    )
+    items = (
+        sb.table("quote_items")
+        .select("quote_id, part_id, boiler_code, part_number, part_name")
+        .execute()
+        .data
+        or []
+    )
+    profiles = (
+        sb.table("profiles").select("id, full_name, company, region_id").execute().data or []
+    )
+    regions = sb.table("regions").select("id, name").execute().data or []
+    boilers = sb.table("boilers").select("id, code").execute().data or []
+
+    rows = compute_replacements(quotes, items, profiles, regions, boilers)
+    payload = [r.__dict__ for r in rows]
+
+    if payload:
+        sb.table("part_replacement_schedule").upsert(
+            payload, on_conflict="user_id,boiler_code,part_id"
+        ).execute()
+
+    return {"ok": True, "replacements_written": len(payload)}
 
 @app.post("/forecasts/run")
 def run(x_eserve_key: str | None = Header(default=None)):

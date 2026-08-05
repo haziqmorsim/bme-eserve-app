@@ -44,7 +44,10 @@
     }
 </script>
 
-<h1>Analytics</h1>
+<div class="head">
+    <h1>Analytics</h1>
+    <a href="/app/analytics/forecasts"><button class="btn-primary">Forecasts</button></a>
+</div>
 
 {#if data.total === 0}
     <div class="card empty">No request data available yet.</div>
@@ -258,6 +261,15 @@
 {/if}
 
 <style>
+    .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
     h1 {
         margin: 5px 0 15px;
     }

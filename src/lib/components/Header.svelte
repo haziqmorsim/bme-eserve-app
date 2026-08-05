@@ -53,7 +53,7 @@
                 <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
             {#if isStaff}
-                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
+                <a class="btn-ghost" class:active={$page.url.pathname === '/app/analytics'} href="/app/analytics">Analytics</a>
             {/if}
         </div>
     </div>

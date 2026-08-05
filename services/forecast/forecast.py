@@ -24,6 +24,7 @@ class ForecastRow:
     upper_qty: float
     method: str
     history_months: int
+    history: list
 
 def build_monthly_series(quotes, items, profiles, regions):
     region_of = {p["id"]: p.get("region_id") for p in profiles}
@@ -62,6 +63,17 @@ def build_monthly_series(quotes, items, profiles, regions):
         )
     return series, labels
 
+def _contiguous_history(by_month: dict, max_points: int = 12) -> list[dict]:
+    if not by_month:
+        return []
+    months = sorted(by_month)
+    cursor, last = months[0], months[-1]
+    out: list[dict] = []
+    while cursor <= last:
+        out.append({"month": cursor.isoformat(), "qty": round(by_month.get(cursor, 0.0), 2)})
+        cursor = _next_month(cursor)
+    return out[-max_points:]
+
 def _wma(values: list[float]) -> tuple[float, str]: # weighted moving average
     tail = values[-3:]
     if len(tail) >= 3:
@@ -97,7 +109,8 @@ def compute_forecasts(quotes, items, profiles, regions, as_of: date | None = Non
                 lower_qty=round(max(0.0, predicted - spread), 2), 
                 upper_qty=round(predicted + spread, 2), 
                 method=method, 
-                history_months=len(months),
+                history_months=len(months), 
+                history=_contiguous_history(by_month)
             )
         )
     return out
