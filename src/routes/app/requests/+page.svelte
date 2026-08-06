@@ -412,6 +412,11 @@
         margin: 2px 0;
     }
 
+    .attach-links:hover {
+        text-decoration: underline;
+        text-decoration-color: var(--bme-dark-blue);
+    }
+
     .prior {
         margin-top: 14px;
         padding: 12px 14px;

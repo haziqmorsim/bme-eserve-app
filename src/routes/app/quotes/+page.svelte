@@ -3,6 +3,7 @@
     import { formatMoney } from "$lib/price";
     import { normaliseCode } from "$lib/coupon";
     import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
 
     let { data } = $props();
     let notes = $state('');
@@ -192,6 +193,8 @@
         clearCart();
         done = true;
         submitting = false;
+
+        addToast('Quotation request is sent successfully.')
     }
 </script>
 

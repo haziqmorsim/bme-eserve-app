@@ -3,6 +3,7 @@
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { addItem } from '$lib/stores/quote';
+	import { addToast } from '$lib/stores/toast';
 	import { fade, fly } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { Funnel, Search, Check } from '@lucide/svelte';
@@ -122,6 +123,7 @@
 			priceMax: p.price_max ?? p.price ?? 0,
 			quantity: q
 		});
+		addToast('Part added to quote list.')
 	}
 </script>
 
