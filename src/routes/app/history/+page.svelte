@@ -290,7 +290,7 @@
 {#if tab === 'requests'}
     <section class="block">
 
-        {#if data.loyalty}
+        <!-- {#if data.loyalty}
             <div class="card loyalty bme-animate-in">
                 <div class="loy-head">
                     <div>
@@ -336,7 +336,7 @@
                 </div>
                 <p class="loy-note">To use the discount coupons, paste it in the quotes page for your next quotation request.</p>
             </div>
-        {/if}
+        {/if} -->
 
         {#if myQuotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>

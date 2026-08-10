@@ -10,7 +10,7 @@
 		readings?: SectionReadingRow[];
 	}>();
 
-	const def = $derived(grateFor(boiler.code));
+	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, []));
 
 	const dbSpecs = $derived([
@@ -28,7 +28,8 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code} {#if boiler.name}- {boiler.name}{/if}</h2>
+	<h2 class="title">{boiler.code}</h2>
+	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 	{#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
 
 	<div class="card design-card">
@@ -56,7 +57,7 @@
 	}
 
 	.desc {
-		color: var(--bme-muted);
+		color: var(--bme-ink);
 		margin: 0 0 20px;
 		max-width: 60ch;
 	}

@@ -3,6 +3,7 @@
     import { formatMoney } from "$lib/price";
     import { normaliseCode } from "$lib/coupon";
     import { invalidateAll } from "$app/navigation";
+    import { addToast } from "$lib/stores/toast";
 
     let { data } = $props();
     let notes = $state('');
@@ -192,23 +193,22 @@
         clearCart();
         done = true;
         submitting = false;
+
+        addToast('Request is submitted successfully.')
     }
 </script>
 
-<h1>Quote List</h1>
+<h1>Cart List</h1>
 
 {#if done}
     <div class="card success">
         <h2>Request submitted</h2>
-        <p>
-            Your quotation request has been sent. Once it is approved, 
-            you will receive a confirmation e-mail with the quotation attached as a PDF.
-        </p>
+        <p>Your request has been sent. Our staff at Boilermech will get back to you.</p>
         <a href="/app" class="btn-primary">Back to Boilers</a>
     </div>
 {:else if $quoteItems.length === 0}
     <div class="card empty">
-        <p>Your quote list is empty. Browse a boiler's parts tab to add components.</p>
+        <p>Your cart list is empty. Browse a boiler's parts tab to add components.</p>
         <a href="/app" class="btn-ghost">Browse Boilers</a>
     </div>
 {:else}
@@ -231,7 +231,7 @@
             </div>
         {/each}
 
-        <div class="coupon">
+        <!-- <div class="coupon">
             <label class="coupon-label" for="coupon-code">Discount coupon</label>
             <div class="coupon-row">
                 <input
@@ -256,9 +256,9 @@
             {#if appliedCoupon}
                 <span class="coupon-ok">Coupon {appliedCoupon.code} applied — {appliedCoupon.percent}% off.</span>
             {/if}
-        </div>
+        </div> -->
 
-        <div class="subtotal">
+        <!-- <div class="subtotal">
             <span>Subtotal</span>
             <span>RM{formatMoney(subtotal)}</span>
         </div>
@@ -267,13 +267,13 @@
                 <span>Discount ({discountPercent}%)</span>
                 <span>&minus;RM{formatMoney(discountAmount)}</span>
             </div>
-        {/if}
+        {/if} -->
 
         <div class="total">
             <span>Total</span>
             <strong>RM{formatMoney(total)}</strong>
         </div>
-        <p class="indicative">Prices are indicative. The final quotation will be confirmed by BME.</p>
+        <p class="indicative">Prices are indicative. The final quotation will be confirmed by Boilermech.</p>
     </div>
 
     <div class="card notes">
@@ -312,7 +312,7 @@
     {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
 
     <button class="btn-primary submit" onclick={submitQuote} disabled={submitting}>
-        {submitting ? 'Submitting...' : 'Request for Quotation'}
+        {submitting ? 'Submitting...' : 'Submit'}
     </button>
 {/if}
 
@@ -375,7 +375,7 @@
         text-align: left;
     }
 
-    .coupon {
+    /* .coupon {
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -456,21 +456,21 @@
         font-size: 12.5px;
         font-weight: 600;
         color: var(--bme-green);
-    }
+    } */
 
-    .subtotal {
+    /* .subtotal {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 6px 0;
         color: var(--bme-ink);
         font-size: 14.5px;
-    }
+    } */
 
-    .subtotal.discount {
+    /* .subtotal.discount {
         color: var(--bme-green);
         font-weight: 600;
-    }
+    } */
 
     .total {
         display: flex;

@@ -33,32 +33,26 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
-    const [{ data: quoteRows }, { data: approvalRows }, { data: regionRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
+    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
         supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
-        supabase.from('regions').select('id, name'), 
         supabase.from('enquiries').select('id, name, created_at'), 
         supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000)
     ]);
 
     const quotes = quoteRows ?? [];
     const approvals = approvalRows ?? [];
-    const regions = regionRows ?? [];
     const enquiries = enquiryRows ?? [];
     const activityEvents = eventRows ?? [];
 
-    const RegionMap: Record<string, string> = {};
-    for (const r of regions) RegionMap[r.id] = r.name;
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
     const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
     const eventUserIds = [...new Set(activityEvents.map((e: any) => e.user_id).filter(Boolean))];
     const personIds = [...new Set([...ownerIds, ...reviewerIds, ...eventUserIds])];
-    const ownerRegion: Record<string, string | null> = {};
     const person: Record<string, { name: string; company: string | null; role: string | null }> = {};
     if (personIds.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role, region_id').in('id', personIds);
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role').in('id', personIds);
         for (const p of profs ?? []) {
-            ownerRegion[p.id] = p.region_id ? (RegionMap[p.region_id] ?? null) : null;
             person[p.id] = { name: p.full_name || 'User', company: p.company ?? null, role: p.role ?? null };
         } 
     }
@@ -122,15 +116,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         count: levelN[l]
     }));
 
-    const regionCount: Record<string, number> = {};
-    for (const q of quotes) {
-        const rn = ownerRegion[q.user_id] ?? 'Unknown';
-        regionCount[rn] = (regionCount[rn] ?? 0) + 1;
-    }
-    const volumeByRegion = Object.entries(regionCount)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
-
     const boilerCount: Record<string, number> = {};
     for (const q of quotes) {
         const codes = new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean));
@@ -164,7 +149,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             reference: (q as any).reference,
             levelLabel: LEVEL_LABEL[(q as any).current_level] ?? `Level ${(q as any).current_level}`,
             boiler: boilers.join(', ') || '—',
-            region: ownerRegion[q.user_id] ?? 'Unknown',
             since,
             created_at: q.created_at,
             state: st
@@ -298,7 +282,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         closed, 
         avgResolutionMs, 
         handlingPerLevel, 
-        volumeByRegion, 
         volumeByBoiler, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
         agingList, 

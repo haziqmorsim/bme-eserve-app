@@ -6,7 +6,7 @@
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
 
-    let { users, regions, supabase, boilers = [], assignments = [] } = $props<{ users: any[]; regions: any[]; supabase: SupabaseClient, boilers?: any[], assignments?: any[] }>();
+    let { users, supabase, boilers = [], assignments = [] } = $props<{ users: any[]; supabase: SupabaseClient, boilers?: any[], assignments?: any[] }>();
 
     const ROLES = [
         { value: 'customer', label: 'Customer' },
@@ -33,7 +33,6 @@
         return m;
     });
 
-    let regionBoilers = $derived(boilers.filter((b: any) => b.region_id && b.region_id === form.region_id));
 
     function toggleBoiler(id: string) {
         const set = new Set<string>(form.boiler_ids ?? []);
@@ -54,7 +53,7 @@
     let filtered = $derived(users.filter((u: any) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
-        return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role), u.regions?.name]
+        return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role)]
             .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
     }));
     let total = $derived(filtered.length);
@@ -65,14 +64,14 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', region_id: '', boiler_ids: [] };
+        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', boiler_ids: [] };
     }
     function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
     function startEdit(u: any) {
         form = {
             full_name: u.full_name ?? '', email: u.email ?? '', password: '',
             phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? '',
-            region_id: u.region_id ?? '', boiler_ids: [...(assignedByUser[u.id] ?? [])]
+            boiler_ids: [...(assignedByUser[u.id] ?? [])]
         };
         err = ''; fieldErr = {}; editing = u.id;
     }
@@ -94,10 +93,8 @@
         if (editing === 'new' && !form.password) e.password = 'Temporary password is required.';
         if (!form.company?.toString().trim()) e.company = 'Company is required.';
         if (!form.role) e.role = 'Role is required.';
-        if (!form.region_id) e.region_id = 'Region is required.';
-        if ((form.role || 'customer') === 'customer' && form.region_id) {
-            const chosen = (form.boiler_ids ?? []).filter((id: string) => regionBoilers.some((b: any) => b.id === id));
-            if (chosen.length === 0) e.boiler_ids = 'At least one boiler is required.';
+        if ((form.role || 'customer') === 'customer' && (form.boiler_ids ?? []).length === 0) {
+            e.boiler_ids = 'At least one boiler is required.';
         }
         fieldErr = e;
         return Object.keys(e).length === 0;
@@ -111,11 +108,10 @@
         const body: any = {
             action, email: form.email.trim(), full_name: form.full_name || null,
             company: form.company || null, phone: form.phone || null,
-            role: form.role || 'customer', region_id: form.region_id || null
+            role: form.role || 'customer'
         };
         const isCustomer = (form.role || 'customer') === 'customer';
-        const regionBoilerIds = new Set(boilers.filter((b: any) => b.region_id === form.region_id).map((b: any) => b.id));
-        body.boiler_ids = isCustomer ? (form.boiler_ids ?? []).filter((id: string) => regionBoilerIds.has(id)) : [];
+        body.boiler_ids = isCustomer ? (form.boiler_ids ?? []) : [];
         if (action === 'create') body.password = form.password;
         else body.id = editing;
 
@@ -153,7 +149,7 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Region</th><th>Last Sign In</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Last Sign In</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as u (u.id)}
@@ -163,7 +159,6 @@
                         <td style="text-align: center; vertical-align: middle;">{u.phone ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{u.company ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{roleLabel(u.role)}</td>
-                        <td style="text-align: center; vertical-align: middle;">{u.regions?.name ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{lastSignIn(u.last_sign_in_at)}</td>
                         <td>
                             <div class="adm-actions">
@@ -206,28 +201,18 @@
                 </select>
                 {#if fieldErr.role}<span class="field-err">{fieldErr.role}</span>{/if}
             </label>
-            <label>Region <span class="required">*</span>
-                <select bind:value={form.region_id} class:invalid={fieldErr.region_id}>
-                    {#each regions as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
-                </select>
-                {#if fieldErr.region_id}<span class="field-err">{fieldErr.region_id}</span>{/if}
-            </label>
             {#if (form.role || 'customer') === 'customer'}
                 <div class="boiler-field">
                     <span class="bf-label">Boiler(s) <span class="required">*</span></span>
-                    {#if !form.region_id}
-                        <p class="boiler-hint">Please select a region.</p>
-                    {:else}
-                        <div class="boiler-picker" class:invalid={fieldErr.boiler_ids}>
-                            {#each regionBoilers as b (b.id)}
-                                <label class="boiler-item">
-                                    <input type="checkbox" checked={(form.boiler_ids ?? []).includes(b.id)} onchange={() => toggleBoiler(b.id)} />
-                                    <span><strong>{b.code}</strong> {#if b.name} — {b.name}{/if}</span>
-                                </label>
-                            {/each}
-                        </div>
-                        <p class="boiler-hint">{(form.boiler_ids ?? []).filter((id: string) => regionBoilers.some((b: any) => b.id === id)).length} selected.</p>
-                    {/if}
+                    <div class="boiler-picker" class:invalid={fieldErr.boiler_ids}>
+                        {#each boilers as b (b.id)}
+                            <label class="boiler-item">
+                                <input type="checkbox" checked={(form.boiler_ids ?? []).includes(b.id)} onchange={() => toggleBoiler(b.id)} />
+                                <span><strong>{b.code}</strong> {#if b.name} — {b.name}{/if}</span>
+                            </label>
+                        {/each}
+                    </div>
+                    <p class="boiler-hint">{(form.boiler_ids ?? []).length} selected.</p>
                     {#if fieldErr.boiler_ids}<span class="field-err">{fieldErr.boiler_ids}</span>{/if}
                 </div>
             {/if}

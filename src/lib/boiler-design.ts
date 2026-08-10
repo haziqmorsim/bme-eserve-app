@@ -112,13 +112,18 @@ function rng(seed: number): () => number {
     };
 }
 
-export function grateTypeFor(seed: string): GrateType {
+export function grateTypeFor(seed: string, name?: string | null): GrateType {
+    const n = (name ?? '').toLowerCase();
+    if (n.includes('reciprocating')) return 'reciprocating';
+    if (n.includes('vibrating')) return 'vibrating';
+    if (n.includes('fixed')) return 'fixed';
+
     const types: GrateType[] = ['fixed', 'reciprocating', 'vibrating'];
     return types[hashStr(seed || 'boiler') % 3];
 }
 
-export function grateFor(seed: string): GrateDef {
-    return GRATES[grateTypeFor(seed)];
+export function grateFor(seed: string, name?: string | null): GrateDef {
+    return GRATES[grateTypeFor(seed, name)];
 }
 
 export function resolveSections(def: GrateDef, components: Component[] = []): ResolvedSection[] {

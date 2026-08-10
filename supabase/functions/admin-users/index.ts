@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
         const action = body.action;
 
         if (action === 'create') {
-            const { email, password, full_name, company, phone, region_id } = body;
+            const { email, password, full_name, company, phone } = body;
             const role = normaliseRole(body.role);
             if (!email || !password) return json(400, { error: 'Email and password are required.' });
 
@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
                 company: company ?? null,
                 phone: phone ?? null,
                 email,
-                region_id: region_id ?? null,
                 must_change_password: true
             });
             if (pErr) return json(400, { error: pErr.message });
@@ -86,7 +85,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'update') {
-            const { id, email, full_name, company, phone, region_id } = body;
+            const { id, email, full_name, company, phone } = body;
             const role = normaliseRole(body.role);
             if (!id) return json(400, { error: 'Missing id' });
 
@@ -100,7 +99,6 @@ Deno.serve(async (req) => {
                 phone: phone ?? null,
                 email: email ?? null,
                 role,
-                region_id: region_id ?? null
             }).eq('id', id);
             if (pErr) return json(400, { error: pErr.message });
 

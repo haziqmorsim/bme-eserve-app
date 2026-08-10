@@ -20,7 +20,6 @@
     }
 
     let maxHandle = $derived(Math.max(1, ...data.handlingPerLevel.map((l: any) => l.avgMs ?? 0)));
-    let maxRegion = $derived(Math.max(1, ...data.volumeByRegion.map((r: any) => r.count)));
     let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
     let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
     let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
@@ -117,7 +116,7 @@
             <ol class="aging-list">
                 {#each data.agingList as a (a.id)}
                     <li class="ag-row">
-                        <span class="ag-ref">{a.reference} &middot; {a.boiler} ({a.region})</span>
+                        <span class="ag-ref">{a.reference} &middot; {a.boiler}</span>
                         <span class="ag-meta">{a.levelLabel}</span>
                         <span class="ag-sla"><SlaBadge since={a.since} weekdays /></span>
                     </li>
@@ -126,41 +125,21 @@
         {/if}
     </div>
 
-    <div class="card section">
-        <h2>Average handling time per level</h2>
-        <div class="bars">
-            {#each data.handlingPerLevel as l (l.level)}
-                <div class="bar-row">
-                    <span class="bar-e">{l.label}</span>
-                    <div class="bar-track">
-                        <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
-                    </div>
-                    <span class="bar-val">{fmtDur(l.avgMs)}</span>
-                </div>
-            {/each}
-        </div>
-    </div>
-
     <div class="grid2">
         <div class="card section">
-            <h2>Requests by region</h2>
-            {#if data.volumeByRegion.length === 0}
-                <p class="hint">No regional data.</p>
-            {:else}
-                <div class="bars">
-                    {#each data.volumeByRegion as r (r.name)}
-                        <div class="bar-row">
-                            <span class="bar-key">{r.name}</span>
-                            <div class="bar-track">
-                                <div class="bar-fill blue" style="width: {Math.round((r.count / maxRegion) * 100)}%"></div>
-                            </div>
-                            <span class="bar-val">{r.count}</span>
+            <h2>Average handling time per level</h2>
+            <div class="bars">
+                {#each data.handlingPerLevel as l (l.level)}
+                    <div class="bar-row">
+                        <span class="bar-e">{l.label}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
                         </div>
-                    {/each}
-                </div>
-            {/if}
+                        <span class="bar-val">{fmtDur(l.avgMs)}</span>
+                    </div>
+                {/each}
+            </div>
         </div>
-
         <div class="card section">
             <h2>Requests by boiler</h2>
             {#if data.volumeByBoiler.length === 0}

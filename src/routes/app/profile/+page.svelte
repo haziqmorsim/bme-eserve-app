@@ -134,7 +134,6 @@
         <div class="who-text">
             <p class="who-name">{show(me.full_name)}</p>
             <p class="who-sub">{show(me.company)}</p>
-            <p class="who-sub">{me.regions.name}</p>
         </div>
         <div class="who-tags">
             <span class="role">{ROLE_LABEL[me.role] ?? me.role ?? '--'}</span>
@@ -161,9 +160,6 @@
                 </label>
                 <label><span>Role</span>
                     <input bind:value={ROLE_LABEL[me.role]} disabled />
-                </label>
-                <label><span>Region</span>
-                    <input bind:value={me.regions.name} disabled />
                 </label>
             </div>
         </div>
@@ -207,9 +203,8 @@
                 <div class="row"><dt>E-mail</dt><dd>{show(me.email)}</dd></div>
                 <div class="row"><dt>Phone</dt><dd>{show(me.phone)}</dd></div>
                 <div class="row"><dt>Role</dt><dd>{ROLE_LABEL[me.role] ?? show(me.role)}</dd></div>
-                <div class="row"><dt>Region</dt><dd>{show(me.regions?.name)}</dd></div>
             </dl>
-            <p class="note">Role and region are managed by your administrator.</p>
+            <p class="note">Your role is managed by your administrator.</p>
         </div>
 
         <div class="card sect">

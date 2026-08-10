@@ -32,7 +32,7 @@
             .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     );
 
-    let sectionOptions = $derived(boiler ? grateFor(boiler.code).sections : []);
+    let sectionOptions = $derived(boiler ? grateFor(boiler.code, boiler.name).sections : []);
 
     let usedKeys = $derived(new Set(myReadings.map((r: any) => r.section_key)));
     let freeSections = $derived(sectionOptions.filter((s: any) => !usedKeys.has(s.key)));

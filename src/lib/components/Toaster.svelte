@@ -33,7 +33,7 @@
         gap: 10px;
         background: var(--bme-surface);
         border: 1px solid var(--bme-border);
-        border-left: 4px solid var(--bme-green);
+        border-left: 4px solid var(--bme-dark-blue);
         border-radius: 10px;
         box-shadow: 0 8px 24px rgba(28, 42, 20, 0.14);
         padding: 12px 14px;
@@ -42,7 +42,7 @@
     }
 
     .toast-icon {
-        color: var(--bme-green);
+        color: var(--bme-dark-blue);
         display: inline-flex;
         flex-shrink: 0;
     }

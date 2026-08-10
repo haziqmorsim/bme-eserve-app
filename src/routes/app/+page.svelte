@@ -1,5 +1,5 @@
 <script lang="ts">
-    import RegionList from "$lib/components/RegionList.svelte";
+    import BoilerList from "$lib/components/BoilerList.svelte";
     import Dashboard from "$lib/components/Dashboard.svelte";
     import PartsExplorer from "$lib/components/PartsExplorer.svelte";
 
@@ -7,7 +7,7 @@
 </script>
 
 <div class="layout">
-    <RegionList regions={data.regions} activeBoilerId={data.boilerId} customerNoBoilers={data.customerNoBoilers} supabase={data.supabase} profile={data.profile} />
+    <BoilerList boilers={data.boilers} activeBoilerId={data.boilerId} customerNoBoilers={data.customerNoBoilers} supabase={data.supabase} profile={data.profile} />
 
     <div class="content">
         {#if !data.boiler}
@@ -36,14 +36,22 @@
         display: grid;
         grid-template-columns: 280px 1fr;
         gap: 10px;
-        align-items: start;
+        align-items: stretch;
+        min-height: 63vh;
     }
 
     .content {
         min-width: 0;
+        display: flex;
+        flex-direction: column;
     }
 
     .empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         padding: 48px;
         text-align: center;
     }
@@ -83,6 +91,11 @@
     @media (max-width: 860px) {
         .layout {
             grid-template-columns: 1fr;
+            min-height: 0;
+        }
+
+        .empty {
+            flex: none;
         }
     }
 

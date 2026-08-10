@@ -20,7 +20,7 @@
 
 {#if tab === 'boilers'}
     <section>
-        <BoilerManager boilers={data.boilers} regions={data.regions} supabase={data.supabase} />
+        <BoilerManager boilers={data.boilers} supabase={data.supabase} />
     </section>
 
     <section class="bd-section">
@@ -36,7 +36,7 @@
     </section>
 {:else if tab === 'users'}
     <section>
-        <UserManager users={data.users} regions={data.regions} boilers={data.boilers} assignments={data.assignments} supabase={data.supabase} />
+        <UserManager users={data.users} boilers={data.boilers} assignments={data.assignments} supabase={data.supabase} />
     </section>
 {:else}
     <section>

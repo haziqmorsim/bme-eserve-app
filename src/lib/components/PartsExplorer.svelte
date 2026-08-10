@@ -3,6 +3,7 @@
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { addItem } from '$lib/stores/quote';
+	import { addToast } from '$lib/stores/toast';
 	import { fade, fly } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { Funnel, Search, Check } from '@lucide/svelte';
@@ -21,13 +22,24 @@
 		onadd?: (part: Part, qty: number) => void;
 	}>();
 
-	const def = $derived(grateFor(boiler.code));
+	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, components));
 
 	let activeKey = $state<string | null>(null);
 	let search = $state('');
 	let qty = $state<Record<string, number>>({});
 	let lightbox = $state<Part | null>(null);
+
+	const UNCATEGORISED = 'Uncategorised';
+	let showUncategorised = $state(false);
+
+	const uncategorisedId = $derived(
+		components.find((c: Component) => (c.name ?? '') === UNCATEGORISED)?.id ?? null
+	);
+
+	const uncategorisedCount = $derived(
+		uncategorisedId ? parts.filter((p: Part) => p.component_id === uncategorisedId).length : 0
+	);
 
 	let selected = $state<Set<string>>(new Set());
 	let filterOpen = $state(false);
@@ -44,7 +56,9 @@
 
 	const filterComponents = $derived.by(() => {
 		const q = compSearch.trim().toLowerCase();
-		const list = components.filter((c: Component) => !q || (c.name ?? '').toLowerCase().includes(q));
+		const list = components.filter(
+			(c: Component) => c.id !== uncategorisedId && (!q || (c.name ?? '').toLowerCase().includes(q))
+		);
 		return [...list].sort((a: Component, b: Component) => (a.name ?? '').localeCompare(b.name ?? ''));
 	});
 
@@ -79,8 +93,14 @@
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
 		return parts.filter((p: Part) => {
-			const inComp = selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
-			if (!inComp) return false;
+			const isUncat = uncategorisedId != null && p.component_id === uncategorisedId;
+
+			if (showUncategorised !== isUncat) return false;
+
+			if (!showUncategorised) {
+				const inComp = selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
+				if (!inComp) return false;
+			}
 			if (!q) return true;
 			const comp = components.find((c: Component) => c.id === p.component_id);
 			return (
@@ -122,6 +142,7 @@
 			priceMax: p.price_max ?? p.price ?? 0,
 			quantity: q
 		});
+		addToast('Part added to cart list.')
 	}
 </script>
 
@@ -139,7 +160,7 @@
 	<div class="design card">
 		<div class="design-head">
 			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
-			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no catalogued parts.</span>
+			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no available parts.</span>
 		</div>
 		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
 	</div>
@@ -152,51 +173,66 @@
 			bind:value={search}
 		/>
 
-		<div class="filter-wrap">
-			<button
-				type="button"
-				class="filter-trigger"
-				class:on={selectedCount > 0}
-				onclick={() => (filterOpen = !filterOpen)}
-				aria-expanded={filterOpen}
-			>
-				<Funnel size={16} />
-				<span>{selectedCount > 0 ? `Components (${selectedCount})` : 'Filter by component'}</span>
-			</button>
+		<div class="category">
+			<div class="filter-wrap" class:hidden={showUncategorised}>
+				<button
+					type="button"
+					class="filter-trigger"
+					class:on={selectedCount > 0}
+					onclick={() => (filterOpen = !filterOpen)}
+					aria-expanded={filterOpen}
+				>
+					<Funnel size={16} />
+					<span>{selectedCount > 0 ? `Components (${selectedCount})` : 'Filter by component'}</span>
+				</button>
 
-			{#if filterOpen}
-				<div class="filter-pop" transition:fade={{ duration: 120 }}>
-					<div class="fp-search">
-						<Search size={15} />
-						<input type="search" placeholder="Search components…" bind:value={compSearch} />
-					</div>
+				{#if filterOpen}
+					<div class="filter-pop" transition:fade={{ duration: 120 }}>
+						<div class="fp-search">
+							<Search size={15} />
+							<input type="search" placeholder="Search components…" bind:value={compSearch} />
+						</div>
 
-					<div class="fp-list">
-						{#each filterComponents as c (c.id)}
-							<button type="button" class="fp-item" onclick={() => toggleComponent(c.id)}>
-								<span class="box" class:checked={selected.has(c.id)}>{#if selected.has(c.id)}<Check size={13} />{/if}</span>
-								<span class="fp-name">{c.name}</span>
-								<span class="fp-count">({countByComponent[c.id] ?? 0})</span>
-							</button>
-						{:else}
-							<p class="fp-empty">No components match.</p>
-						{/each}
-					</div>
+						<div class="fp-list">
+							{#each filterComponents as c (c.id)}
+								<button type="button" class="fp-item" onclick={() => toggleComponent(c.id)}>
+									<span class="box" class:checked={selected.has(c.id)}>{#if selected.has(c.id)}<Check size={13} />{/if}</span>
+									<span class="fp-name">{c.name}</span>
+									<span class="fp-count">({countByComponent[c.id] ?? 0})</span>
+								</button>
+							{:else}
+								<p class="fp-empty">No components match.</p>
+							{/each}
+						</div>
 
-					<div class="fp-foot">
-						<span class="fp-sel">{selectedCount} Selected</span>
-						<button
-							type="button"
-							class="fp-clear"
-							onclick={clearAllFilters}
-							disabled={selectedCount === 0}
-						>Clear All Filters</button>
+						<div class="fp-foot">
+							<span class="fp-sel">{selectedCount} Selected</span>
+							<button
+								type="button"
+								class="fp-clear"
+								onclick={clearAllFilters}
+								disabled={selectedCount === 0}
+							>Clear All Filters</button>
+						</div>
 					</div>
-				</div>
-			{/if}
+				{/if}
+			</div>
+			<label class="uc-toggle">
+				<input
+					type="checkbox"
+					bind:checked={showUncategorised}
+					disabled={uncategorisedCount === 0}
+					aria-label="Show uncategorised parts" />
+				<span class="uc-label">Uncategorised Parts ({uncategorisedCount})</span>
+				<span class="uc-track"><span class="uc-thumb"></span></span>
+			</label>
 		</div>
 
-		{#if selectedCount > 0}
+		{#if showUncategorised}
+			<div class="crumb" in:fade={{ duration: 150 }}>
+				Showing <strong>uncategorised</strong> parts — {filtered.length} part{filtered.length === 1 ? '' : 's'}
+			</div>
+		{:else if selectedCount > 0}
 			<div class="crumb" in:fade={{ duration: 150 }}>
 				Showing <strong>{selectedNames.join(', ')}</strong> — {filtered.length} part{filtered.length === 1 ? '' : 's'}
 			</div>
@@ -357,8 +393,90 @@
 		box-shadow: 0 0 0 3px rgba(16, 69, 110, 0.12);
 	}
 
+	.category {
+		display: flex;
+		gap: 10px;
+	}
+
 	.filter-wrap {
 		position: relative;
+	}
+
+	.filter-wrap.hidden {
+		display: none;
+	}
+
+	.uc-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		background: #fff;
+		border: 1px solid var(--bme-border, #e2e8ef);
+		color: var(--bme-ink, #1b2733);
+		padding: 9px 16px;
+		border-radius: 10px;
+		font-size: 14px;
+		font-weight: 600;
+		user-select: none;
+	}
+
+	.uc-toggle input {
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.uc-track {
+		position: relative;
+		display: inline-block;
+		width: 38px;
+		height: 20px;
+		flex: 0 0 auto;
+		border-radius: 999px;
+		background: #cbd5e0;
+		cursor: pointer;
+		transition: background 160ms ease;
+	}
+
+	.uc-thumb {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: #ffffff;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+		transition: transform 160ms ease;
+	}
+
+	.uc-toggle input:checked ~ .uc-track {
+		background: var(--bme-dark-blue, #004b8d);
+	}
+
+	.uc-toggle input:checked ~ .uc-track .uc-thumb {
+		transform: translateX(18px);
+	}
+
+	.uc-toggle input:focus-visible ~ .uc-track {
+		outline: 2px solid var(--bme-dark-blue, #004b8d);
+		outline-offset: 2px;
+	}
+
+	.uc-label {
+		font-weight: 600;
+		font-size: 14px;
+		color: var(--bme-ink, #1b2733);
+	}
+
+	.uc-toggle input:disabled ~ .uc-label {
+		color: var(--bme-muted);
+	}
+
+	.uc-toggle:has(input:disabled) {
+		cursor: default;
+		opacity: 0.6;
 	}
 
 	.filter-trigger {
@@ -370,7 +488,7 @@
 		color: var(--bme-ink, #1b2733);
 		padding: 9px 16px;
 		border-radius: 10px;
-		font: inherit;
+		font-size: 14px;
 		font-weight: 600;
 		cursor: pointer;
 		transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
@@ -682,6 +800,11 @@
 	@media (max-width: 860px) {
 		.explorer {
 			grid-template-columns: 1fr;
+		}
+
+		.category {
+			flex-direction: column;
+			margin: 0 auto;
 		}
 	}
 </style>

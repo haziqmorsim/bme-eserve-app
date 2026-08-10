@@ -40,7 +40,7 @@
         </label>
     {/if}
 
-    {#if showRegion}
+    <!-- {#if showRegion}
         <label class="f">
             <span>Region</span>
             <select bind:value={filters.region}>
@@ -50,7 +50,7 @@
                 {/each}
             </select>
         </label>
-    {/if}
+    {/if} -->
 
     <label class="f">
         <span>From</span>

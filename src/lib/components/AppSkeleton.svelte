@@ -1,12 +1,10 @@
 <script lang="ts">
-    // Skeletons that mirror each page's real section structure.
     let { route = '' } = $props<{ route?: string }>();
     const n = (count: number) => Array.from({ length: count }, (_, i) => i);
 </script>
 
 <div class="skw" role="status" aria-live="polite" aria-label="Loading">
 {#if route === '/app'}
-    <!-- Home: 280px region sidebar + content (tabs + explorer: design card / parts) -->
     <div class="home">
         <aside class="card side">
             <div class="sk s-h w60"></div>

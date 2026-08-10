@@ -1,5 +1,5 @@
 import type { PageLoad } from "./$types";
-import type { Region, Boiler, Component, Part } from "$lib/types";
+import type { Boiler, Component, Part } from "$lib/types";
 
 export const load: PageLoad = async ({ parent, url }) => {
     const { supabase, profile } = await parent();
@@ -14,18 +14,15 @@ export const load: PageLoad = async ({ parent, url }) => {
         assignedIds = new Set((cb ?? []).map((r: any) => r.boiler_id));
     }
 
-    const { data: regionsRaw } = await supabase
-        .from('regions')
-        .select('id, name, sort_order, boilers(id, code, name, region_id)')
-        .order('name', { ascending: true });
+    const { data: boilersRaw } = await supabase
+        .from('boilers')
+        .select('id, code, name')
+        .order('code', { ascending: true });
 
-    let regions = (regionsRaw ?? []) as Region[];
+    let boilers = (boilersRaw ?? []) as Boiler[];
     if (assignedIds) {
         const ids = assignedIds;
-        regions = regions.map((r: any) => ({
-            ...r, 
-            boilers: (r.boilers ?? []).filter((b: any) => ids.has(b.id))
-        })) as Region[];
+        boilers = boilers.filter((b: any) => ids.has(b.id));
     }
 
     const customerNoBoilers = isCustomer && (assignedIds?.size ?? 0) === 0;
@@ -81,7 +78,7 @@ export const load: PageLoad = async ({ parent, url }) => {
     }
 
     return {
-        regions, 
+        boilers, 
         boiler, 
         components, 
         parts,

@@ -6,7 +6,7 @@
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
 
-    let { boilers, regions, supabase } = $props<{ boilers: any[]; regions: any[]; supabase: SupabaseClient }>();
+    let { boilers, supabase } = $props<{ boilers: any[]; supabase: SupabaseClient }>();
 
     const pageSize = 20;
     let search = $state('');
@@ -21,7 +21,7 @@
     let filtered = $derived(boilers.filter((b: any) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
-        return [b.code, b.name, b.regions?.name, b.capacity, b.status, b.fuel_type]
+        return [b.code, b.name, b.capacity, b.status, b.fuel_type]
             .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
     }));
     let total = $derived(filtered.length);
@@ -33,7 +33,7 @@
 
     function blank() {
         return {
-            region_id: '', code: '', name: '', capacity: '', pressure: '',
+            code: '', name: '', capacity: '', pressure: '',
             steam_temperature: '', fuel_type: '', year_commissioned: '', status: '',
             description: '', design_image_url: ''
         };
@@ -44,7 +44,6 @@
 
     function validate(): boolean {
         const e: Record<string, string> = {};
-        if (!form.region_id) e.region_id = 'Region is required.';
         if (!form.code?.toString().trim()) e.code = 'Code is required.';
         if (!form.name?.toString().trim()) e.name = 'Name is required.';
         if (!form.capacity?.toString().trim()) e.capacity = 'Capacity is required.';
@@ -61,7 +60,7 @@
         if (!validate()) return;
         busy = true; err = '';
         const payload = {
-            region_id: form.region_id, code: form.code.trim(), name: form.name || null,
+            code: form.code.trim(), name: form.name || null,
             capacity: form.capacity || null, pressure: form.pressure || null,
             steam_temperature: form.steam_temperature || null, fuel_type: form.fuel_type || null,
             year_commissioned: form.year_commissioned ? Number(form.year_commissioned) : null,
@@ -102,14 +101,13 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Code</th><th>Name</th><th>Region</th><th>Capacity</th><th>Status</th><th>Actions</th></tr>
+                <tr><th>Code</th><th>Name</th><th>Capacity</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as b (b.id)}
                     <tr>
                         <td style="text-align: center; vertical-align: middle;"><strong>{b.code}</strong></td>
                         <td style="vertical-align: middle;">{b.name ?? '-'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{b.regions?.name ?? '-'}</td>
                         <td style="text-align: center; vertical-align: middle;">{b.capacity ?? '-'}</td>
                         <td style="text-align: center; vertical-align: middle;">{b.status ?? '-'}</td>
                         <td>
@@ -132,12 +130,6 @@
 {#if editing !== null}
     <Modal title={editing === 'new' ? 'Add Boiler' : 'Edit Boiler'} onclose={cancel}>
         <div class="adm-form">
-            <label>Region <span class="required">*</span>
-                <select bind:value={form.region_id} class:invalid={fieldErr.region_id}>
-                    {#each regions as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
-                </select>
-                {#if fieldErr.region_id}<span class="field-err">{fieldErr.region_id}</span>{/if}
-            </label>
             <label>Boiler Code <span class="required">*</span><input bind:value={form.code} placeholder="PB130" class:invalid={fieldErr.code} />
                 {#if fieldErr.code}<span class="field-err">{fieldErr.code}</span>{/if}
             </label>

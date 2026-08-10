@@ -23,7 +23,16 @@
     let fileInput = $state<HTMLInputElement | null>(null);
 
     let boilerCode = $derived(Object.fromEntries(boilers.map((b: any) => [b.id, b.code])) as Record<string, string>);
-    let formComponents = $derived(components.filter((c: any) => c.boiler_id === form.boiler_id));
+    let formComponents = $derived(
+        components
+            .filter((c: any) => c.boiler_id === form.boiler_id)
+            .sort((a: any, b: any) => {
+                const au = (a.name ?? '') === 'Uncategorised' ? 1 : 0;
+                const bu = (b.name ?? '') === 'Uncategorised' ? 1 : 0;
+                if (au !== bu) return au - bu;
+                return (a.name ?? '').localeCompare(b.name ?? '');
+            })
+    );
 
     let filtered = $derived(parts.filter((p: any) => {
         const q = search.trim().toLowerCase();
@@ -151,14 +160,15 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Part #</th><th>Name</th><th>Boiler / Component</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
+                <tr><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as p (p.id)}
                     <tr>
                         <td style="text-align: center; vertical-align: middle;"><strong>{p.part_number}</strong></td>
                         <td style="vertical-align: middle;">{p.name}</td>
-                        <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'} / {p.components?.name ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{p.components?.name ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
                         <td style="text-align: center; vertical-align: middle;">{p.stock_quantity}</td>
                         <td>
@@ -189,7 +199,11 @@
             </label>
             <label>Component <span class="required">*</span>
                 <select bind:value={form.component_id} class:invalid={fieldErr.component_id}>
-                    {#each formComponents as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
+                    {#each formComponents as c (c.id)}
+                        <option value={c.id}>
+                            {c.name === 'Uncategorised' ? 'Uncategorised (no schematic section)' : c.name}
+                        </option>
+                    {/each}
                 </select>
                 {#if fieldErr.component_id}<span class="field-err">{fieldErr.component_id}</span>{/if}
             </label>
