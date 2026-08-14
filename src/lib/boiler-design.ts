@@ -12,12 +12,14 @@ export type Hotspot = {
 export type Section = {
     key: string;
     label: string;
+    num: number; // official mimic section number (from the reference drawing)
     keywords: string[];
     rect: Hotspot;
 };
 
 export type ResolvedSection = Section & {
-    componentId: string | null;
+    componentId: string | null; // first matching component (back-compat)
+    componentIds: string[]; // every component in this section
     componentName: string | null;
 };
 
@@ -29,65 +31,49 @@ export type GrateDef = {
     sections: Section[];
 };
 
-const LEFT_SIDE: Section[] = [
-    { key: 'chimney', label: 'Chimney', keywords: ['chimney', 'stack', 'flue', 'duct'], rect: { l: 3, t: 6, w: 12, h: 84 } },
-	{ key: 'id_fan', label: 'Induced Draught Fan', keywords: ['fan', 'draught', 'draft', 'blower'], rect: { l: 16, t: 61, w: 14, h: 20 } },
-	{ key: 'id_fan_motor', label: 'ID Fan Motor', keywords: ['motor', 'drive', 'vsd', 'electrical'], rect: { l: 27, t: 80, w: 10, h: 10 } },
-	{ key: 'dust_collector', label: 'Dust Collector (Cyclone)', keywords: ['dust', 'cyclone', 'multiclone', 'collector'], rect: { l: 36, t: 11, w: 14, h: 60 } },
-	{ key: 'air_lock', label: 'Air Lock', keywords: ['air lock', 'airlock', 'rotary'], rect: { l: 38, t: 68, w: 6, h: 12 } }
-];
-
 export const GRATES: Record<GrateType, GrateDef> = {
     fixed: {
-        type: 'fixed', 
-        label: 'Fixed Grate', 
-        tagline: 'Economical, rugged and low operating cost', 
+        type: 'fixed',
+        label: 'Fixed Grate',
+        tagline: 'Economical, rugged and low operating cost',
         img: '/boilers/fixed-grate.jpg',
         sections: [
-            ...LEFT_SIDE,
-			{ key: 'steam_drum', label: 'Steam Drum', keywords: ['steam drum', 'drum', 'upper drum'], rect: { l: 54, t: 7, w: 12, h: 12 } },
-			{ key: 'convection_tubes', label: 'Convection Tubes', keywords: ['tube', 'economiser', 'economizer', 'water wall', 'water-wall', 'bank'], rect: { l: 49, t: 20, w: 19, h: 48 } },
-			{ key: 'superheater', label: 'Superheater', keywords: ['superheater', 'super heater', 'tube'], rect: { l: 70, t: 9, w: 21, h: 30 } },
-			{ key: 'furnace', label: 'Furnace', keywords: ['furnace', 'refractory', 'membrane', 'wall', 'burner'], rect: { l: 70, t: 40, w: 20, h: 42 } },
-			{ key: 'fixed_grate', label: 'Fixed Grate', keywords: ['grate', 'fixed grate', 'fire bar'], rect: { l: 70, t: 83, w: 19, h: 6 } },
-			{ key: 'ash_hopper', label: 'Ash Hopper', keywords: ['ash', 'hopper'], rect: { l: 51, t: 70, w: 15, h: 17 } },
-			{ key: 'ash_pit', label: 'Ash Pit', keywords: ['ash', 'pit'], rect: { l: 72, t: 89, w: 18, h: 7 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 57, t: 6, w: 13, h: 13 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 55, t: 63, w: 13, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 36, t: 30, w: 14, h: 45 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 70, t: 34, w: 20, h: 44 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 68, t: 80, w: 22, h: 10 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 16, t: 60, w: 16, h: 22 } }
         ]
-    }, 
+    },
 
     reciprocating: {
-        type: 'reciprocating', 
-        label: 'Reciprocating Grate', 
-        tagline: 'Suitable for very high moisture fuel', 
-        img: '/boilers/reciprocating-grate.jpg', 
+        type: 'reciprocating',
+        label: 'Reciprocating Grate',
+        tagline: 'Suitable for very high moisture fuel',
+        img: '/boilers/reciprocating-grate.jpg',
         sections: [
-            ...LEFT_SIDE,
-			{ key: 'super_heater', label: 'Super Heater', keywords: ['superheater', 'super heater', 'tube'], rect: { l: 66, t: 4, w: 17, h: 9 } },
-			{ key: 'steam_drum', label: 'Steam Drum', keywords: ['steam drum', 'drum', 'upper drum'], rect: { l: 55, t: 11, w: 10, h: 10 } },
-			{ key: 'convection_tubes', label: 'Convection Tubes', keywords: ['tube', 'economiser', 'economizer', 'water wall', 'water-wall', 'bank'], rect: { l: 50, t: 16, w: 18, h: 52 } },
-			{ key: 'furnace', label: 'Furnace', keywords: ['furnace', 'refractory', 'membrane', 'wall', 'burner'], rect: { l: 68, t: 22, w: 21, h: 54 } },
-			{ key: 'ash_hopper', label: 'Ash Hopper', keywords: ['ash', 'hopper'], rect: { l: 52, t: 68, w: 12, h: 14 } },
-			{ key: 'reciprocating_grate', label: 'Reciprocating Grate', keywords: ['grate', 'reciprocating'], rect: { l: 66, t: 80, w: 22, h: 10 } },
-			{ key: 'hydraulic_power_pack', label: 'Hydraulic Power Pack', keywords: ['hydraulic', 'power pack', 'pump'], rect: { l: 50, t: 82, w: 10, h: 13 } },
-			{ key: 'submerged_ash_conveyor', label: 'Submerged Ash Conveyor', keywords: ['conveyor', 'ash', 'submerged', 'drag', 'chain'], rect: { l: 86, t: 73, w: 12, h: 15 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 55, t: 10, w: 12, h: 11 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 53, t: 58, w: 12, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 36, t: 30, w: 14, h: 42 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 68, t: 26, w: 21, h: 46 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 64, t: 80, w: 26, h: 10 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 16, t: 60, w: 16, h: 22 } }
         ]
     },
 
     vibrating: {
-        type: 'vibrating', 
-        label: 'Vibrating Grate', 
-        tagline: 'Automation and efficient combustion', 
-        img: '/boilers/vibrating-grate.jpg', 
+        type: 'vibrating',
+        label: 'Vibrating Grate',
+        tagline: 'Automation and efficient combustion',
+        img: '/boilers/vibrating-grate.jpg',
         sections: [
-            ...LEFT_SIDE,
-			{ key: 'steam_drum', label: 'Steam Drum', keywords: ['steam drum', 'drum', 'upper drum'], rect: { l: 52, t: 13, w: 9, h: 10 } },
-			{ key: 'convection_tubes', label: 'Convection Tubes', keywords: ['tube', 'economiser', 'economizer', 'water wall', 'water-wall', 'bank'], rect: { l: 46, t: 18, w: 18, h: 52 } },
-			{ key: 'furnace', label: 'Furnace', keywords: ['furnace', 'refractory', 'membrane', 'wall', 'burner'], rect: { l: 64, t: 24, w: 22, h: 48 } },
-			{ key: 'ash_hopper', label: 'Ash Hopper', keywords: ['ash', 'hopper'], rect: { l: 47, t: 70, w: 11, h: 13 } },
-			{ key: 'vibrating_grate', label: 'Vibrating Grate', keywords: ['grate', 'vibrating'], rect: { l: 55, t: 78, w: 30, h: 12 } },
-			{ key: 'vibrating_grate_motor', label: 'Vibrating Grate Motor', keywords: ['motor', 'grate motor', 'drive', 'electrical'], rect: { l: 47, t: 82, w: 10, h: 12 } },
-			{ key: 'fuel_conveyor', label: 'Fuel Conveyor', keywords: ['fuel', 'conveyor', 'feed', 'stoker'], rect: { l: 86, t: 44, w: 13, h: 12 } },
-			{ key: 'submerged_ash_conveyor', label: 'Submerged Ash Conveyor', keywords: ['conveyor', 'ash', 'submerged', 'drag', 'chain'], rect: { l: 86, t: 76, w: 13, h: 14 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 49, t: 10, w: 11, h: 11 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 47, t: 62, w: 12, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 34, t: 32, w: 13, h: 40 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 63, t: 28, w: 23, h: 42 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 54, t: 78, w: 33, h: 12 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 16, t: 60, w: 16, h: 22 } }
         ]
     }
 };
@@ -127,13 +113,28 @@ export function grateFor(seed: string, name?: string | null): GrateDef {
 }
 
 export function resolveSections(def: GrateDef, components: Component[] = []): ResolvedSection[] {
-    const comps = components.map((c) => ({ ...c, lc: (c.name ?? '').toLowerCase() }));
+    const comps = components.map((c) => ({
+        ...c,
+        lc: (c.name ?? '').toLowerCase(),
+        sk: ((c as any).section_key ?? null) as string | null
+    }));
+
     return def.sections.map((s) => {
-        const hit = comps.find((c) => s.keywords.some((k) => c.lc.includes(k) || k.includes(c.lc)));
+        // Primary: match on section_key (exact, set by migration 0041).
+        let hits = comps.filter((c) => c.sk === s.key);
+
+        // Fallback for components without a section_key: keyword match on name.
+        if (hits.length === 0) {
+            hits = comps.filter(
+                (c) => c.sk == null && s.keywords.some((k) => c.lc.includes(k) || k.includes(c.lc))
+            );
+        }
+
         return {
-            ...s, 
-            componentId: hit ? (hit as any).id : null, 
-            componentName: hit ? hit.name : null
+            ...s,
+            componentIds: hits.map((c) => (c as any).id),
+            componentId: hits.length ? (hits[0] as any).id : null,
+            componentName: hits.length ? hits[0].name : null
         };
     });
 }
@@ -145,96 +146,35 @@ export type SectionTelemetry = { state: SectionState; metrics: Metric[] };
 type MetricSpec = { label: string; unit: string; min: number; max: number; dp?: number};
 
 const METRICS: Record<string, MetricSpec[]> = {
-    chimney: [
-        { label: 'Flue Gas Temp', unit: '°C', min: 140, max: 190 },
-        { label: 'Draught', unit: 'Pa', min: -320, max: -180 },
-        { label: 'O₂', unit: '%', min: 4, max: 8, dp: 1 }
+    steam_drum: [
+        { label: 'Pressure', unit: 'barg', min: 18, max: 24, dp: 1 },
+        { label: 'Water Level', unit: '%', min: 45, max: 65 },
+        { label: 'Steam Temp', unit: '°C', min: 205, max: 225 }
     ],
-    id_fan: [
-        { label: 'Speed', unit: 'rpm', min: 900, max: 1450 },
-        { label: 'Motor Current', unit: 'A', min: 38, max: 62 },
-        { label: 'Vibration', unit: 'mm/s', min: 1.2, max: 4.5, dp: 1 }
-    ],
-    id_fan_motor: [
-        { label: 'Winding Temp', unit: '°C', min: 55, max: 95 },
-        { label: 'Load', unit: '%', min: 55, max: 92 },
-        { label: 'Current', unit: 'A', min: 40, max: 64 }
+    water_drum: [
+        { label: 'Temp', unit: '°C', min: 180, max: 215 },
+        { label: 'Blowdown Rate', unit: '%', min: 1, max: 5, dp: 1 },
+        { label: 'TDS', unit: 'ppm', min: 1500, max: 3500 }
     ],
     dust_collector: [
         { label: 'Pressure Drop', unit: 'mbar', min: 6, max: 14, dp: 1 },
         { label: 'Collection Eff', unit: '%', min: 92, max: 99, dp: 1 },
         { label: 'Outlet Dust', unit: 'mg/Nm³', min: 20, max: 95 }
     ],
-    air_lock: [
-        { label: 'Speed', unit: 'rpm', min: 8, max: 22 },
-        { label: 'Torque', unit: 'Nm', min: 40, max: 120 }
-    ],
-    steam_drum: [
-        { label: 'Pressure', unit: 'barg', min: 18, max: 24, dp: 1 },
-        { label: 'Water Level', unit: '%', min: 45, max: 65 },
-        { label: 'Temp', unit: '°C', min: 205, max: 225 }
-    ],
-    super_heater: [
-        { label: 'Steam Temp', unit: '°C', min: 380, max: 445 },
-        { label: 'Metal Temp', unit: '°C', min: 420, max: 500 },
-        { label: 'Pressure', unit: 'barg', min: 16, max: 24, dp: 1 }
-    ],
-    superheater: [
-        { label: 'Steam Temp', unit: '°C', min: 380, max: 445 },
-        { label: 'Metal Temp', unit: '°C', min: 420, max: 500 },
-        { label: 'Pressure', unit: 'barg', min: 16, max: 24, dp: 1 }
-    ],
-    convection_tubes: [
-        { label: 'Gas In', unit: '°C', min: 620, max: 780 },
-        { label: 'Gas Out', unit: '°C', min: 180, max: 260 },
-        { label: 'Fouling Index', unit: '%', min: 5, max: 35 }
-    ],
-    furnace: [
-        { label: 'Bed/Flame Temp', unit: '°C', min: 820, max: 1050 },
+    boiler_front: [
         { label: 'Furnace Pressure', unit: 'mbar', min: -3, max: 2, dp: 1 },
-        { label: 'O₂', unit: '%', min: 4, max: 8, dp: 1 }
+        { label: 'Steam Pressure', unit: 'barg', min: 18, max: 24, dp: 1 },
+        { label: 'Front Wall Temp', unit: '°C', min: 180, max: 320 }
     ],
-    fixed_grate: [
-        { label: 'Grate Temp', unit: '°C', min: 600, max: 850 },
-        { label: 'Under-grate Air', unit: 'Pa', min: 400, max: 900 }
+    grate_section: [
+        { label: 'Bed / Grate Temp', unit: '°C', min: 600, max: 900 },
+        { label: 'Under-grate Air', unit: 'Pa', min: 400, max: 900 },
+        { label: 'Drive Current', unit: 'A', min: 6, max: 18, dp: 1 }
     ],
-    reciprocating_grate: [
-        { label: 'Grate Temp', unit: '°C', min: 600, max: 860 },
-        { label: 'Stroke Rate', unit: '/min', min: 2, max: 8, dp: 1 },
-        { label: 'Motor Current', unit: 'A', min: 6, max: 18, dp: 1 }
-    ],
-    vibrating_grate: [
-        { label: 'Grate Temp', unit: '°C', min: 600, max: 860 },
-        { label: 'Cycle', unit: 's', min: 60, max: 250 },
-        { label: 'Cooling Water', unit: '°C', min: 30, max: 55 }
-    ],
-    vibrating_grate_motor: [
-        { label: 'Winding Temp', unit: '°C', min: 50, max: 92 },
-        { label: 'Load', unit: '%', min: 40, max: 85 },
-        { label: 'Current', unit: 'A', min: 5, max: 15, dp: 1 },
-    ],
-    hydraulic_power_pack: [
-        { label: 'Pressure', unit: 'bar', min: 90, max: 160 },
-        { label: 'Oil Temp', unit: '°C', min: 35, max: 62 },
-        { label: 'Reservoir', unit: '%', min: 55, max: 95 }
-    ],
-    ash_hopper: [
-        { label: 'Level', unit: '%', min: 10, max: 85 },
-        { label: 'Temp', unit: '°C', min: 90, max: 260 }
-    ],
-    ash_pit: [
-        { label: 'Level', unit: '%', min: 10, max: 80 },
-        { label: 'Temp', unit: '°C', min: 60, max: 180 }
-    ],
-    submerged_ash_conveyor: [
-        { label: 'Speed', unit: 'm/min', min: 0.5, max: 3, dp: 1 },
-        { label: 'Drive Current', unit: 'A', min: 4, max: 14, dp: 1 },
-        { label: 'Water Temp', unit: '°C', min: 35, max: 60 }
-    ],
-    fuel_conveyor: [
-        { label: 'Feed Rate', unit: 't/h', min: 3, max: 12, dp: 1 },
-        { label: 'Speed', unit: 'm/min', min: 4, max: 16, dp: 1 },
-        { label: 'Drive Current', unit: 'A', min: 5, max: 16, dp: 1 }
+    fan_pump: [
+        { label: 'ID Fan Speed', unit: 'rpm', min: 900, max: 1450 },
+        { label: 'Feed Pump Pressure', unit: 'barg', min: 20, max: 28 },
+        { label: 'Motor Current', unit: 'A', min: 38, max: 62 }
     ]
 };
 

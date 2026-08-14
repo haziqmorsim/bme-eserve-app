@@ -214,7 +214,7 @@
 {:else}
     <div class="card list">
         <div class="row head">
-            <span>Part</span><span>Boiler</span><span>Quantity</span><span>Unit Price</span><span>Amount</span><span></span>
+            <span>Part</span><span>Boiler</span><span>Quantity</span><!--<span>Unit Price</span><span>Amount</span>--><span></span>
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
@@ -225,8 +225,8 @@
                 <span>
                     <input type="number" min="1" value={item.quantity} oninput={(e) => setQuantity(item.partId, + e.currentTarget.value)} />
                 </span>
-                <span class="unit">{unitLabel(item)}</span>
-                <span class="range">{lineAmount(item)}</span>
+                <!-- <span class="unit">{unitLabel(item)}</span>
+                <span class="range">{lineAmount(item)}</span> -->
                 <span><button class="remove" onclick={() => removeItem(item.partId)} aria-label="Remove">✕</button></span>
             </div>
         {/each}
@@ -269,11 +269,11 @@
             </div>
         {/if} -->
 
-        <div class="total">
+        <!-- <div class="total">
             <span>Total</span>
             <strong>RM{formatMoney(total)}</strong>
         </div>
-        <p class="indicative">Prices are indicative. The final quotation will be confirmed by Boilermech.</p>
+        <p class="indicative">Prices are indicative. The final quotation will be confirmed by Boilermech.</p> -->
     </div>
 
     <div class="card notes">
@@ -328,7 +328,7 @@
 
     .row {
         display: grid;
-        grid-template-columns: 2.2fr 0.9fr 0.8fr 1fr 1.2fr 40px;
+        grid-template-columns: 2fr 0.9fr 0.8fr /* 1fr 1.2fr */ 40px;
         align-items: center;
         gap: 12px;
         padding: 14px 0;
@@ -347,14 +347,14 @@
         text-align: center;
     }
 
-    .unit {
+    /* .unit {
         color: var(--bme-ink);
     }
 
     .range {
         font-weight: 600;
         color: var(--bme-darker-blue);
-    }
+    } */
 
     .remove {
         background: none; 
@@ -472,7 +472,7 @@
         font-weight: 600;
     } */
 
-    .total {
+    /* .total {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
@@ -489,7 +489,7 @@
         font-size: 12px;
         color: var(--bme-muted);
         text-align: right;
-    }
+    } */
 
     .notes { 
         padding: 18px; 
@@ -627,7 +627,7 @@
             justify-self: start;
         }
 
-        .row .unit {
+        /* .row .unit {
             grid-column: 2;
             justify-self: end;
             text-align: right;
@@ -636,7 +636,7 @@
         .row .range {
             grid-column: 1 / -1;
             text-align: right;
-        }
+        } */
  
         .row > span:last-child {
             position: absolute;
@@ -644,7 +644,7 @@
             right: 0;
         }
 
-        .total { 
+        /* .total { 
             flex-direction: row; 
             justify-content: space-between; 
             align-items: baseline; 
@@ -653,6 +653,6 @@
 
         .indicative { 
             text-align: left; 
-        }
+        } */
     }
 </style>

@@ -64,15 +64,19 @@
 
 	const selectedCount = $derived(selected.size);
 
-	function onSectionSelect(componentId: string, key: string) {
-		selected = new Set([componentId]);
+	function onSectionSelect(key: string, componentIds: string[]) {
+		selected = new Set(componentIds);
 		activeKey = key;
 	}
 
 	$effect(() => {
-		if (selected.size === 1) {
-			const only = [...selected][0];
-			const hit = sections.find((s) => s.componentId && s.componentId === only);
+		if (selected.size > 0) {
+			const hit = sections.find(
+				(s) =>
+					s.componentIds.length > 0 &&
+					s.componentIds.length === selected.size &&
+					s.componentIds.every((id: string) => selected.has(id))
+			);
 			activeKey = hit ? hit.key : null;
 		} else {
 			activeKey = null;
@@ -153,7 +157,8 @@
 	}}
 />
 
-<h2 class="title">{boiler.code} {#if boiler.name}- {boiler.name}{/if}</h2>
+<h2 class="title">{boiler.code}</h2>
+{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 {#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
 
 <div class="explorer">
@@ -174,13 +179,14 @@
 		/>
 
 		<div class="category">
-			<div class="filter-wrap" class:hidden={showUncategorised}>
+			<div class="filter-wrap">
 				<button
 					type="button"
 					class="filter-trigger"
 					class:on={selectedCount > 0}
 					onclick={() => (filterOpen = !filterOpen)}
-					aria-expanded={filterOpen}
+					aria-expanded={filterOpen} 
+					disabled={showUncategorised}
 				>
 					<Funnel size={16} />
 					<span>{selectedCount > 0 ? `Components (${selectedCount})` : 'Filter by component'}</span>
@@ -242,7 +248,7 @@
 			<p class="hint" in:fade={{ duration: 150 }}>No parts match your selection.</p>
 		{:else}
 			<div class="parts">
-				<p class="indicative">All prices are indicative.</p>
+				<!-- <p class="indicative">All prices are indicative.</p> -->
 				{#each filtered as p (p.id)}
 					<div
 						class="part card"
@@ -254,9 +260,9 @@
 							<div class="pn">{p.part_number}</div>
 							<div class="pname">{p.name}</div>
 							{#if p.description}<div class="pdesc">{p.description}</div>{/if}
-							<div class="price">
+							<!-- <div class="price">
 								{priceLabel(p)}
-							</div>
+							</div> -->
 						</div>
 						<div class="actions">
 							{#if p.image_url}
@@ -305,7 +311,7 @@
 	}
 
 	.desc {
-		color: var(--bme-muted);
+		color: var(--bme-ink);
 		margin: 0 0 20px;
 		max-width: 60ch;
 	}
@@ -402,8 +408,14 @@
 		position: relative;
 	}
 
-	.filter-wrap.hidden {
-		display: none;
+	.filter-trigger:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+
+	.filter-trigger:disabled:hover {
+		border-color: var(--bme-border);
+		cursor: default;
 	}
 
 	.uc-toggle {
@@ -643,10 +655,10 @@
 		padding: 24px 0;
 	}
 
-	.indicative {
+	/* .indicative {
 		color: var(--bme-muted);
 		margin: 0;
-	}
+	} */
 
 	.parts {
 		display: flex;
@@ -660,6 +672,10 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
+	}
+
+	.info {
+		max-width: 75%;
 	}
 
 	.pn {
@@ -678,15 +694,15 @@
 		margin-top: 2px;
 	}
 
-	.price {
+	/* .price {
 		margin-top: 6px;
 		font-weight: 700;
-	}
+	} */
 
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 20px;
 		flex-shrink: 0;
 	}
 
@@ -804,7 +820,14 @@
 
 		.category {
 			flex-direction: column;
-			margin: 0 auto;
+		}
+
+		.filter-trigger {
+			width: 100%;
+		}
+
+		.actions {
+			gap: 8px;
 		}
 	}
 </style>

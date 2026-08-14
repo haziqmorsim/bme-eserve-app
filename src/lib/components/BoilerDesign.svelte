@@ -17,7 +17,7 @@
         boilerCode?: string;
         activeKey?: string | null;
         readings?: SectionReadingRow[];
-        onselect?: (componentId: string, key: string) => void;
+        onselect?: (key: string, componentIds: string[]) => void;
     }>();
 
     let open = $state<string | null>(null);
@@ -28,7 +28,7 @@
     const telemetry = $derived(readingsFor(boilerCode, sections, readings));
 
     function clickable(s: ResolvedSection) {
-        return mode === 'parts' && !!s.componentId;
+        return mode === 'parts' && s.componentIds.length > 0;
     }
 
     function stateClass(key: string): string {
@@ -92,7 +92,7 @@
 
     function handleClick(s: ResolvedSection, e: MouseEvent) {
         if (mode === 'parts') {
-            if (s.componentId) onselect?.(s.componentId, s.key);
+            if (s.componentIds.length) onselect?.(s.key, s.componentIds);
         } else if (open === s.key) {
             closeTip();
         } else {
@@ -145,13 +145,13 @@
             <button 
             type="button" 
             class="hot" 
-            class:dim={mode === 'parts' && !s.componentId} 
+            class:dim={mode === 'parts' && s.componentIds.length === 0} 
             class:active={mode === 'parts' && activeKey === s.key} 
             class:hovered={open === s.key} 
             class:can-click={clickable(s)} 
             data-state={stateClass(s.key)} 
             style={`left:${s.rect.l}%;top:${s.rect.t}%;width:${s.rect.w}%;height:${s.rect.h}%;`} 
-            aria-label={s.label} 
+            aria-label={`${s.label}`} 
             aria-pressed={mode === 'parts' ? activeKey === s.key : undefined} 
             onpointerenter={(e) => onHotEnter(s, e)} 
             onpointerleave={(e) => onHotLeave(s, e)} 
@@ -232,13 +232,20 @@
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 12px;
-		height: 12px;
+		width: 22px;
+		height: 22px;
 		transform: translate(-50%, -50%);
 		border-radius: 50%;
 		background: var(--dot, var(--blue));
-		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 1px 4px rgba(0, 0, 0, 0.3);
-		opacity: 0.55;
+		box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.9), 0 1px 5px rgba(0, 0, 0, 0.35);
+		opacity: 0.72;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+		font-size: 12px;
+		font-weight: 800;
+		line-height: 1;
 		transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 	}
 

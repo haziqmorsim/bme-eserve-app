@@ -24,6 +24,7 @@ export interface Component {
     id: string;
     boiler_id: string;
     name: string;
+    section_key: string | null;
     icon: string | null;
     sort_order: number;
 }
