@@ -54,12 +54,26 @@
 		return m;
 	});
 
-	const filterComponents = $derived.by(() => {
+	type ComponentGroup = { name: string; ids: string[]; count: number };
+
+	const groupedComponents = $derived.by(() => {
 		const q = compSearch.trim().toLowerCase();
-		const list = components.filter(
-			(c: Component) => c.id !== uncategorisedId && (!q || (c.name ?? '').toLowerCase().includes(q))
-		);
-		return [...list].sort((a: Component, b: Component) => (a.name ?? '').localeCompare(b.name ?? ''));
+		const byName = new Map<string, ComponentGroup>();
+
+		for (const c of components as Component[]) {
+			if (c.id === uncategorisedId) continue;
+			const name = c.name ?? '';
+			let g = byName.get(name);
+			if (!g) {
+				g = { name, ids: [], count: 0 };
+				byName.set(name, g);
+			}
+			g.ids.push(c.id);
+			g.count += countByComponent[c.id] ?? 0;
+		}
+
+		const list = [...byName.values()].filter((g) => !q || g.name.toLowerCase().includes(q));
+		return list.sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	const selectedCount = $derived(selected.size);
@@ -83,9 +97,16 @@
 		}
 	});
 
-	function toggleComponent(id: string) {
+	function isGroupChecked(ids: string[]) {
+		return ids.length > 0 && ids.every((id) => selected.has(id));
+	}
+
+	function toggleGroup(ids: string[]) {
 		const next = new Set(selected);
-		if (next.has(id)) next.delete(id); else next.add(id);
+		const checked = isGroupChecked(ids);
+		for (const id of ids) {
+			if (checked) next.delete(id); else next.add(id);
+		}
 		selected = next;
 	}
 
@@ -116,9 +137,13 @@
 		});
 	});
 
-	const selectedNames = $derived(
-		components.filter((c: Component) => selected.has(c.id)).map((c: Component) => c.name)
-	);
+	const selectedNames = $derived.by(() => {
+		const names = new Set<string>();
+		for (const c of components as Component[]) {
+			if (selected.has(c.id)) names.add(c.name ?? '');
+		}
+		return [...names];
+	});
 
 	function priceLabel(p: Part) {
 		if (p.price != null) return `RM${Number(p.price).toFixed(2)}`;
@@ -200,11 +225,11 @@
 						</div>
 
 						<div class="fp-list">
-							{#each filterComponents as c (c.id)}
-								<button type="button" class="fp-item" onclick={() => toggleComponent(c.id)}>
-									<span class="box" class:checked={selected.has(c.id)}>{#if selected.has(c.id)}<Check size={13} />{/if}</span>
-									<span class="fp-name">{c.name}</span>
-									<span class="fp-count">({countByComponent[c.id] ?? 0})</span>
+							{#each groupedComponents as g (g.name)}
+								<button type="button" class="fp-item" onclick={() => toggleGroup(g.ids)}>
+									<span class="box" class:checked={isGroupChecked(g.ids)}>{#if isGroupChecked(g.ids)}<Check size={13} />{/if}</span>
+									<span class="fp-name">{g.name}</span>
+									<span class="fp-count">({g.count})</span>
 								</button>
 							{:else}
 								<p class="fp-empty">No components match.</p>
@@ -627,7 +652,8 @@
 		border: 1px solid var(--bme-dark-blue, #10456e);
 		cursor: pointer;
 		font: inherit;
-		font-weight: 700;
+		font-weight: 600;
+		font-size: 13px;
 		padding: 8px 16px;
 		border-radius: 8px;
 		transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
@@ -692,6 +718,7 @@
 		font-size: 13px;
 		color: var(--bme-muted);
 		margin-top: 2px;
+		white-space: pre-line;
 	}
 
 	/* .price {

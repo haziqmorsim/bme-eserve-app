@@ -21,6 +21,7 @@
 
     let maxHandle = $derived(Math.max(1, ...data.handlingPerLevel.map((l: any) => l.avgMs ?? 0)));
     let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
+    let maxProject = $derived(Math.max(1, ...data.volumeByProject.map((p: any) => p.count)));
     let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
     let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
     let maxPage = $derived(Math.max(1, ...data.topPages.map((p: any) => p.count)));
@@ -125,20 +126,39 @@
         {/if}
     </div>
 
+    <div class="card section">
+        <h2>Average handling time per level</h2>
+        <div class="bars">
+            {#each data.handlingPerLevel as l (l.level)}
+                <div class="bar-row">
+                    <span class="bar-e">{l.label}</span>
+                    <div class="bar-track">
+                        <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
+                    </div>
+                    <span class="bar-val">{fmtDur(l.avgMs)}</span>
+                </div>
+            {/each}
+        </div>
+    </div>
+
     <div class="grid2">
         <div class="card section">
-            <h2>Average handling time per level</h2>
-            <div class="bars">
-                {#each data.handlingPerLevel as l (l.level)}
-                    <div class="bar-row">
-                        <span class="bar-e">{l.label}</span>
-                        <div class="bar-track">
-                            <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
+            <h2>Requests by project</h2>
+            {#if data.volumeByProject.length === 0}
+                <p class="hint">No project data.</p>
+            {:else}
+                <div class="bars">
+                    {#each data.volumeByProject as p (p.code)}
+                        <div class="bar-row">
+                            <span class="bar-key" title={p.name}>{p.code}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill blue" style="width: {Math.round((p.count / maxProject) * 100)}%"></div>
+                            </div>
+                            <span class="bar-val">{p.count}</span>
                         </div>
-                        <span class="bar-val">{fmtDur(l.avgMs)}</span>
-                    </div>
-                {/each}
-            </div>
+                    {/each}
+                </div>
+            {/if}
         </div>
         <div class="card section">
             <h2>Requests by boiler</h2>

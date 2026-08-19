@@ -7,7 +7,14 @@
 </script>
 
 <div class="layout">
-    <BoilerList boilers={data.boilers} activeBoilerId={data.boilerId} customerNoBoilers={data.customerNoBoilers} supabase={data.supabase} profile={data.profile} />
+    <BoilerList
+        boilers={data.boilers}
+        projects={data.projects}
+        boilerProjects={data.boilerProjects}
+        activeBoilerId={data.boilerId}
+        customerNoBoilers={data.customerNoBoilers}
+        supabase={data.supabase}
+        profile={data.profile} />
 
     <div class="content">
         {#if !data.boiler}
@@ -24,7 +31,7 @@
                 {#if data.tab === 'parts'}
                     <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} readings={data.sectionReadings} />
                 {:else}
-                    <Dashboard boiler={data.boiler} specs={data.boilerSpecs} readings={data.sectionReadings} />
+                    <Dashboard boiler={data.boiler} readings={data.sectionReadings} />
                 {/if}
             </div>
         {/if}

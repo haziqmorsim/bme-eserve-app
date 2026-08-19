@@ -1,30 +1,25 @@
 <script lang="ts">
 	import type { Boiler } from '$lib/types';
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
-	import { grateFor, resolveSections, specsFor } from '$lib/boiler-design';
-	import type { SpecRow, SectionReadingRow } from '$lib/boiler-design';
+	import { grateFor, resolveSections } from '$lib/boiler-design';
+	import type { SectionReadingRow } from '$lib/boiler-design';
 
-	let { boiler, specs: specRows = [], readings = [] } = $props<{
+	let { boiler, readings = [] } = $props<{
 		boiler: Boiler;
-		specs?: SpecRow[];
 		readings?: SectionReadingRow[];
 	}>();
 
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, []));
 
-	const dbSpecs = $derived([
-		{ label: 'Capacity', value: boiler.capacity },
-		{ label: 'Pressure', value: boiler.pressure },
-		{ label: 'Steam Temperature', value: boiler.steam_temperature },
-		{ label: 'Fuel Type', value: boiler.fuel_type },
-		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() },
-		{ label: 'Status', value: boiler.status }
+	const specs = $derived([
+		{ label: 'Capacity', value: boiler.capacity ?? '—' },
+		{ label: 'Pressure', value: boiler.pressure ?? '—' },
+		{ label: 'Steam Temperature', value: boiler.steam_temperature ?? '—' },
+		{ label: 'Fuel Type', value: boiler.fuel_type ?? '—' },
+		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() ?? '—' },
+		{ label: 'Status', value: boiler.status ?? '—' }
 	]);
-
-	const extraSpecs = $derived(specsFor(boiler.code, specRows));
-
-	const specs = $derived([...dbSpecs.filter((s) => s.value), ...extraSpecs]);
 </script>
 
 <div>

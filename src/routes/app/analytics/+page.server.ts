@@ -116,15 +116,50 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         count: levelN[l]
     }));
 
-    const boilerCount: Record<string, number> = {};
-    for (const q of quotes) {
-        const codes = new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean));
-        for (const c of codes) boilerCount[c as string] = (boilerCount[c as string] ?? 0) + 1;
+    const [{ data: boilerRows }, { data: projectRows }, { data: boilerProjectRows }] = await Promise.all([
+        supabase.from('boilers').select('id, code').order('code', { ascending: true }),
+        supabase.from('projects').select('id, project_no, name, sort_order').order('sort_order', { ascending: true }),
+        supabase.from('boiler_projects').select('boiler_id, project_id')
+    ]);
+
+    const allBoilers = boilerRows ?? [];
+    const allProjects = projectRows ?? [];
+    const allBoilerProjects = boilerProjectRows ?? [];
+
+    const boilerIdByCode: Record<string, string> = {};
+    for (const b of allBoilers) boilerIdByCode[(b as any).code] = (b as any).id;
+
+    const projectIdsByBoiler: Record<string, string[]> = {};
+    for (const bp of allBoilerProjects) {
+        (projectIdsByBoiler[(bp as any).boiler_id] ??= []).push((bp as any).project_id);
     }
-    const volumeByBoiler = Object.entries(boilerCount)
-        .map(([code, count]) => ({ code, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+
+    const boilerCount: Record<string, number> = {};
+    for (const b of allBoilers) boilerCount[(b as any).code] = 0;
+    const projectCount: Record<string, number> = {};
+    for (const p of allProjects) projectCount[(p as any).id] = 0;
+
+    for (const q of quotes) {
+        const codes = [...new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean))] as string[];
+        const touchedProjects = new Set<string>();
+        for (const code of codes) {
+            if (!(code in boilerCount)) continue;
+            boilerCount[code]++;
+            const bid = boilerIdByCode[code];
+            for (const pid of projectIdsByBoiler[bid] ?? []) touchedProjects.add(pid);
+        }
+        for (const pid of touchedProjects) {
+            if (pid in projectCount) projectCount[pid]++;
+        }
+    }
+
+    const volumeByBoiler = allBoilers
+        .map((b: any) => ({ code: b.code, count: boilerCount[b.code] ?? 0 }))
+        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+
+    const volumeByProject = allProjects
+        .map((p: any) => ({ code: p.project_no, name: p.name, count: projectCount[p.id] ?? 0 }))
+        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 
     const latestApproval: Record<string, string> = {};
     for (const a of approvals) {
@@ -283,6 +318,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         avgResolutionMs, 
         handlingPerLevel, 
         volumeByBoiler, 
+        volumeByProject, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
         agingList, 
         activitySummary, 

@@ -49,16 +49,34 @@
 
     let showSkeleton = $state(false);
     let skTimer: ReturnType<typeof setTimeout> | undefined;
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
+    let shownAt = 0;
+
+    const SHOW_DELAY = 150;    // wait before showing, so fast loads never flash it
+    const MIN_VISIBLE = 1000;  // once shown, keep it up for at least this long
+
     let dest = $derived($navigating?.to?.route?.id ?? '');
     $effect(() => {
         const nav = $navigating;
         clearTimeout(skTimer);
+        clearTimeout(hideTimer);
+
         if (nav && nav.to?.route?.id?.startsWith('/app')) {
-            skTimer = setTimeout(() => (showSkeleton = true), 150);
+            skTimer = setTimeout(() => {
+                showSkeleton = true;
+                shownAt = Date.now();
+            }, SHOW_DELAY);
+        } else if (showSkeleton) {
+            const remaining = Math.max(0, MIN_VISIBLE - (Date.now() - shownAt));
+            hideTimer = setTimeout(() => (showSkeleton = false), remaining);
         } else {
             showSkeleton = false;
         }
-        return () => clearTimeout(skTimer);
+
+        return () => {
+            clearTimeout(skTimer);
+            clearTimeout(hideTimer);
+        };
     });
 
     afterNavigate((nav) => {
