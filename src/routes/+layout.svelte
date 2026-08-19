@@ -5,9 +5,12 @@
     import { page } from '$app/stores';
     import Chatbot from '$lib/components/Chatbot.svelte';
     import PageSkeleton from '$lib/components/PageSkeleton.svelte';
+    import { toMap, bool } from '$lib/settings';
 
     let { data, children } = $props();
     let { session, supabase, user } = $derived(data);
+
+    let chatbotEnabled = $derived(bool(toMap(($page.data as any)?.settings), 'chatbot_enabled', true));
 
     onMount(() => {
         const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -25,5 +28,7 @@
 
 {@render children()}
 
-<Chatbot {supabase} {user} />
+{#if chatbotEnabled}
+    <Chatbot {supabase} {user} />
+{/if}
 <PageSkeleton />

@@ -8,9 +8,15 @@
     import { afterNavigate } from "$app/navigation";
     import { logActivity } from "$lib/activity";
     import { quoteItems } from "$lib/stores/quote";
+    import { toMap, bool } from "$lib/settings";
 
     let { data, children } = $props();
     let { supabase } = $derived(data);
+
+    const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+    let settingsMap = $derived(toMap(data.settings));
+    let maintenanceOn = $derived(bool(settingsMap, 'maintenance_mode', false));
+    let isStaff = $derived(STAFF.has(data.profile?.role));
 
     async function handleTimeout() {
         if (data.profile?.id) {
@@ -49,34 +55,16 @@
 
     let showSkeleton = $state(false);
     let skTimer: ReturnType<typeof setTimeout> | undefined;
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    let shownAt = 0;
-
-    const SHOW_DELAY = 150;    // wait before showing, so fast loads never flash it
-    const MIN_VISIBLE = 1000;  // once shown, keep it up for at least this long
-
     let dest = $derived($navigating?.to?.route?.id ?? '');
     $effect(() => {
         const nav = $navigating;
         clearTimeout(skTimer);
-        clearTimeout(hideTimer);
-
         if (nav && nav.to?.route?.id?.startsWith('/app')) {
-            skTimer = setTimeout(() => {
-                showSkeleton = true;
-                shownAt = Date.now();
-            }, SHOW_DELAY);
-        } else if (showSkeleton) {
-            const remaining = Math.max(0, MIN_VISIBLE - (Date.now() - shownAt));
-            hideTimer = setTimeout(() => (showSkeleton = false), remaining);
+            skTimer = setTimeout(() => (showSkeleton = true), 150);
         } else {
             showSkeleton = false;
         }
-
-        return () => {
-            clearTimeout(skTimer);
-            clearTimeout(hideTimer);
-        };
+        return () => clearTimeout(skTimer);
     });
 
     afterNavigate((nav) => {
@@ -94,6 +82,9 @@
 
 <div class="shell">
     <Header profile={data.profile} pendingCount={data.pendingCount} enquiryCount={data.enquiryCount} notifications={data.notifications} supabase={data.supabase} />
+    {#if maintenanceOn && isStaff}
+        <div class="maint-bar">Maintenance mode is ON — customers cannot access the portal.</div>
+    {/if}
     <main>
         {#if showSkeleton}
             <AppSkeleton route={dest} />
@@ -109,6 +100,15 @@
 <SessionTimeout onTimeout={handleTimeout} />
 
 <style>
+    .maint-bar {
+        background: var(--bme-orange, #b26a00);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+        padding: 7px 12px;
+    }
+
     .shell {
         display: flex;
         flex-direction: column;

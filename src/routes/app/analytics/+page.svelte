@@ -97,17 +97,17 @@
             <div class="ag ontrack">
                 <span class="ag-n">{data.openAging.onTrack}</span>
                 <span class="ag-l">On track</span>
-                <span class="ag-t">&lt; 24h</span>
+                <span class="ag-t">&lt; {data.slaThresholds.warnHours}h</span>
             </div>
             <div class="ag aging">
                 <span class="ag-n">{data.openAging.aging}</span>
                 <span class="ag-l">Aging</span>
-                <span class="ag-t">&ge; 24h</span>
+                <span class="ag-t">&ge; {data.slaThresholds.warnHours}h</span>
             </div>
             <div class="ag overdue">
                 <span class="ag-n">{data.openAging.overdue}</span>
                 <span class="ag-l">Overdue</span>
-                <span class="ag-t">&ge; 48h</span>
+                <span class="ag-t">&ge; {data.slaThresholds.overdueHours}h</span>
             </div>
         </div>
 

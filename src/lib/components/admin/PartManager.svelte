@@ -5,10 +5,14 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
+    import { page as pageStore } from "$app/stores";
+    import { toMap, num } from "$lib/settings";
 
     let { parts, components, boilers, supabase } = $props<{
         parts: any[]; components: any[]; boilers: any[]; supabase: SupabaseClient;
     }>();
+
+    let lowStockThreshold = $derived(num(toMap(($pageStore.data as any)?.settings), 'low_stock_threshold', 5));
 
     const pageSize = 20;
     let search = $state('');
@@ -170,7 +174,9 @@
                         <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{p.components?.name ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
-                        <td style="text-align: center; vertical-align: middle;">{p.stock_quantity}</td>
+                        <td style="text-align: center; vertical-align: middle;">
+                            <span class="stock" class:out={p.stock_quantity === 0} class:low={p.stock_quantity > 0 && p.stock_quantity <= lowStockThreshold}>{p.stock_quantity}</span>
+                        </td>
                         <td>
                             <div class="adm-actions">
                                 <button class="adm-link" onclick={() => startEdit(p)}>Edit</button>
@@ -263,6 +269,16 @@
 {/if}
 
 <style>
+    .stock.low {
+        color: #97700a;
+        font-weight: 700;
+    }
+
+    .stock.out {
+        color: #8e261b;
+        font-weight: 700;
+    }
+
     .adm-bar .btn-primary {
         display: inline-flex;
         align-items: center;

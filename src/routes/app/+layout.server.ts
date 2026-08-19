@@ -1,5 +1,6 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
+import { toMap, bool } from "$lib/settings";
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
     const { session, user } = await safeGetSession();
@@ -12,6 +13,27 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .single();
 
     if (profile?.must_change_password) throw redirect(303, '/change-password');
+
+    const { data: settingRows, error: settingsError } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .eq('is_public', true);
+
+    if (settingsError) {
+        console.error('[app_settings] read failed:', settingsError.message);
+    }
+
+    const MAINTENANCE_EXEMPT = new Set(['admin', 'manager', 'coo', 'developer']);
+    const settingsMap = toMap(settingRows);
+    const maintenanceOn = bool(settingsMap, 'maintenance_mode', false);
+
+    if (!settingRows || settingRows.length === 0) {
+        console.warn('[app_settings] no public rows visible to this user - check migrations 0044/0045 were applied.');
+    }
+
+    if (maintenanceOn && !MAINTENANCE_EXEMPT.has(profile?.role)) {
+        throw redirect(303, '/maintenance');
+    }
 
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
@@ -43,5 +65,12 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .order('created_at', { ascending: false })
         .limit(30);
 
-    return { profile, userEmail: user.email, pendingCount, enquiryCount, notifications: notifications ?? [] };
+    return {
+        profile,
+        userEmail: user.email,
+        pendingCount,
+        enquiryCount,
+        notifications: notifications ?? [],
+        settings: settingRows ?? []
+    };
 };

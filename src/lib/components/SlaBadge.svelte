@@ -1,7 +1,17 @@
 <script lang="ts">
-    import { slaState, ageLabel, slaStateWeekday, weekdayAgeLabel, SLA_LABEL } from "$lib/sla";
+    import { page } from "$app/stores";
+    import { slaState, ageLabel, slaStateWeekday, weekdayAgeLabel, SLA_LABEL, DEFAULT_SLA } from "$lib/sla";
+    import { toMap, num } from "$lib/settings";
 
     let { since, weekdays = false } = $props<{ since: string; weekdays?: boolean }>();
+
+    let thresholds = $derived.by(() => {
+        const m = toMap(($page.data as any)?.settings);
+        return {
+            warnHours: num(m, 'sla_warn_hours', DEFAULT_SLA.warnHours),
+            overdueHours: num(m, 'sla_overdue_hours', DEFAULT_SLA.overdueHours)
+        };
+    });
 
     let now = $state(Date.now());
     $effect(() => {
@@ -9,7 +19,7 @@
         return () => clearInterval(t);
     });
 
-    let sla = $derived(weekdays ? slaStateWeekday(since, now) : slaState(since, now));
+    let sla = $derived(weekdays ? slaStateWeekday(since, now, thresholds) : slaState(since, now, thresholds));
     let age = $derived(weekdays ? weekdayAgeLabel(since, now) : ageLabel(since, now));
 </script>
 

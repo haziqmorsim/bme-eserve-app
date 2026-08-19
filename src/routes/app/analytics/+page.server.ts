@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { slaStateWeekday } from "$lib/sla";
+import { slaStateWeekday, DEFAULT_SLA } from "$lib/sla";
+import { toMap, num } from "$lib/settings";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
@@ -122,6 +123,16 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         supabase.from('boiler_projects').select('boiler_id, project_id')
     ]);
 
+    const { data: slaRows } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .in('key', ['sla_warn_hours', 'sla_overdue_hours']);
+    const slaMap = toMap(slaRows);
+    const slaThresholds = {
+        warnHours: num(slaMap, 'sla_warn_hours', DEFAULT_SLA.warnHours),
+        overdueHours: num(slaMap, 'sla_overdue_hours', DEFAULT_SLA.overdueHours)
+    };
+
     const allBoilers = boilerRows ?? [];
     const allProjects = projectRows ?? [];
     const allBoilerProjects = boilerProjectRows ?? [];
@@ -174,7 +185,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const q of quotes) {
         if (q.status !== 'open') continue;
         const since = latestApproval[q.id] ?? q.created_at;
-        const st = slaStateWeekday(since, now);
+        const st = slaStateWeekday(since, now, slaThresholds);
         if (st === 'overdue') overdueCount++;
         else if (st === 'aging') agingCount++;
         else onTrack++;
@@ -320,6 +331,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         volumeByBoiler, 
         volumeByProject, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
+        slaThresholds, 
         agingList, 
         activitySummary, 
         topUsers, 

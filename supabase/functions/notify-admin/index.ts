@@ -2,6 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { appUrl, ctaButton } from "../_shared/email-ui.ts";
+import { getAdminEmail } from "../_shared/settings.ts";
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -54,7 +55,9 @@ Deno.serve(async (req) => {
         </div>`;
 
         try {
-            await sendEmail(Deno.env.get('ADMIN_EMAIL')!, `New quotation ${quote.reference}`, adminHtml);
+            const adminEmail = await getAdminEmail(admin);
+            if (!adminEmail) throw new Error('No admin email configured (Settings > General).');
+            await sendEmail(adminEmail, `New quotation ${quote.reference}`, adminHtml);
         } catch (e) {
             console.error('Admin notification email failed:', e);
             warnings.push(`admin_email_failed: ${String(e)}`);
