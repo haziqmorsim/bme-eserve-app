@@ -41,6 +41,7 @@ export const load: PageLoad = async ({ parent, url }) => {
 
     const boilerId = url.searchParams.get('boiler');
     const tab = (url.searchParams.get('tab') ?? 'dashboard') as 'dashboard' | 'parts';
+    const activeProjectId = url.searchParams.get('project');
 
     let boiler: Boiler | null = null;
     let components: Component[] = [];
@@ -89,6 +90,7 @@ export const load: PageLoad = async ({ parent, url }) => {
         parts,
         sectionReadings, 
         boilerId: canViewBoiler ? boilerId : null, 
+        activeProjectId, 
         tab, 
         customerNoBoilers, 
         title: "Home"

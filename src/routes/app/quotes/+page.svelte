@@ -194,7 +194,7 @@
         done = true;
         submitting = false;
 
-        addToast('Request is submitted successfully.')
+        addToast('Request submitted successfully.')
     }
 </script>
 

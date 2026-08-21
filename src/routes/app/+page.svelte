@@ -12,6 +12,7 @@
         projects={data.projects}
         boilerProjects={data.boilerProjects}
         activeBoilerId={data.boilerId}
+        activeProjectId={data.activeProjectId}
         customerNoBoilers={data.customerNoBoilers}
         supabase={data.supabase}
         profile={data.profile} />
@@ -24,8 +25,8 @@
             </div>
         {:else}
             <div class="tabbar">
-                <a href={`/app?boiler=${data.boilerId}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
-                <a href={`/app?boiler=${data.boilerId}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
+                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
+                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
             </div>
             <div class="panel">
                 {#if data.tab === 'parts'}

@@ -63,9 +63,9 @@
             e.quote_ref_prefix = 'Use 1-10 letters or digits only.';
         }
 
-        const semail = (form.support_email ?? '').trim();
-        if (semail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(semail)) {
-            e.support_email = 'Enter a valid e-mail address';
+        if (form.whats_new_enabled === 'on') {
+            if (!(form.whats_new_version ?? '').trim()) e.whats_new_version = 'Required when What\'s New is on.';
+            if (!(form.whats_new_content ?? '').trim()) e.whats_new_content = 'Required when What\'s New is on.';
         }
 
         if (!(form.privacy_policy ?? '').trim()) e.privacy_policy = 'Privacy policy cannot be empty.';
@@ -88,9 +88,6 @@
         }
 
         for (const s of changed) {
-            // .select() matters: an UPDATE blocked by RLS is NOT an error, it
-            // simply matches zero rows. Without asking for the updated rows
-            // back we would report success while nothing was written.
             const { data, error } = await supabase
                 .from('app_settings')
                 .update({ value: (form[s.key] ?? '').trim(), updated_by: profile?.id ?? null })
@@ -118,6 +115,16 @@
         err = '';
         fieldErr = {};
     }
+
+    function toggleAnnouncement(e: Event) {
+        const checked = (e.currentTarget as HTMLInputElement).checked;
+        form.login_announcement_enabled = checked ? 'on' : 'off';
+    }
+
+    function toggleWhatsNew(e: Event) {
+        const checked = (e.currentTarget as HTMLInputElement).checked;
+        form.whats_new_enabled = checked ? 'on' : 'off';
+    }
 </script>
 
 <div class="gen-wrap">
@@ -126,14 +133,14 @@
         <p class="gen-hint">Where staff notifications for new quotation requests and general enquiries are sent.</p>
         <div class="adm-form">
             <label>Admin E-mail <span class="required">*</span>
-                <input type="email" bind:value={form.admin_email} placeholder="admin@boilermech.com" class:invalid={fieldErr.admin_email} />
+                <input type="email" class="w-50" bind:value={form.admin_email} placeholder="admin@boilermech.com" class:invalid={fieldErr.admin_email} />
                 {#if fieldErr.admin_email}<span class="field-err">{fieldErr.admin_email}</span>{/if}
             </label>
             <label>Support Phone No.
-                <input bind:value={form.support_phone} placeholder="+603-8023 9137" />
+                <input class="w-50" bind:value={form.support_phone} placeholder="+603-8023 9137" />
             </label>
             <label>Target Reply Time (days)
-                <input bind:value={form.quote_reply_days} placeholder="3" class:invalid={fieldErr.quote_reply_days} />
+                <input class="w-25" bind:value={form.quote_reply_days} placeholder="3" class:invalid={fieldErr.quote_reply_days} />
                 {#if fieldErr.quote_reply_days}<span class="field-err">{fieldErr.quote_reply_days}</span>{/if}
             </label>
         </div>
@@ -144,11 +151,11 @@
         <p class="gen-hint">Weekday hours before an open request is flagged. Weekends are excluded.</p>
         <div class="adm-form">
             <label>Aging After (hours)
-                <input bind:value={form.sla_warn_hours} placeholder="24" class:invalid={fieldErr.sla_warn_hours} />
+                <input class="w-25" bind:value={form.sla_warn_hours} placeholder="24" class:invalid={fieldErr.sla_warn_hours} />
                 {#if fieldErr.sla_warn_hours}<span class="field-err">{fieldErr.sla_warn_hours}</span>{/if}
             </label>
             <label>Overdue After (hours)
-                <input bind:value={form.sla_overdue_hours} placeholder="48" class:invalid={fieldErr.sla_overdue_hours} />
+                <input class="w-25" bind:value={form.sla_overdue_hours} placeholder="48" class:invalid={fieldErr.sla_overdue_hours} />
                 {#if fieldErr.sla_overdue_hours}<span class="field-err">{fieldErr.sla_overdue_hours}</span>{/if}
             </label>
         </div>
@@ -159,11 +166,11 @@
         <p class="gen-hint">The prefix applies to newly created requests only, existing reference numbers are never rewritten.</p>
         <div class="adm-form">
             <label>Reference Prefix
-                <input bind:value={form.quote_ref_prefix} placeholder="BME" class:invalid={fieldErr.quote_ref_prefix} />
+                <input class="w-50" bind:value={form.quote_ref_prefix} placeholder="BME" class:invalid={fieldErr.quote_ref_prefix} />
                 {#if fieldErr.quote_ref_prefix}<span class="field-err">{fieldErr.quote_ref_prefix}</span>{/if}
             </label>
             <label>Quote Validity (days)
-                <input bind:value={form.quote_validity_days} placeholder="30" class:invalid={fieldErr.quote_validity_days} />
+                <input class="w-25" bind:value={form.quote_validity_days} placeholder="30" class:invalid={fieldErr.quote_validity_days} />
                 {#if fieldErr.quote_validity_days}<span class="field-err">{fieldErr.quote_validity_days}</span>{/if}
             </label>
             <label class="full">Quotation Footer Note
@@ -177,7 +184,7 @@
         <p class="gen-hint">Maintenance mode blocks customer access while staff keep working, so it can always be switched back off.</p>
         <div class="adm-form">
             <label>Maintenance Mode
-                <select bind:value={form.maintenance_mode}>
+                <select class="w-25" bind:value={form.maintenance_mode}>
                     <option value="off">Off</option>
                     <option value="on">On</option>
                 </select>
@@ -186,17 +193,17 @@
                 <textarea rows="3" bind:value={form.maintenance_message}></textarea>
             </label>
             <label>Chatbot
-                <select bind:value={form.chatbot_enabled}>
+                <select class="w-25" bind:value={form.chatbot_enabled}>
                     <option value="on">Enabled</option>
                     <option value="off">Disabled</option>
                 </select>
             </label>
             <label>Chatbot Daily Limit (per user)
-                <input bind:value={form.chatbot_daily_limit} placeholder="50" class:invalid={fieldErr.chatbot_daily_limit} />
+                <input class="w-25" bind:value={form.chatbot_daily_limit} placeholder="50" class:invalid={fieldErr.chatbot_daily_limit} />
                 {#if fieldErr.chatbot_daily_limit}<span class="field-err">{fieldErr.chatbot_daily_limit}</span>{/if}
             </label>
             <label>Low Stock Threshold
-                <input bind:value={form.low_stock_threshold} placeholder="5" class:invalid={fieldErr.low_stock_threshold} />
+                <input class="w-25" bind:value={form.low_stock_threshold} placeholder="5" class:invalid={fieldErr.low_stock_threshold} />
                 {#if fieldErr.low_stock_threshold}<span class="field-err">{fieldErr.low_stock_threshold}</span>{/if}
             </label>
         </div>
@@ -204,17 +211,53 @@
 
     <section class="card gen-card">
         <h2>Content</h2>
-        <p class="gen-hint">Shown to customers. Leave the login banner blank to hide it.</p>
+        <p class="gen-hint">Two independent banners: one shown before sign-in, one after.</p>
         <div class="adm-form">
-            <label>Support E-mail
-                <input type="email" bind:value={form.support_email} placeholder="support@boilermech.com" class:invalid={fieldErr.support_email} />
-            </label>
-            <label class="full">Login Banner
-                <textarea rows="2" bind:value={form.login_banner} placeholder="e.g. Scheduled maintenance this Saturday from 9pm to 11pm."></textarea>
-            </label>
-            <label class="full">Enquiry Auto-Reply
-                <textarea rows="3" bind:value={form.enquiry_auto_reply}></textarea>
-            </label>
+            <div class="full toggle-field">
+                <div class="toggle-head">
+                    <span class="toggle-title">Sign In Page Announcement (shown before sign-in)</span>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={form.login_announcement_enabled === 'on'}
+                            onchange={toggleAnnouncement}
+                            aria-label="Show announcement on the login page" />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+                <textarea
+                    rows="2"
+                    bind:value={form.login_banner}
+                    placeholder="e.g. Scheduled maintenance this Saturday from 9pm to 11pm."
+                    aria-label="Announcement message"></textarea>
+            </div>
+
+            <div class="full toggle-field wn-field">
+                <div class="toggle-head">
+                    <span class="toggle-title">What's New (shown after sign-in)</span>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={form.whats_new_enabled === 'on'}
+                            onchange={toggleWhatsNew}
+                            aria-label="Show What's New after sign-in" />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+                <label class="wn-version">Version
+                    <input class="w-25" bind:value={form.whats_new_version} placeholder="1.0" class:invalid={fieldErr.whats_new_version} />
+                    {#if fieldErr.whats_new_version}<span class="field-err">{fieldErr.whats_new_version}</span>{/if}
+                </label>
+                <label class="wn-version">Contents
+                    <textarea
+                        rows="4"
+                        bind:value={form.whats_new_content}
+                        placeholder="e.g. You can now group boilers by project in the sidebar - click a project name to expand it."
+                        aria-label="What's New message"
+                        class:invalid={fieldErr.whats_new_content}></textarea>
+                </label>
+                {#if fieldErr.whats_new_content}<span class="field-err">{fieldErr.whats_new_content}</span>{/if}
+            </div>
         </div>
     </section>
 
@@ -294,5 +337,99 @@
 
     input, select, textarea {
         margin-top: 10px;
+    }
+
+    @media (min-width: 641px) {
+        .w-50 {
+            display: block;
+            width: 50%;
+        }
+
+        .w-25 {
+            display: block;
+            width: 25%;
+        }
+    }
+
+    .adm-form .full {
+        grid-column: 1 / -1;
+    }
+
+    .toggle-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .wn-field {
+        margin-top: 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
+    }
+
+    .wn-version {
+        margin-bottom: 4px;
+    }
+
+    .toggle-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .toggle-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--bme-ink);
+    }
+
+    .toggle-switch {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    .toggle-switch input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-track {
+        position: relative;
+        display: inline-block;
+        width: 38px;
+        height: 20px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #cbd5e0;
+        transition: background 160ms ease;
+    }
+
+    .toggle-thumb {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        transition: transform 160ms ease;
+    }
+
+    .toggle-switch input:checked ~ .toggle-track {
+        background: var(--bme-dark-blue);
+    }
+
+    .toggle-switch input:checked ~ .toggle-track .toggle-thumb {
+        transform: translateX(18px);
+    }
+
+    .toggle-switch input:focus-visible ~ .toggle-track {
+        outline: 2px solid var(--bme-dark-blue);
+        outline-offset: 2px;
     }
 </style>

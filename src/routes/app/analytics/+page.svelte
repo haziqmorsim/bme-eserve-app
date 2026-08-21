@@ -188,6 +188,7 @@
             <div class="ua"><span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l">Page views</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l">Review actions</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span></div>
+            <div class="ua"><span class="ua-n">{data.chatSummary.sessions}</span><span class="ua-l">Chats</span></div>
         </div>
 
         <h3 class="ua-sub">Daily activity</h3>
@@ -546,7 +547,7 @@
 
     .ua-stats {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 12px;
         margin-bottom: 20px;
     }

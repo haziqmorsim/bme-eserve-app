@@ -1,6 +1,6 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
-import { toMap, bool } from "$lib/settings";
+import { toMap, str, bool } from "$lib/settings";
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
     const { session, user } = await safeGetSession();
@@ -8,7 +8,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, role, region_id, must_change_password')
+        .select('id, full_name, company, role, region_id, must_change_password, whats_new_seen_version')
         .eq('id', user.id)
         .single();
 
@@ -34,6 +34,17 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
     if (maintenanceOn && !MAINTENANCE_EXEMPT.has(profile?.role)) {
         throw redirect(303, '/maintenance');
     }
+
+    const whatsNewVersion = str(settingsMap, 'whats_new_version', '');
+    const whatsNewContent = str(settingsMap, 'whats_new_content', '');
+    const whatsNew = {
+        show: bool(settingsMap, 'whats_new_enabled', false)
+            && !!whatsNewVersion
+            && !!whatsNewContent
+            && profile?.whats_new_seen_version !== whatsNewVersion, 
+        version: whatsNewVersion, 
+        content: whatsNewContent
+    };
 
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
@@ -71,6 +82,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount,
         enquiryCount,
         notifications: notifications ?? [],
-        settings: settingRows ?? []
+        settings: settingRows ?? [],
+        whatsNew
     };
 };

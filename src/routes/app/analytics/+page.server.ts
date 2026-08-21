@@ -34,17 +34,21 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
-    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
+    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }, { data: chatSessionRows }, { data: chatMessageRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
         supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
         supabase.from('enquiries').select('id, name, created_at'), 
-        supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000)
+        supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000), 
+        supabase.from('chat_sessions').select('id, user_id, started_at, ended_at, end_reason').gte('started_at', activitySince), 
+        supabase.from('chat_messages').select('session_id, user_id, role, created_at').gte('created_at', activitySince).limit(10000)
     ]);
 
     const quotes = quoteRows ?? [];
     const approvals = approvalRows ?? [];
     const enquiries = enquiryRows ?? [];
     const activityEvents = eventRows ?? [];
+    const chatSessions = chatSessionRows ?? [];
+    const chatMessages = chatMessageRows ?? [];
 
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
     const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
@@ -245,12 +249,25 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         enquiries: enquiries30
     };
 
+    const chatUserSet = new Set<string>();
+    for (const s of chatSessions) if (s.user_id) chatUserSet.add(s.user_id);
+
+    const userMessageCount = chatMessages.filter((m: any) => m.role === 'user').length;
+    const chatSessionCount = chatSessions.length;
+
+    const chatSummary = {
+        sessions: chatSessionCount, 
+        messages: chatMessages.length, 
+        users: chatUserSet.size, 
+        avgMessagesPerSession: chatSessionCount > 0 ? Math.round((userMessageCount / chatSessionCount) * 10) / 10 : 0
+    };
+
     const userCount: Record<string, number> = {};
     for (const e of activityEvents) if (e.user_id) userCount[e.user_id] = (userCount[e.user_id] ?? 0) + 1;
     const topUsers = Object.entries(userCount)
         .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
+        .slice(0, 5);
 
     const pathCount: Record<string, number> = {};
     for (const e of pageViews) {
@@ -260,7 +277,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const topPages = Object.entries(pathCount)
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
+        .slice(0, 5);
 
     const quoteRef: Record<string, string> = {};
     for (const q of quotes) quoteRef[q.id] = (q as any).reference;
@@ -334,6 +351,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         slaThresholds, 
         agingList, 
         activitySummary, 
+        chatSummary, 
         topUsers, 
         topPages, 
         recentActivity, 
