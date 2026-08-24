@@ -18,12 +18,16 @@
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
 
-    let filtered = $derived(projects.filter((p: any) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return [p.project_no, p.name, p.location]
-            .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
-    }));
+    let filtered = $derived(
+        projects
+            .filter((p: any) => {
+                const q = search.trim().toLowerCase();
+                if (!q) return true;
+                return [p.project_no, p.name, p.location]
+                    .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
+            })
+            .sort((a: any, b: any) => (a.project_no ?? '').localeCompare(b.project_no ?? ''))
+    );
     let total = $derived(filtered.length);
     let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
     let curPage = $derived(Math.min(page, pages));

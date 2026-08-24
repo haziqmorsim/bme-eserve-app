@@ -114,6 +114,19 @@
 		selected = new Set();
 	}
 
+	const DESC_LINE_LIMIT = 5;
+	let expandedDescriptions = $state<Set<string>>(new Set());
+
+	function descLines(description: string): string[] {
+		return (description ?? '').split('\n');
+	}
+
+	function toggleDescription(id: string) {
+		const next = new Set(expandedDescriptions);
+		if (next.has(id)) next.delete(id); else next.add(id);
+		expandedDescriptions = next;
+	}
+
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
@@ -284,7 +297,17 @@
 						<div class="info">
 							<div class="pn">{p.part_number}</div>
 							<div class="pname">{p.name}</div>
-							{#if p.description}<div class="pdesc">{p.description}</div>{/if}
+							{#if p.description}
+								{@const lines = descLines(p.description)}
+								{@const isLong = lines.length > DESC_LINE_LIMIT}
+								{@const isExpanded = expandedDescriptions.has(p.id)}
+								<div class="pdesc">{isLong && !isExpanded ? lines.slice(0, DESC_LINE_LIMIT).join('\n') : p.description}</div>
+								{#if isLong}
+									<button type="button" class="pdesc-toggle" onclick={() => toggleDescription(p.id)}>
+										{isExpanded ? 'Show less' : 'Show more...'}
+									</button>
+								{/if}
+							{/if}
 							<!-- <div class="price">
 								{priceLabel(p)}
 							</div> -->
@@ -719,6 +742,22 @@
 		color: var(--bme-muted);
 		margin-top: 2px;
 		white-space: pre-line;
+	}
+
+	.pdesc-toggle {
+		display: inline-block;
+		margin-top: 4px;
+		padding: 0;
+		border: none;
+		background: none;
+		font-size: 12.5px;
+		font-weight: 600;
+		color: var(--bme-dark-blue);
+		cursor: pointer;
+	}
+
+	.pdesc-toggle:hover {
+		text-decoration: underline;
 	}
 
 	/* .price {

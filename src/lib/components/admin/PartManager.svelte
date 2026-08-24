@@ -219,10 +219,10 @@
             <label>Part Name <span class="required">*</span><input bind:value={form.name} class:invalid={fieldErr.name} />
                 {#if fieldErr.name}<span class="field-err">{fieldErr.name}</span>{/if}
             </label>
-            <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} class:invalid={fieldErr.price} />
+            <!-- <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} class:invalid={fieldErr.price} />
                 {#if fieldErr.price}<span class="field-err">{fieldErr.price}</span>{/if}
             </label>
-            <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label>
+            <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label> -->
             <label class="full">Description<textarea rows="2" bind:value={form.description}></textarea></label>
             <div class="full img-field">
                 <span class="img-label">Part Image  <span class="required">*</span></span>
