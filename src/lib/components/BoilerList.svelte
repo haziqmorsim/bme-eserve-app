@@ -8,6 +8,7 @@
         projects = [],
         boilerProjects = [],
         activeBoilerId, 
+        activeProjectId = null, 
         customerNoBoilers = false, 
         supabase = null, 
         profile = null
@@ -16,6 +17,7 @@
         projects?: Project[];
         boilerProjects?: BoilerProject[];
         activeBoilerId: string | null;
+        activeProjectId?: string | null;
         customerNoBoilers?: boolean;
         supabase?: any;
         profile?: any;
@@ -112,6 +114,15 @@
 
     let totalMatches = $derived(groups.reduce((n, g) => n + g.boilers.length, 0));
 
+    let resolvedActiveProjectId = $derived.by(() => {
+        if (!activeBoilerId) return null;
+        if (activeProjectId && groups.some((g) => g.id === activeProjectId && g.boilers.some((b) => b.id === activeBoilerId))) {
+            return activeProjectId;
+        }
+        const first = groups.find((g) => g.boilers.some((b) => b.id === activeBoilerId));
+        return first ? first.id : null;
+    });
+
     let openProjects = $state<Set<string>>(new Set());
 
     function toggleProject(id: string) {
@@ -120,9 +131,9 @@
         openProjects = next;
     }
 
-    function isOpen(id: string, groupBoilers: Boiler[]) {
+    function isOpen(id: string) {
         if (query !== '' || openProjects.has(id)) return true;
-        return groupBoilers.some((b) => b.id === activeBoilerId);
+        return id === resolvedActiveProjectId;
     }
 </script>
 
@@ -143,25 +154,25 @@
         {:else}
             <div class="project-groups">
                 {#each groups as g (g.id)}
-                    <div class="proj-group" class:open={isOpen(g.id, g.boilers)}>
+                    <div class="proj-group" class:open={isOpen(g.id)}>
                         <button
                             type="button"
                             class="proj-head"
                             onclick={() => toggleProject(g.id)}
-                            aria-expanded={isOpen(g.id, g.boilers)}
+                            aria-expanded={isOpen(g.id)}
                         >
                             <span class="proj-title">
                                 <strong class:unassigned={g.id === UNASSIGNED}>{g.projectNo}</strong>
                                 {#if g.projectName}<span class="proj-sub">{g.projectName}</span>{/if}
                             </span>
                             <span class="proj-count">{g.boilers.length}</span>
-                            <span class="chev" class:rot={isOpen(g.id, g.boilers)}><ChevronDown size={15} /></span>
+                            <span class="chev" class:rot={isOpen(g.id)}><ChevronDown size={15} /></span>
                         </button>
-                        {#if isOpen(g.id, g.boilers)}
+                        {#if isOpen(g.id)}
                             <ul class="boilers">
                                 {#each g.boilers as boiler (boiler.id)}
                                     <li>
-                                        <a href={`/app?boiler=${boiler.id}&tab=dashboard`} class:active={boiler.id === activeBoilerId}>
+                                        <a href={`/app?boiler=${boiler.id}&project=${g.id}&tab=dashboard`} class:active={boiler.id === activeBoilerId && g.id === resolvedActiveProjectId}>
                                             <strong>{boiler.code}</strong>
                                             {#if boiler.name}<span>{boiler.name}</span>{/if}
                                         </a>

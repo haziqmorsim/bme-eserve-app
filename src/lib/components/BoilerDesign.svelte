@@ -249,9 +249,9 @@
 		transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 	}
 
-	.hot[data-state='normal'] { --dot: #1f9d4d; }
-	.hot[data-state='warning'] { --dot: #e0a400; }
-	.hot[data-state='attention'] { --dot: #e0342a; }
+	.stage:not(.parts) .hot[data-state='normal'] { --dot: #1f9d4d; }
+	.stage:not(.parts) .hot[data-state='warning'] { --dot: #e0a400; }
+	.stage:not(.parts) .hot[data-state='attention'] { --dot: #e0342a; }
 
 	.hot .tag {
 		position: absolute;
@@ -273,8 +273,6 @@
 	.hot:hover,
 	.hot:focus-visible,
 	.hot.hovered {
-		background: rgba(16, 69, 110, 0.1);
-		border-color: rgba(16, 69, 110, 0.55);
 		outline: none;
 	}
 

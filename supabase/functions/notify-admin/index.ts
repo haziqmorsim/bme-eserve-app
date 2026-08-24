@@ -22,8 +22,16 @@ Deno.serve(async (req) => {
             .single();
         if (error || !quote) return json(404, { error: 'Quote not found' });
 
+        const { data: profile } = await admin
+            .from('profiles')
+            .select('company')
+            .eq('id', quote.user_id)
+            .single();
+
         const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
+
         const customerEmail = userInfo.user?.email ?? null;
+        const customerCompany = profile?.company ?? null;
 
         const rows = quote.quote_items
         .map(
@@ -47,7 +55,7 @@ Deno.serve(async (req) => {
         const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
             <h2 style="color:#004b8d">New quotation request — ${quote.reference}</h2>
-            <p>From: <strong>${customerEmail ?? 'unknown'}</strong></p>
+            <p>From: <strong>${customerEmail ?? 'Unknown e-mail'} (${customerCompany ?? 'Unknown company'})</strong></p>
             ${quote.notes ? `<p><em>Notes:</em> ${quote.notes}</p>` : ''}
             ${itemsTable}
             <p style="margin-top:20px">Review this request in the BME e-Serve Requests page.</p>

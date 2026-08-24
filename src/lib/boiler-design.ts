@@ -1,6 +1,6 @@
 import type { Component } from '$lib/types';
 
-export type GrateType = 'fixed' | 'reciprocating' | 'vibrating';
+export type GrateType = 'fixed' | 'fixed_water_cooled' | 'reciprocating' | 'vibrating';
 
 export type Hotspot = {
     l: number;
@@ -12,14 +12,14 @@ export type Hotspot = {
 export type Section = {
     key: string;
     label: string;
-    num: number; // official mimic section number (from the reference drawing)
+    num: number;
     keywords: string[];
     rect: Hotspot;
 };
 
 export type ResolvedSection = Section & {
-    componentId: string | null; // first matching component (back-compat)
-    componentIds: string[]; // every component in this section
+    componentId: string | null;
+    componentIds: string[];
     componentName: string | null;
 };
 
@@ -31,19 +31,192 @@ export type GrateDef = {
     sections: Section[];
 };
 
+export const BOILER_DESIGNS: Record<string, GrateDef> = {
+    "BM-0001": {
+        type: "fixed",
+        label: "BM Fixed Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0001.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 35, t: 2, w: 10, h: 18 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 41, t: 61, w: 8, h: 12 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 27, t: 32, w: 13, h: 42 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 61, t: -17, w: 19, h: 78 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 52, t: 68, w: 15, h: 12 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 15.5, t: 80, w: 11, h: 26 } }
+        ]
+    },
+    "BM-0002": {
+        type: "fixed",
+        label: "BM Fixed Water Cooled Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0002.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 36, t: 4, w: 10, h: 18 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 46, t: 57, w: 8, h: 12 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 27.7, t: 33, w: 13, h: 42 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 62, t: -15, w: 19, h: 78 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 53, t: 75, w: 15, h: 12 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 16, t: 80, w: 11, h: 26 } }
+        ]
+    },
+    "BM-0003": {
+        type: "vibrating",
+        label: "BM Vibrating Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0003.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 36, t: -1, w: 10, h: 16 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 44.5, t: 50, w: 8, h: 11 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 28.5, t: 23, w: 13, h: 68 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 61, t: -25, w: 20, h: 85 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 49, t: 75, w: 20, h: 14 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 13, t: 81, w: 12, h: 30 } }
+        ]
+    },
+    "BM-0004": {
+        type: "reciprocating",
+        label: "BM Reciprocating Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0004.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 36, t: -3, w: 9, h: 18 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 43.5, t: 52, w: 7, h: 10 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 30, t: 23, w: 12, h: 65 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 53, t: -22, w: 22, h: 90 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 46.5, t: 75, w: 18, h: 13 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 20.4, t: 93, w: 11, h: 22 } }
+        ]
+    },
+    "BM-0005": {
+        type: "vibrating",
+        label: "BM Vibrating Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0005.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 47, t: 7, w: 6, h: 11 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 53.5, t: 48, w: 7, h: 10 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 39.5, t: 25, w: 13, h: 52 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 66, t: -5, w: 20, h: 64 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 57, t: 68, w: 18, h: 8 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 10.7, t: 83, w: 10, h: 17 } }
+        ]
+    },
+    "BM-0006": {
+        type: "vibrating",
+        label: "BM Vibrating Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0006.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 33, t: 1, w: 9, h: 18 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 39, t: 55, w: 8, h: 11 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 27, t: 22, w: 11, h: 66 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 54, t: -17, w: 24, h: 90 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 41, t: 68, w: 25, h: 16 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 16.5, t: 87, w: 11, h: 26 } }
+        ]
+    },
+    "BM-0007": {
+        type: "vibrating",
+        label: "BM Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0007.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 46, t: 1, w: 8, h: 16 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 52.5, t: 40, w: 7, h: 9 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 42.5, t: 14, w: 9, h: 78 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 62, t: -20, w: 18, h: 92 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 55, t: 58, w: 16, h: 20 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 17.5, t: 77, w: 13, h: 33 } }
+        ]
+    },
+    "BM-0008": {
+        type: "vibrating",
+        label: "BM Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0008.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 49, t: 3, w: 8, h: 17 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 53, t: 40, w: 8, h: 10 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 44, t: 2, w: 11, h: 82 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 63, t: -22, w: 20, h: 92 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 55.5, t: 56, w: 18, h: 25 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 16, t: 80, w: 12, h: 32 } }
+        ]
+    },
+    "BM-0009": {
+        type: "vibrating",
+        label: "BM Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0009.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 33, t: -5, w: 11, h: 26 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 42, t: 40, w: 8, h: 13 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 28.7, t: 33, w: 11, h: 38 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 52, t: -22, w: 20, h: 88 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 41, t: 56, w: 24, h: 28 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 16, t: 75, w: 15, h: 44 } }
+        ]
+    },
+    "BM-0010": {
+        type: "vibrating",
+        label: "MBM Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0010.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 43, t: 2, w: 10, h: 22 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 49, t: 50, w: 8, h: 10 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 31.5, t: 40, w: 13, h: 50 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 63, t: -20, w: 20, h: 90 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 52, t: 55, w: 21, h: 24 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 19.5, t: 68, w: 10, h: 55 } }
+        ]
+    },
+    "BM-0011": {
+        type: "vibrating",
+        label: "BM Vibrating Grate Water Tube Boiler",
+        tagline: "",
+        img: "/boilers/BM-0011.png",
+        sections: [
+            { key: "steam_drum", label: "Steam Drum", num: 1, keywords: ["steam drum", "drum", "boiler field instrument", "boiler field gauge", "boiler field valve"], rect: { l: 37, t: -3, w: 10, h: 18 } },
+            { key: "water_drum", label: "Water Drum", num: 2, keywords: ["water drum", "mud drum", "blow down", "blowdown"], rect: { l: 46, t: 45, w: 7, h: 11 } },
+            { key: "dust_collector", label: "Dust Collector", num: 3, keywords: ["dust collector", "dust", "cast iron", "cyclone"], rect: { l: 30.5, t: 17, w: 12, h: 72 } },
+            { key: "boiler_front", label: "Boiler Front Section", num: 4, keywords: ["boiler front", "front section", "pressure transmitter", "fire door", "cylinder", "pneumatic"], rect: { l: 59, t: -25, w: 22, h: 88 } },
+            { key: "grate_section", label: "Grate Section", num: 5, keywords: ["grate", "fix grate", "reciprocating grate", "vibrating grate", "panel electrical", "inverter", "rocker"], rect: { l: 47.5, t: 57, w: 23, h: 18 } },
+            { key: "fan_pump", label: "Fan & Pump", num: 6, keywords: ["fan", "pump", "fan and pump", "feed water", "blower", "draught"], rect: { l: 15.5, t: 73, w: 12, h: 36 } }
+        ]
+    }
+};
+
+
 export const GRATES: Record<GrateType, GrateDef> = {
     fixed: {
         type: 'fixed',
         label: 'Fixed Grate',
         tagline: 'Economical, rugged and low operating cost',
-        img: '/boilers/fixed-grate.jpg',
+        img: '/boilers/bme-fixed-grate.jpeg',
         sections: [
-            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 45, t: 3, w: 13, h: 13 } },
-            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 54, t: 55, w: 13, h: 12 } },
-            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 37.5, t: 32, w: 14, h: 45 } },
-            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 70, t: 34, w: 20, h: 44 } },
-            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 69, t: 80, w: 22, h: 10 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 20, t: 76, w: 16, h: 22 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 34, t: 0, w: 13, h: 13 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 42, t: 55, w: 13, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 27, t: 48, w: 14, h: 14 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 58, t: 16, w: 20, h: 14 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 47, t: 70, w: 22, h: 14 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 14.5, t: 90, w: 16, h: 14 } }
+        ]
+    },
+
+    fixed_water_cooled: {
+        type: 'fixed_water_cooled',
+        label: 'Fixed Water Cooled Grate',
+        tagline: 'Water-cooled grate bars for longer service life',
+        img: '/boilers/bme-fixed-water-cooled-grate.jpeg',
+        sections: [
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 33, t: 0, w: 13, h: 13 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 42, t: 58, w: 13, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 26.5, t: 49, w: 14, h: 14 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 59, t: 15, w: 20, h: 14 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 48, t: 72, w: 22, h: 14 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 93, w: 16, h: 14 } }
         ]
     },
 
@@ -51,14 +224,14 @@ export const GRATES: Record<GrateType, GrateDef> = {
         type: 'reciprocating',
         label: 'Reciprocating Grate',
         tagline: 'Suitable for very high moisture fuel',
-        img: '/boilers/reciprocating-grate.jpg',
+        img: '/boilers/bme-reciprocating-grate.png',
         sections: [
-            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 46.5, t: 3, w: 12, h: 11 } },
-            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 53, t: 49, w: 12, h: 12 } },
-            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 39, t: 33, w: 14, h: 42 } },
-            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 65, t: 26, w: 21, h: 46 } },
-            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 62, t: 80, w: 26, h: 10 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 24, t: 82, w: 16, h: 22 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 29, t:0, w: 12, h: 11 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 40.5, t: 50, w: 12, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 27, t: 45, w: 14, h: 14 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 53, t: 17, w: 21, h: 14 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 42, t: 78, w: 26, h: 14 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 15.5, t: 98, w: 16, h: 14 } }
         ]
     },
 
@@ -66,14 +239,14 @@ export const GRATES: Record<GrateType, GrateDef> = {
         type: 'vibrating',
         label: 'Vibrating Grate',
         tagline: 'Automation and efficient combustion',
-        img: '/boilers/vibrating-grate.jpg',
+        img: '/boilers/bme-vibrating-grate.jpeg',
         sections: [
-            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 41, t: 4, w: 11, h: 11 } },
-            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 46, t: 55, w: 12, h: 12 } },
-            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 33.5, t: 35, w: 13, h: 40 } },
-            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 60, t: 28, w: 23, h: 42 } },
-            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 54, t: 80, w: 33, h: 12 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 18, t: 81.5, w: 16, h: 22 } }
+            { key: 'steam_drum', label: 'Steam Drum', num: 1, keywords: ['steam drum', 'drum', 'boiler field instrument', 'boiler field gauge', 'boiler field valve'], rect: { l: 35, t: 1, w: 11, h: 11 } },
+            { key: 'water_drum', label: 'Water Drum', num: 2, keywords: ['water drum', 'mud drum', 'blow down', 'blowdown'], rect: { l: 44.5, t: 53, w: 12, h: 12 } },
+            { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 31.5, t: 55, w: 13, h: 14 } },
+            { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 59, t: 13, w: 23, h: 14 } },
+            { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 43, t: 72, w: 33, h: 12 } },
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 96, w: 16, h: 14 } }
         ]
     }
 };
@@ -102,13 +275,20 @@ export function grateTypeFor(seed: string, name?: string | null): GrateType {
     const n = (name ?? '').toLowerCase();
     if (n.includes('reciprocating')) return 'reciprocating';
     if (n.includes('vibrating')) return 'vibrating';
+    if (n.includes('water cooled') || n.includes('water-cooled')) return 'fixed_water_cooled';
     if (n.includes('fixed')) return 'fixed';
 
-    const types: GrateType[] = ['fixed', 'reciprocating', 'vibrating'];
-    return types[hashStr(seed || 'boiler') % 3];
+    const types: GrateType[] = ['fixed', 'fixed_water_cooled', 'reciprocating', 'vibrating'];
+    return types[hashStr(seed || 'boiler') % types.length];
 }
 
+export const USE_REAL_BOILER_IMAGES = false;
+
 export function grateFor(seed: string, name?: string | null): GrateDef {
+    if (USE_REAL_BOILER_IMAGES) {
+        const real = BOILER_DESIGNS[seed];
+        if (real) return real;
+    }
     return GRATES[grateTypeFor(seed, name)];
 }
 
@@ -120,10 +300,8 @@ export function resolveSections(def: GrateDef, components: Component[] = []): Re
     }));
 
     return def.sections.map((s) => {
-        // Primary: match on section_key (exact, set by migration 0041).
         let hits = comps.filter((c) => c.sk === s.key);
 
-        // Fallback for components without a section_key: keyword match on name.
         if (hits.length === 0) {
             hits = comps.filter(
                 (c) => c.sk == null && s.keywords.some((k) => c.lc.includes(k) || k.includes(c.lc))

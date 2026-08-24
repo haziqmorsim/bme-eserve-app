@@ -164,7 +164,7 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
+                <tr><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th><!--<th>Price</th><th>Stock</th>--><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as p (p.id)}
@@ -173,10 +173,10 @@
                         <td style="vertical-align: middle;">{p.name}</td>
                         <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{p.components?.name ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
+                        <!-- <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
                         <td style="text-align: center; vertical-align: middle;">
                             <span class="stock" class:out={p.stock_quantity === 0} class:low={p.stock_quantity > 0 && p.stock_quantity <= lowStockThreshold}>{p.stock_quantity}</span>
-                        </td>
+                        </td> -->
                         <td>
                             <div class="adm-actions">
                                 <button class="adm-link" onclick={() => startEdit(p)}>Edit</button>
@@ -269,7 +269,7 @@
 {/if}
 
 <style>
-    .stock.low {
+    /*.stock.low {
         color: #97700a;
         font-weight: 700;
     }
@@ -277,7 +277,7 @@
     .stock.out {
         color: #8e261b;
         font-weight: 700;
-    }
+    }*/
 
     .adm-bar .btn-primary {
         display: inline-flex;

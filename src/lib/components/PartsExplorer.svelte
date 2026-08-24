@@ -189,7 +189,7 @@
 <div class="explorer">
 	<div class="design card">
 		<div class="design-head">
-			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
+			<h3><!-- <span class="live-dot" aria-hidden="true"></span> -->Boiler Schematic</h3>
 			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no available parts.</span>
 		</div>
 		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
@@ -261,7 +261,7 @@
 
 		{#if showUncategorised}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>uncategorised</strong> parts — {filtered.length} part{filtered.length === 1 ? '' : 's'}
+				Showing <strong>{filtered.length} uncategorised</strong> part{filtered.length === 1 ? '' : 's'}
 			</div>
 		{:else if selectedCount > 0}
 			<div class="crumb" in:fade={{ duration: 150 }}>
@@ -322,7 +322,7 @@
 			<img src={lightbox.image_url} alt={lightbox.name} />
 			<div class="lightbox-cap">
 				<strong>{lightbox.part_number}</strong> <span>{lightbox.name}</span>
-				<span class="lb-price">{priceLabel(lightbox)}</span>
+				<!-- <span class="lb-price">{priceLabel(lightbox)}</span> -->
 			</div>
 		</div>
 		<button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close">&times;</button>
@@ -378,7 +378,7 @@
 		color: var(--bme-muted);
 	}
 
-	.live-dot {
+	/* .live-dot {
 		display: inline-block;
 		width: 9px;
 		height: 9px;
@@ -386,7 +386,7 @@
 		background: #e0342a;
 		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
 		animation: live-blink 1.6s ease-in-out infinite;
-	}
+	} */
 
 	@keyframes live-blink {
 		0% {
@@ -814,11 +814,11 @@
 		color: var(--bme-ink, #1b2733);
 	}
 
-	.lb-price {
+	/* .lb-price {
 		margin-left: auto;
 		font-weight: 700;
 		color: var(--bme-darker-blue, #0c3358);
-	}
+	} */
 
 	.lightbox-close {
 		position: absolute;
