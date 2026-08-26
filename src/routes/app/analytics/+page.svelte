@@ -598,6 +598,14 @@
     .chat-n { font-size: 24px; font-weight: 700; color: var(--bme-darker-green); }
     .chat-l { font-size: 12.5px; color: var(--bme-muted); }
 
+    :root[data-theme='dark'] .chat-n {
+        color: #9adf6c;
+    }
+
+    :root[data-theme='dark'] .chat-l {
+        color: #9adf6c;
+    }
+
     .ua {
         background: var(--bme-light-green);
         border-radius: 10px;
@@ -614,6 +622,14 @@
     .ua-sub {
         margin: 6px 0 10px;
         color: var(--bme-ink);
+    }
+
+    :root[data-theme='dark'] .ua-n {
+        color: #9adf6c;
+    }
+
+    :root[data-theme='dark'] .ua-l {
+        color: #9adf6c;
     }
 
     .spark {

@@ -242,6 +242,10 @@
         color: var(--bme-dark-blue);
         cursor: pointer;
     }
+
+    :root[data-theme='dark'] .bell-btn {
+        color: #ffffff;
+    }
  
     .bell-btn:hover { 
         background: var(--bme-bg);

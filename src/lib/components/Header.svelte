@@ -169,6 +169,18 @@
         gap: 14px;
     }
 
+    :root[data-theme='dark'] .title {
+        color: var(--bme-light-blue);
+    }
+
+    :root[data-theme='dark'] .btn-ghost {
+        color: #ffffff;
+    }
+
+    :root[data-theme='dark'] .profile-icon {
+        color: #ffffff;
+    }
+
     form {
         margin: 0;
     }

@@ -62,13 +62,7 @@
 
         for (const b of boilers as Boiler[]) {
             const pids = projectIdsByBoiler[b.id] ?? [];
-            if (pids.length === 0) {
-                if (!byId.has(UNASSIGNED)) {
-                    byId.set(UNASSIGNED, { id: UNASSIGNED, projectNo: 'Unassigned', projectName: null, boilers: [] });
-                }
-                byId.get(UNASSIGNED)!.boilers.push(b);
-                continue;
-            }
+            let placed = false;
             for (const pid of pids) {
                 const proj = (projects as Project[]).find((p) => p.id === pid);
                 if (!proj) continue;
@@ -76,12 +70,19 @@
                     byId.set(pid, { id: pid, projectNo: proj.project_no, projectName: proj.name, boilers: [] });
                 }
                 byId.get(pid)!.boilers.push(b);
+                placed = true;
+            }
+            if (!placed) {
+                if (!byId.has(UNASSIGNED)) {
+                    byId.set(UNASSIGNED, { id: UNASSIGNED, projectNo: 'Unassigned', projectName: null, boilers: [] });
+                }
+                byId.get(UNASSIGNED)!.boilers.push(b);
             }
         }
 
         const sortOrder = (id: string) => (projects as Project[]).find((p) => p.id === id)?.sort_order ?? 0;
         const list = [...byId.values()].filter((g) => g.id !== UNASSIGNED);
-        list.sort((a, b) => sortOrder(a.id) - sortOrder(b.id) || a.projectNo.localeCompare(b.projectNo));
+        list.sort((a, b) => a.projectNo.localeCompare(b.projectNo));
 
         const unassigned = byId.get(UNASSIGNED);
         if (unassigned) list.push(unassigned);
@@ -307,6 +308,10 @@
         border-radius: 8px;
         border: 1px solid var(--bme-bg);
         color: var(--bme-ink);
+    }
+
+    :root[data-theme='dark'] .boilers li a {
+        border: 1px solid var(--bme-border);
     }
 
     .boilers li a:hover {

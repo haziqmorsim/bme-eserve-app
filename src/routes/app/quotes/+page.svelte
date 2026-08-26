@@ -591,6 +591,14 @@
         text-align: center; 
     }
 
+    .empty {
+        min-height: 53vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
     .success p, .empty p { 
         color: var(--bme-muted);
         margin: 12px auto 20px; 

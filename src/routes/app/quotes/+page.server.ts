@@ -26,6 +26,6 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 
     return {
         coupons, 
-        title: "Quote List"
+        title: "Cart List"
     };
 };

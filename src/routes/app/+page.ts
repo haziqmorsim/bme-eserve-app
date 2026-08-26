@@ -6,12 +6,20 @@ export const load: PageLoad = async ({ parent, url }) => {
     const isCustomer = profile?.role === 'customer';
 
     let assignedIds: Set<string> | null = null;
+    let assignedProjectIds: Set<string> | null = null;
     if (isCustomer) {
-        const { data: cb } = await supabase
-            .from('customer_boilers')
-            .select('boiler_id')
-            .eq('user_id', profile.id);
+        const [{ data: cb }, { data: cp }] = await Promise.all([
+            supabase
+                .from('customer_boilers')
+                .select('boiler_id')
+                .eq('user_id', profile.id), 
+            supabase
+                .from('customer_projects')
+                .select('project_id')
+                .eq('user_id', profile.id)
+        ]);
         assignedIds = new Set((cb ?? []).map((r: any) => r.boiler_id));
+        assignedProjectIds = new Set((cp ?? []).map((r: any) => r.project_id));
     }
 
     const [{ data: boilersRaw }, { data: projectsRaw }, { data: boilerProjectsRaw }] = await Promise.all([
@@ -34,7 +42,9 @@ export const load: PageLoad = async ({ parent, url }) => {
         boilers = boilers.filter((b: any) => ids.has(b.id));
     }
 
-    const projects = projectsRaw ?? [];
+    const projects = assignedProjectIds
+        ? (projectsRaw ?? []).filter((p: any) => assignedProjectIds!.has(p.id))
+        : (projectsRaw ?? []);
     const boilerProjects = boilerProjectsRaw ?? [];
 
     const customerNoBoilers = isCustomer && (assignedIds?.size ?? 0) === 0;

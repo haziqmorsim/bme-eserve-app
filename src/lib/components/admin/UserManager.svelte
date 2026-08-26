@@ -6,7 +6,7 @@
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
 
-    let { users, supabase, boilers = [], assignments = [] } = $props<{ users: any[]; supabase: SupabaseClient, boilers?: any[], assignments?: any[] }>();
+    let { users, supabase, projects = [], customerProjects = [] } = $props<{ users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] }>();
 
     const ROLES = [
         { value: 'customer', label: 'Customer' },
@@ -29,15 +29,18 @@
 
     let assignedByUser = $derived.by(() => {
         const m: Record<string, string[]> = {};
-        for (const a of assignments) (m[a.user_id] ??= []).push(a.boiler_id);
+        for (const a of customerProjects) (m[a.user_id] ??= []).push(a.project_id);
         return m;
     });
 
+    let sortedProjects = $derived(
+        [...projects].sort((a: any, b: any) => (a.project_no ?? '').localeCompare(b.project_no ?? ''))
+    );
 
-    function toggleBoiler(id: string) {
-        const set = new Set<string>(form.boiler_ids ?? []);
+    function toggleProject(id: string) {
+        const set = new Set<string>(form.project_ids ?? []);
         if (set.has(id)) set.delete(id); else set.add(id);
-        form.boiler_ids = [...set];
+        form.project_ids = [...set];
     }
 
     const pageSize = 20;
@@ -64,14 +67,14 @@
     $effect(() => { search; page = 1; });
 
     function blank() {
-        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', boiler_ids: [] };
+        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', project_ids: [] };
     }
     function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
     function startEdit(u: any) {
         form = {
             full_name: u.full_name ?? '', email: u.email ?? '', password: '',
             phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? '',
-            boiler_ids: [...(assignedByUser[u.id] ?? [])]
+            project_ids: [...(assignedByUser[u.id] ?? [])]
         };
         err = ''; fieldErr = {}; editing = u.id;
     }
@@ -93,8 +96,8 @@
         if (editing === 'new' && !form.password) e.password = 'Temporary password is required.';
         if (!form.company?.toString().trim()) e.company = 'Company is required.';
         if (!form.role) e.role = 'Role is required.';
-        if ((form.role || 'customer') === 'customer' && (form.boiler_ids ?? []).length === 0) {
-            e.boiler_ids = 'At least one boiler is required.';
+        if ((form.role || 'customer') === 'customer' && (form.project_ids ?? []).length === 0) {
+            e.project_ids = 'At least one project is required.';
         }
         fieldErr = e;
         return Object.keys(e).length === 0;
@@ -111,7 +114,7 @@
             role: form.role || 'customer'
         };
         const isCustomer = (form.role || 'customer') === 'customer';
-        body.boiler_ids = isCustomer ? (form.boiler_ids ?? []) : [];
+        body.project_ids = isCustomer ? (form.project_ids ?? []) : [];
         if (action === 'create') body.password = form.password;
         else body.id = editing;
 
@@ -201,19 +204,21 @@
                 </select>
                 {#if fieldErr.role}<span class="field-err">{fieldErr.role}</span>{/if}
             </label>
+        </div>
+        <div class="project-actions">
             {#if (form.role || 'customer') === 'customer'}
-                <div class="boiler-field">
-                    <span class="bf-label">Boiler(s) <span class="required">*</span></span>
-                    <div class="boiler-picker" class:invalid={fieldErr.boiler_ids}>
-                        {#each boilers as b (b.id)}
-                            <label class="boiler-item">
-                                <input type="checkbox" checked={(form.boiler_ids ?? []).includes(b.id)} onchange={() => toggleBoiler(b.id)} />
-                                <span><strong>{b.code}</strong> {#if b.name} — {b.name}{/if}</span>
+                <div class="project-field">
+                    <span class="pf-label">Project(s) <span class="required">*</span></span>
+                    <div class="project-picker" class:invalid={fieldErr.project_ids}>
+                        {#each sortedProjects as p (p.id)}
+                            <label class="project-item">
+                                <input type="checkbox" checked={(form.project_ids ?? []).includes(p.id)} onchange={() => toggleProject(p.id)} />
+                                <span><strong>{p.project_no}</strong> {#if p.name} — {p.name}{/if}</span>
                             </label>
                         {/each}
                     </div>
-                    <p class="boiler-hint">{(form.boiler_ids ?? []).length} selected.</p>
-                    {#if fieldErr.boiler_ids}<span class="field-err">{fieldErr.boiler_ids}</span>{/if}
+                    <p class="project-hint">{(form.project_ids ?? []).length} selected.</p>
+                    {#if fieldErr.project_ids}<span class="field-err">{fieldErr.project_ids}</span>{/if}
                 </div>
             {/if}
             {#if err}<p class="adm-err">{err}</p>{/if}
@@ -245,23 +250,27 @@
         gap: 8px;
     }
 
-    .boiler-field {
+    .project-actions {
+        padding: 0 18px 18px;
+    }
+
+    .project-field {
         display: flex;
         flex-direction: column;
         gap: 6px;
     }
 
-    .bf-label {
+    .pf-label {
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--bme-ink);
     }
 
-    .boiler-picker.invalid {
+    .project-picker.invalid {
         border-color: var(--bme-red);
     }
 
-    .boiler-picker {
+    .project-picker {
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -272,7 +281,7 @@
         background: var(--bme-surface, #ffffff);
     }
 
-    .boiler-item {
+    .project-item {
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -282,14 +291,14 @@
         cursor: pointer;
     }
 
-    .boiler-item input {
+    .project-item input {
         width: auto;
         margin: 0;
         cursor: pointer;
     }
 
-    .boiler-hint {
-        margin: 5px 0 0;
+    .project-hint {
+        margin: 5px 0;
         font-size: 12.5px;
         color: var(--bme-muted);
     }

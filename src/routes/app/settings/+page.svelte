@@ -48,7 +48,7 @@
     </section>
 {:else if tab === 'users'}
     <section>
-        <UserManager users={data.users} boilers={data.boilers} assignments={data.assignments} supabase={data.supabase} />
+        <UserManager users={data.users} projects={data.projects} customerProjects={data.customerProjects} supabase={data.supabase} />
     </section>
 {:else}
     <section>

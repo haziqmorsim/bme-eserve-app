@@ -6,17 +6,35 @@ function normaliseRole(r: unknown): string {
     return typeof r === 'string' && ALLOWED_ROLES.includes(r) ? r : 'customer';
 }
 
-async function syncBoilers(admin: any, userId: string, role: string, boilerIds: unknown): Promise<string | null> {
-    const { error: dErr } = await admin.from('customer_boilers').delete().eq('user_id', userId);
-    if (dErr) return dErr.message;
+async function syncProjectsAndBoilers(admin: any, userId: string, role: string, projectIds: unknown): Promise<string | null> {
+    const { error: dpErr } = await admin.from('customer_projects').delete().eq('user_id', userId);
+    if (dpErr) return dpErr.message;
+    const { error: dbErr } = await admin.from('customer_boilers').delete().eq('user_id', userId);
+    if (dbErr) return dbErr.message;
+
     if (role !== 'customer') return null;
-    const ids = Array.isArray(boilerIds) 
-        ? [...new Set(boilerIds.filter((x: unknown) => typeof x === 'string'))] 
+
+    const ids = Array.isArray(projectIds)
+        ? [...new Set(projectIds.filter((x: unknown) => typeof x === 'string'))]
         : [];
     if (!ids.length) return null;
-    const rows = ids.map((boiler_id) => ({ user_id: userId, boiler_id }));
-    const { error: iErr } = await admin.from('customer_boilers').insert(rows);
-    return iErr ? iErr.message : null;
+
+    const projectRows = ids.map((project_id) => ({ user_id: userId, project_id }));
+    const { error: ipErr } = await admin.from('customer_projects').insert(projectRows);
+    if (ipErr) return ipErr.message;
+
+    const { data: links, error: lErr } = await admin
+        .from('boiler_projects')
+        .select('boiler_id, project_id')
+        .in('project_id', ids);
+    if (lErr) return lErr.message;
+
+    const boilerIds = [...new Set((links ?? []).map((r: any) => r.boiler_id))];
+    if (!boilerIds.length) return null;
+
+    const boilerRows = boilerIds.map((boiler_id) => ({ user_id: userId, boiler_id }));
+    const { error: ibErr } = await admin.from('customer_boilers').insert(boilerRows);
+    return ibErr ? ibErr.message : null;
 }
 
 Deno.serve(async (req) => {
@@ -78,7 +96,7 @@ Deno.serve(async (req) => {
             });
             if (pErr) return json(400, { error: pErr.message });
 
-            const bErr = await syncBoilers(admin, created.user.id, role, body.boiler_ids);
+            const bErr = await syncProjectsAndBoilers(admin, created.user.id, role, body.project_ids);
             if (bErr) return json(400, { error: bErr });
 
             return json(200, { ok: true, id: created.user.id });
@@ -102,7 +120,7 @@ Deno.serve(async (req) => {
             }).eq('id', id);
             if (pErr) return json(400, { error: pErr.message });
 
-            const bErr = await syncBoilers(admin, id, role, body.boiler_ids);
+            const bErr = await syncProjectsAndBoilers(admin, id, role, body.project_ids);
             if (bErr) return json(400, { error: bErr });
 
             return json(200, { ok: true });
@@ -111,6 +129,7 @@ Deno.serve(async (req) => {
         if (action === 'delete') {
             const { id } = body;
             if (!id) return json(400, { error: 'Missing id' });
+            await admin.from('customer_projects').delete().eq('user_id', id);
             await admin.from('customer_boilers').delete().eq('user_id', id);
             const { error: dErr } = await admin.auth.admin.deleteUser(id);
             if (dErr) return json(400, { error: dErr.message });

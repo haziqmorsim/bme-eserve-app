@@ -487,6 +487,10 @@
 		height: 0;
 	}
 
+	:root[data-theme='dark'] .uc-toggle {
+		background-color: #1b2733;
+	}
+
 	.uc-track {
 		position: relative;
 		display: inline-block;

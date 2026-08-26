@@ -29,4 +29,8 @@
     .theme-toggle:hover {
         border-color: var(--bme-dark-blue);
     }
+
+    :root[data-theme='dark'] .theme-toggle {
+        color: #ffffff;
+    }
 </style>
