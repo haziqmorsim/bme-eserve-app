@@ -3,6 +3,7 @@
     import { quoteItems } from "$lib/stores/quote";
     import { Menu, X, UserRound } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
+    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
     let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
@@ -67,6 +68,7 @@
                 <p class="greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             </div>
             <div class="actions">
+                <ThemeToggle />
                 <a
                     href="/app/profile"
                     class="profile-icon"
@@ -124,7 +126,10 @@
 
         <nav class="side-group bottom">
             <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
-            <div class="side-bell"><NotificationBell {notifications} {supabase} label="Notifications" /></div>
+            <div class="side-bell">
+                <NotificationBell {notifications} {supabase} label="Notifications" />
+                <ThemeToggle size={18} />
+            </div>
             {#if isAdmin}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
             {/if}
@@ -210,7 +215,7 @@
         flex: 0 0 auto;
         border: 1px solid var(--bme-border);
         border-radius: 8px;
-        background: #ffffff;
+        background: var(--bme-surface);
         color: var(--bme-dark-blue);
     }
 
@@ -288,6 +293,9 @@
     }
 
     .side-bell { 
+        display: flex;
+        align-items: center;
+        gap: 10px;
         padding: 4px 0 8px;
         margin-right: auto;
     }

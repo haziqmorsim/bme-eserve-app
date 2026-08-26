@@ -228,7 +228,7 @@
         max-width: 100%;
         margin: 0 auto;
         padding: 1.5rem;
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
     }
 
     .wrap + .wrap {
@@ -242,7 +242,7 @@
     }
 
     .sub {
-        color: #6b7280;
+        color: var(--bme-muted);
         font-size: 0.85rem;
         margin: 0.25rem 0 0.75rem;
     }
@@ -253,7 +253,7 @@
         flex-wrap: wrap;
         margin-bottom: 1.5rem;
         font-size: 0.75rem;
-        color: #6b7280;
+        color: var(--bme-muted);
     }
 
     .legend span {
@@ -319,11 +319,11 @@
 
     .strong {
         font-weight: 600;
-        color: #1f2933;
+        color: var(--bme-ink);
     }
 
     .muted {
-        color: #6b7280;
+        color: var(--bme-muted);
     }
 
     .pn {
@@ -333,7 +333,7 @@
 
     .nm {
         display: block;
-        color: #6b7280;
+        color: var(--bme-muted);
         font-size: 0.8rem;
     }
 
@@ -357,12 +357,16 @@
         color: #c1121f; 
     }
 
+    :root[data-theme='dark'] .dir.down {
+        color: #ff9d8f;
+    }
+
     .dir.flat { 
-        color: #9ca3af; 
+        color: var(--bme-muted); 
     }
 
     .hist { 
-        color: #6b7280; 
+        color: var(--bme-muted); 
     }
 
     .hist.thin { 
@@ -370,14 +374,18 @@
         font-weight: 600; 
     }
 
+    :root[data-theme='dark'] .hist.thin {
+        color: #ffcc66;
+    }
+
     .empty {
-        color: #6b7280;
+        color: var(--bme-muted);
         padding: 2rem;
         text-align: center;
     }
 
     .caveat {
-        color: #6b7280;
+        color: var(--bme-muted);
         font-size: 0.78rem;
         font-style: italic;
         margin: 0 0 1.25rem;
@@ -394,8 +402,8 @@
         font-size: 0.75rem;
         padding: 0.2rem 0.55rem;
         border-radius: 999px;
-        background: #f3f4f6;
-        color: #4b5563;
+        background: var(--bme-surface-2);
+        color: var(--bme-muted);
     }
 
     .pill.overdue {
@@ -403,9 +411,19 @@
         color: #9b1c1c;
     }
 
+    :root[data-theme='dark'] .pill.overdue {
+        background: #3a1c18;
+        color: #ff9d8f;
+    }
+
     .pill.due_soon {
         background: #fef3c7;
         color: #92400e;
+    }
+
+    :root[data-theme='dark'] .pill.due_soon {
+        background: #3a2f0f;
+        color: #ffcc66;
     }
 
     .pill.upcoming {
@@ -413,12 +431,25 @@
         color: #3f6212;
     }
 
+    :root[data-theme='dark'] .pill.upcoming {
+        background: #1e3212;
+        color: #9adf6c;
+    }
+
     tr.overdue {
         background: #fef6f6;
     }
 
+    :root[data-theme='dark'] tr.overdue {
+        background: #2a1614;
+    }
+
     tr.due_soon {
         background: #fffbeb;
+    }
+
+    :root[data-theme='dark'] tr.due_soon {
+        background: #2a2410;
     }
 
     .nm.overdue {
@@ -426,9 +457,17 @@
         font-weight: 600;
     }
 
+    :root[data-theme='dark'] .nm.overdue {
+        color: #ff9d8f;
+    }
+
     .nm.due_soon {
         color: #92400e;
         font-weight: 600;
+    }
+
+    :root[data-theme='dark'] .nm.due_soon {
+        color: #ffcc66;
     }
 
     .mono {
@@ -439,7 +478,7 @@
     .due {
         display: block;
         font-weight: 600;
-        color: #1f2933;
+        color: var(--bme-ink);
     }
 
     .conf {
@@ -457,29 +496,39 @@
         color: #3f6212;
     }
 
+    :root[data-theme='dark'] .conf.high {
+        background: #1e3212;
+        color: #9adf6c;
+    }
+
     .conf.medium {
         background: #fef3c7;
         color: #92400e;
     }
 
+    :root[data-theme='dark'] .conf.medium {
+        background: #3a2f0f;
+        color: #ffcc66;
+    }
+
     .conf.low {
-        background: #f3f4f6;
-        color: #6b7280;
+        background: var(--bme-surface-2);
+        color: var(--bme-muted);
     }
 
     .toggle {
         margin-top: 1rem;
         background: none;
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--bme-border);
         border-radius: 6px;
         padding: 0.4rem 0.8rem;
         font-size: 0.82rem;
-        color: #374151;
+        color: var(--bme-ink);
         cursor: pointer;
     }
 
     .toggle:hover {
-        background: #f9fafb;
+        background: var(--bme-hover);
     }
 
     @media (max-width: 820px) {

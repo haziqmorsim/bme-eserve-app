@@ -1,11 +1,21 @@
 import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
+import { toMap, str, bool } from "$lib/settings";
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
     const { session } = await safeGetSession();
     if (session) throw redirect(303, '/app');
 
+    const { data: settingRows } = await supabase
+        .from('app_settings')
+        .select('key, value')
+        .eq('is_public', true)
+        .in('key', ['login_announcement_enabled', 'login_banner']);
+    const m = toMap(settingRows);
+    const announcement = bool(m, 'login_announcement_enabled', false) ? str(m, 'login_banner', '') : '';
+
     return {
+        announcement, 
         title: "Sign In"
     }
 };

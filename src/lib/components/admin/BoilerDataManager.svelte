@@ -449,16 +449,30 @@
         color: #3f6b21;
     }
 
+    :root[data-theme='dark'] .state.normal {
+        color: #9adf6c;
+    }
+
     .state.warning {
         background: #fdf3d8;
         border-color: var(--bme-gold);
         color: #7a5a00;
     }
 
+    :root[data-theme='dark'] .state.warning {
+        background: #3a2f0f;
+        color: #ffcc66;
+    }
+
     .state.attention {
         background: #fdeaea;
         border-color: var(--bme-red);
         color: #a11f1c;
+    }
+
+    :root[data-theme='dark'] .state.attention {
+        background: #3a1c18;
+        color: #ff9d8f;
     }
 
     .adm-form.stack {
