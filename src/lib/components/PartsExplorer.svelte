@@ -751,7 +751,7 @@
 		border: none;
 		background: none;
 		font-size: 12.5px;
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--bme-dark-blue);
 		cursor: pointer;
 	}

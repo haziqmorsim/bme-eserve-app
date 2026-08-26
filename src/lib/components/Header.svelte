@@ -68,7 +68,7 @@
                 <p class="greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
             </div>
             <div class="actions">
-                <!-- <ThemeToggle /> -->
+                <ThemeToggle />
                 <a
                     href="/app/profile"
                     class="profile-icon"
