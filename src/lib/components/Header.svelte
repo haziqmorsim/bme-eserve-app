@@ -40,7 +40,7 @@
     <div class="row">
         <div>
             <a href="/app" class="brand">
-                <img src="/images/bme-logo.jpg" alt="BME e-Serve" />
+                <img src="/images/bme-logo.png" alt="BME e-Serve" />
             </a>
         </div>
         <div class="pages">
@@ -159,7 +159,7 @@
     }
 
     .brand img {
-        height: 120px;
+        height: 100px;
         display: block;
     }
 
