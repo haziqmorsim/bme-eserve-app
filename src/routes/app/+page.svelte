@@ -7,15 +7,7 @@
 </script>
 
 <div class="layout">
-    <BoilerList
-        boilers={data.boilers}
-        projects={data.projects}
-        boilerProjects={data.boilerProjects}
-        activeBoilerId={data.boilerId}
-        activeProjectId={data.activeProjectId}
-        customerNoBoilers={data.customerNoBoilers}
-        supabase={data.supabase}
-        profile={data.profile} />
+    <BoilerList boilers={data.boilers} activeBoilerId={data.boilerId} customerNoBoilers={data.customerNoBoilers} supabase={data.supabase} profile={data.profile} />
 
     <div class="content">
         {#if !data.boiler}
@@ -25,14 +17,14 @@
             </div>
         {:else}
             <div class="tabbar">
-                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
-                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
+                <a href={`/app?boiler=${data.boilerId}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
+                <a href={`/app?boiler=${data.boilerId}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
             </div>
             <div class="panel">
                 {#if data.tab === 'parts'}
                     <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} readings={data.sectionReadings} />
                 {:else}
-                    <Dashboard boiler={data.boiler} readings={data.sectionReadings} />
+                    <Dashboard boiler={data.boiler} specs={data.boilerSpecs} readings={data.sectionReadings} />
                 {/if}
             </div>
         {/if}
@@ -79,7 +71,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: var(--bme-surface);
+        background-color: #ffffff;
         color: var(--bme-muted);
     }
 

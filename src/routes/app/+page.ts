@@ -14,19 +14,10 @@ export const load: PageLoad = async ({ parent, url }) => {
         assignedIds = new Set((cb ?? []).map((r: any) => r.boiler_id));
     }
 
-    const [{ data: boilersRaw }, { data: projectsRaw }, { data: boilerProjectsRaw }] = await Promise.all([
-        supabase
-            .from('boilers')
-            .select('id, code, name')
-            .order('code', { ascending: true }),
-        supabase
-            .from('projects')
-            .select('id, project_no, name, location, sort_order')
-            .order('sort_order', { ascending: true }),
-        supabase
-            .from('boiler_projects')
-            .select('boiler_id, project_id')
-    ]);
+    const { data: boilersRaw } = await supabase
+        .from('boilers')
+        .select('id, code, name')
+        .order('code', { ascending: true });
 
     let boilers = (boilersRaw ?? []) as Boiler[];
     if (assignedIds) {
@@ -34,18 +25,15 @@ export const load: PageLoad = async ({ parent, url }) => {
         boilers = boilers.filter((b: any) => ids.has(b.id));
     }
 
-    const projects = projectsRaw ?? [];
-    const boilerProjects = boilerProjectsRaw ?? [];
-
     const customerNoBoilers = isCustomer && (assignedIds?.size ?? 0) === 0;
 
     const boilerId = url.searchParams.get('boiler');
     const tab = (url.searchParams.get('tab') ?? 'dashboard') as 'dashboard' | 'parts';
-    const activeProjectId = url.searchParams.get('project');
 
     let boiler: Boiler | null = null;
     let components: Component[] = [];
     let parts: Part[] = [];
+    let boilerSpecs: any[] = [];
     let sectionReadings: any[] = [];
 
     const canViewBoiler = !!boilerId && (!isCustomer || assignedIds!.has(boilerId));
@@ -73,24 +61,30 @@ export const load: PageLoad = async ({ parent, url }) => {
             parts = p ?? [];
         }
 
-        const { data: r } = await supabase
-            .from('boiler_section_readings')
-            .select('id, section_key, state, metrics, sort_order')
-            .eq('boiler_id', boilerId)
-            .order('sort_order', { ascending: true });
-        sectionReadings = r ?? [];
+        const [specsRes, readingsRes] = await Promise.all([
+            supabase
+                .from('boiler_specs')
+                .select('id, label, value, sort_order')
+                .eq('boiler_id', boilerId)
+                .order('sort_order', { ascending: true }), 
+            supabase
+                .from('boiler_section_readings')
+                .select('id, section_key, state, metrics, sort_order')
+                .eq('boiler_id', boilerId)
+                .order('sort_order', { ascending: true })
+        ]);
+        boilerSpecs = specsRes.data ?? [];
+        sectionReadings = readingsRes.data ?? [];
     }
 
     return {
         boilers, 
-        projects,
-        boilerProjects,
         boiler, 
         components, 
         parts,
+        boilerSpecs, 
         sectionReadings, 
         boilerId: canViewBoiler ? boilerId : null, 
-        activeProjectId, 
         tab, 
         customerNoBoilers, 
         title: "Home"

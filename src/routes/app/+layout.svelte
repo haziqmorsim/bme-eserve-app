@@ -4,23 +4,13 @@
     import Toaster from "$lib/components/Toaster.svelte";
     import SessionTimeout from "$lib/components/SessionTimeout.svelte";
     import AppSkeleton from "$lib/components/AppSkeleton.svelte";
-    import WhatsNewModal from "$lib/components/WhatsNewModal.svelte";
     import { navigating } from "$app/stores";
     import { afterNavigate } from "$app/navigation";
-    import { untrack } from "svelte";
     import { logActivity } from "$lib/activity";
     import { quoteItems } from "$lib/stores/quote";
-    import { toMap, bool } from "$lib/settings";
 
     let { data, children } = $props();
     let { supabase } = $derived(data);
-
-    let whatsNewSnapshot = $state(untrack(() => data.whatsNew));
-
-    const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
-    let settingsMap = $derived(toMap(data.settings));
-    let maintenanceOn = $derived(bool(settingsMap, 'maintenance_mode', false));
-    let isStaff = $derived(STAFF.has(data.profile?.role));
 
     async function handleTimeout() {
         if (data.profile?.id) {
@@ -86,9 +76,6 @@
 
 <div class="shell">
     <Header profile={data.profile} pendingCount={data.pendingCount} enquiryCount={data.enquiryCount} notifications={data.notifications} supabase={data.supabase} />
-    {#if maintenanceOn && isStaff}
-        <div class="maint-bar">Maintenance mode is ON — customers cannot access the portal.</div>
-    {/if}
     <main>
         {#if showSkeleton}
             <AppSkeleton route={dest} />
@@ -103,23 +90,7 @@
 
 <SessionTimeout onTimeout={handleTimeout} />
 
-<WhatsNewModal
-    show={whatsNewSnapshot.show}
-    version={whatsNewSnapshot.version}
-    content={whatsNewSnapshot.content}
-    supabase={data.supabase}
-    profileId={data.profile?.id} />
-
 <style>
-    .maint-bar {
-        background: var(--bme-orange, #b26a00);
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 600;
-        text-align: center;
-        padding: 7px 12px;
-    }
-
     .shell {
         display: flex;
         flex-direction: column;

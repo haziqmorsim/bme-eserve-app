@@ -1,6 +1,4 @@
 <script lang="ts">
-    import GeneralManager from "$lib/components/admin/GeneralManager.svelte";
-    import ProjectManager from "$lib/components/admin/ProjectManager.svelte";
     import BoilerManager from "$lib/components/admin/BoilerManager.svelte";
     import PartManager from "$lib/components/admin/PartManager.svelte";
     import UserManager from "$lib/components/admin/UserManager.svelte";
@@ -8,31 +6,21 @@
     import BoilerDataManager from "$lib/components/admin/BoilerDataManager.svelte";
 
     let { data } = $props();
-    let tab = $state<'general' | 'projects' | 'boilers' | 'parts' | 'users' | 'faq'>('projects');
+    let tab = $state<'boilers' | 'parts' | 'users' | 'faq'>('boilers');
 </script>
 
 <h1>Settings</h1>
 
 <div class="tabbar">
-    <button class="tab" class:active={tab === 'projects'} onclick={() => (tab = 'projects')}>Projects</button>
     <button class="tab" class:active={tab === 'boilers'} onclick={() => (tab = 'boilers')}>Boilers</button>
     <button class="tab" class:active={tab === 'parts'} onclick={() => (tab = 'parts')}>Parts</button>
     <button class="tab" class:active={tab === 'users'} onclick={() => (tab = 'users')}>Users</button>
-    <button class="tab" class:active={tab === 'general'} onclick={() => (tab = 'general')}>General</button>
     <button class="tab" class:active={tab === 'faq'} onclick={() => (tab = 'faq')}>FAQ</button>
 </div>
 
-{#if tab === 'general'}
+{#if tab === 'boilers'}
     <section>
-        <GeneralManager settings={data.appSettings} supabase={data.supabase} profile={data.profile} />
-    </section>
-{:else if tab === 'projects'}
-    <section>
-        <ProjectManager projects={data.projects} supabase={data.supabase} />
-    </section>
-{:else if tab === 'boilers'}
-    <section>
-        <BoilerManager boilers={data.boilers} projects={data.projects} boilerProjects={data.boilerProjects} supabase={data.supabase} />
+        <BoilerManager boilers={data.boilers} supabase={data.supabase} />
     </section>
 
     <section class="bd-section">
@@ -78,7 +66,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: var(--bme-surface);
+        background-color: #ffffff;
         color: var(--bme-muted);
     }
 
@@ -96,10 +84,6 @@
         .tabbar {
             width: 100%;
             justify-content: space-between;
-        }
-
-        .tab {
-            width: 30%;
         }
     }
 </style>

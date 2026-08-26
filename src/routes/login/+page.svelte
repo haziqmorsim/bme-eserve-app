@@ -1,9 +1,8 @@
 <script lang="ts">
     import { enhance } from "$app/forms";
     import { untrack } from "svelte";
-    import Announcement from "$lib/components/Announcement.svelte";
 
-    let { data, form } = $props();
+    let { form } = $props();
     let loading = $state(false);
 
     let email = $state(untrack(() => form?.email ?? ''));
@@ -20,7 +19,6 @@
 </script>
 
 <div class="auth">
-    <Announcement message={data.announcement} />
     <div class="card panel">
         <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
         <h1>BME e-Serve App</h1>

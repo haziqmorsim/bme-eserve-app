@@ -5,7 +5,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const { profile } = await parent();
     if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Forbidden');
 
-    const [boilers, components, parts, users, assignments, lastSignIns, faqs, boilerSpecs, boilerReadings, projects, boilerProjects, appSettings] = await Promise.all([
+    const [boilers, components, parts, users, assignments, lastSignIns, faqs, boilerSpecs, boilerReadings] = await Promise.all([
         supabase.from('boilers').select('*').order('code'),
         supabase.from('components').select('id, name, boiler_id').order('name'),
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
@@ -17,10 +17,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         supabase.rpc('user_last_sign_ins'), 
         supabase.from('faqs').select('id, question, answer, sort_order, is_published').order('sort_order', { ascending: true }), 
         supabase.from('boiler_specs').select('id, boiler_id, label, value, sort_order').order('sort_order', { ascending: true }), 
-        supabase.from('boiler_section_readings').select('id, boiler_id, section_key, state, metrics, sort_order').order('sort_order', { ascending: true }),
-        supabase.from('projects').select('id, project_no, name, location, sort_order').order('sort_order', { ascending: true }),
-        supabase.from('boiler_projects').select('boiler_id, project_id'),
-        supabase.from('app_settings').select('key, value, is_public, updated_at').order('key', { ascending: true })
+        supabase.from('boiler_section_readings').select('id, boiler_id, section_key, state, metrics, sort_order').order('sort_order', { ascending: true })
     ]);
 
     const lastSignInById: Record<string, string | null> = {};
@@ -39,9 +36,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         boilerSpecs: boilerSpecs.data ?? [], 
         boilerReadings: boilerReadings.data ?? [], 
         assignments: assignments.data ?? [],
-        projects: projects.data ?? [],
-        boilerProjects: boilerProjects.data ?? [],
-        appSettings: appSettings.data ?? [],
         title: "Settings"
     };
 };

@@ -1,6 +1,5 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
-import { toMap, str, bool } from "$lib/settings";
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
     const { session, user } = await safeGetSession();
@@ -8,43 +7,11 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, role, region_id, must_change_password, whats_new_seen_version')
+        .select('id, full_name, company, role, region_id, must_change_password')
         .eq('id', user.id)
         .single();
 
     if (profile?.must_change_password) throw redirect(303, '/change-password');
-
-    const { data: settingRows, error: settingsError } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .eq('is_public', true);
-
-    if (settingsError) {
-        console.error('[app_settings] read failed:', settingsError.message);
-    }
-
-    const MAINTENANCE_EXEMPT = new Set(['admin', 'manager', 'coo', 'developer']);
-    const settingsMap = toMap(settingRows);
-    const maintenanceOn = bool(settingsMap, 'maintenance_mode', false);
-
-    if (!settingRows || settingRows.length === 0) {
-        console.warn('[app_settings] no public rows visible to this user - check migrations 0044/0045 were applied.');
-    }
-
-    if (maintenanceOn && !MAINTENANCE_EXEMPT.has(profile?.role)) {
-        throw redirect(303, '/maintenance');
-    }
-
-    const whatsNewVersion = str(settingsMap, 'whats_new_version', '');
-    const whatsNewContent = str(settingsMap, 'whats_new_content', '');
-    const whatsNew = {
-        show: bool(settingsMap, 'whats_new_enabled', false)
-            && !!whatsNewVersion
-            && !!whatsNewContent
-            && profile?.whats_new_seen_version !== whatsNewVersion, 
-        version: whatsNewVersion, 
-        content: whatsNewContent
-    };
 
     const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
     const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
@@ -76,13 +43,5 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         .order('created_at', { ascending: false })
         .limit(30);
 
-    return {
-        profile,
-        userEmail: user.email,
-        pendingCount,
-        enquiryCount,
-        notifications: notifications ?? [],
-        settings: settingRows ?? [],
-        whatsNew
-    };
+    return { profile, userEmail: user.email, pendingCount, enquiryCount, notifications: notifications ?? [] };
 };

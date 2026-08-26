@@ -1,13 +1,6 @@
 export const SLA_WARN_HOURS = 24;
 export const SLA_OVERDUE_HOURS = 48;
 
-export type SlaThresholds = { warnHours: number; overdueHours: number };
-
-export const DEFAULT_SLA: SlaThresholds = {
-    warnHours: SLA_WARN_HOURS,
-    overdueHours: SLA_OVERDUE_HOURS
-};
-
 export type SlaState = 'ontrack' | 'aging' | 'overdue';
 
 export const SLA_LABEL: Record<SlaState, string> = {
@@ -20,10 +13,10 @@ export function hoursSince(iso: string, now: number = Date.now()): number {
     return (now - new Date(iso).getTime()) / 3_600_000;
 }
 
-export function slaState(iso: string, now: number = Date.now(), t: SlaThresholds = DEFAULT_SLA): SlaState {
+export function slaState(iso: string, now: number = Date.now()): SlaState {
     const h = hoursSince(iso, now);
-    if (h >= t.overdueHours) return 'overdue';
-    if (h >= t.warnHours) return 'aging';
+    if (h >= SLA_OVERDUE_HOURS) return 'overdue';
+    if (h >= SLA_WARN_HOURS) return 'aging';
     return 'ontrack';
 }
 
@@ -68,10 +61,10 @@ export function weekdayHoursSince(iso: string, now: number = Date.now()): number
     return weekdayMsBetween(new Date(iso).getTime(), now) / 3_600_000;
 }
 
-export function slaStateWeekday(iso: string, now: number = Date.now(), t: SlaThresholds = DEFAULT_SLA): SlaState {
+export function slaStateWeekday(iso: string, now: number = Date.now()): SlaState {
     const h = weekdayHoursSince(iso, now);
-    if (h >= t.overdueHours) return 'overdue';
-    if (h >= t.warnHours) return 'aging';
+    if (h >= SLA_OVERDUE_HOURS) return 'overdue';
+    if (h >= SLA_WARN_HOURS) return 'aging';
     return 'ontrack';
 }
 

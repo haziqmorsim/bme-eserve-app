@@ -1,17 +1,7 @@
 <script lang="ts">
-    import { page } from "$app/stores";
-    import { slaState, ageLabel, slaStateWeekday, weekdayAgeLabel, SLA_LABEL, DEFAULT_SLA } from "$lib/sla";
-    import { toMap, num } from "$lib/settings";
+    import { slaState, ageLabel, slaStateWeekday, weekdayAgeLabel, SLA_LABEL } from "$lib/sla";
 
     let { since, weekdays = false } = $props<{ since: string; weekdays?: boolean }>();
-
-    let thresholds = $derived.by(() => {
-        const m = toMap(($page.data as any)?.settings);
-        return {
-            warnHours: num(m, 'sla_warn_hours', DEFAULT_SLA.warnHours),
-            overdueHours: num(m, 'sla_overdue_hours', DEFAULT_SLA.overdueHours)
-        };
-    });
 
     let now = $state(Date.now());
     $effect(() => {
@@ -19,7 +9,7 @@
         return () => clearInterval(t);
     });
 
-    let sla = $derived(weekdays ? slaStateWeekday(since, now, thresholds) : slaState(since, now, thresholds));
+    let sla = $derived(weekdays ? slaStateWeekday(since, now) : slaState(since, now));
     let age = $derived(weekdays ? weekdayAgeLabel(since, now) : ageLabel(since, now));
 </script>
 
@@ -51,29 +41,14 @@
         background-color: #e4f3d8; 
         color: #2f5e18; 
     }
-
-    :root[data-theme='dark'] .sla.ontrack {
-        background-color: #1e3212;
-        color: #9adf6c;
-    }
     
     .sla.aging   { 
         background-color: #fff3d6; 
         color: #97700a; 
-    }
-
-    :root[data-theme='dark'] .sla.aging {
-        background-color: #3a2f0f;
-        color: #ffcc66;
     }
     
     .sla.overdue { 
         background-color: #fbe3e0; 
         color: #8e261b; 
         }
-
-    :root[data-theme='dark'] .sla.overdue {
-        background-color: #3a1c18;
-        color: #ff9d8f;
-    }
 </style>

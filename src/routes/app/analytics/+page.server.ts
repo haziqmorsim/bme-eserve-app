@@ -1,7 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { slaStateWeekday, DEFAULT_SLA } from "$lib/sla";
-import { toMap, num } from "$lib/settings";
+import { slaStateWeekday } from "$lib/sla";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
@@ -34,21 +33,17 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
-    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }, { data: chatSessionRows }, { data: chatMessageRows }] = await Promise.all([
+    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
         supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
         supabase.from('enquiries').select('id, name, created_at'), 
-        supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000), 
-        supabase.from('chat_sessions').select('id, user_id, started_at, ended_at, end_reason').gte('started_at', activitySince), 
-        supabase.from('chat_messages').select('session_id, user_id, role, created_at').gte('created_at', activitySince).limit(10000)
+        supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000)
     ]);
 
     const quotes = quoteRows ?? [];
     const approvals = approvalRows ?? [];
     const enquiries = enquiryRows ?? [];
     const activityEvents = eventRows ?? [];
-    const chatSessions = chatSessionRows ?? [];
-    const chatMessages = chatMessageRows ?? [];
 
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
     const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
@@ -121,60 +116,15 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         count: levelN[l]
     }));
 
-    const [{ data: boilerRows }, { data: projectRows }, { data: boilerProjectRows }] = await Promise.all([
-        supabase.from('boilers').select('id, code').order('code', { ascending: true }),
-        supabase.from('projects').select('id, project_no, name, sort_order').order('sort_order', { ascending: true }),
-        supabase.from('boiler_projects').select('boiler_id, project_id')
-    ]);
-
-    const { data: slaRows } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['sla_warn_hours', 'sla_overdue_hours']);
-    const slaMap = toMap(slaRows);
-    const slaThresholds = {
-        warnHours: num(slaMap, 'sla_warn_hours', DEFAULT_SLA.warnHours),
-        overdueHours: num(slaMap, 'sla_overdue_hours', DEFAULT_SLA.overdueHours)
-    };
-
-    const allBoilers = boilerRows ?? [];
-    const allProjects = projectRows ?? [];
-    const allBoilerProjects = boilerProjectRows ?? [];
-
-    const boilerIdByCode: Record<string, string> = {};
-    for (const b of allBoilers) boilerIdByCode[(b as any).code] = (b as any).id;
-
-    const projectIdsByBoiler: Record<string, string[]> = {};
-    for (const bp of allBoilerProjects) {
-        (projectIdsByBoiler[(bp as any).boiler_id] ??= []).push((bp as any).project_id);
-    }
-
     const boilerCount: Record<string, number> = {};
-    for (const b of allBoilers) boilerCount[(b as any).code] = 0;
-    const projectCount: Record<string, number> = {};
-    for (const p of allProjects) projectCount[(p as any).id] = 0;
-
     for (const q of quotes) {
-        const codes = [...new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean))] as string[];
-        const touchedProjects = new Set<string>();
-        for (const code of codes) {
-            if (!(code in boilerCount)) continue;
-            boilerCount[code]++;
-            const bid = boilerIdByCode[code];
-            for (const pid of projectIdsByBoiler[bid] ?? []) touchedProjects.add(pid);
-        }
-        for (const pid of touchedProjects) {
-            if (pid in projectCount) projectCount[pid]++;
-        }
+        const codes = new Set(((q as any).quote_items ?? []).map((it: any) => it.boiler_code).filter(Boolean));
+        for (const c of codes) boilerCount[c as string] = (boilerCount[c as string] ?? 0) + 1;
     }
-
-    const volumeByBoiler = allBoilers
-        .map((b: any) => ({ code: b.code, count: boilerCount[b.code] ?? 0 }))
-        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
-
-    const volumeByProject = allProjects
-        .map((p: any) => ({ code: p.project_no, name: p.name, count: projectCount[p.id] ?? 0 }))
-        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+    const volumeByBoiler = Object.entries(boilerCount)
+        .map(([code, count]) => ({ code, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
     const latestApproval: Record<string, string> = {};
     for (const a of approvals) {
@@ -189,7 +139,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const q of quotes) {
         if (q.status !== 'open') continue;
         const since = latestApproval[q.id] ?? q.created_at;
-        const st = slaStateWeekday(since, now, slaThresholds);
+        const st = slaStateWeekday(since, now);
         if (st === 'overdue') overdueCount++;
         else if (st === 'aging') agingCount++;
         else onTrack++;
@@ -249,25 +199,12 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         enquiries: enquiries30
     };
 
-    const chatUserSet = new Set<string>();
-    for (const s of chatSessions) if (s.user_id) chatUserSet.add(s.user_id);
-
-    const userMessageCount = chatMessages.filter((m: any) => m.role === 'user').length;
-    const chatSessionCount = chatSessions.length;
-
-    const chatSummary = {
-        sessions: chatSessionCount, 
-        messages: chatMessages.length, 
-        users: chatUserSet.size, 
-        avgMessagesPerSession: chatSessionCount > 0 ? Math.round((userMessageCount / chatSessionCount) * 10) / 10 : 0
-    };
-
     const userCount: Record<string, number> = {};
     for (const e of activityEvents) if (e.user_id) userCount[e.user_id] = (userCount[e.user_id] ?? 0) + 1;
     const topUsers = Object.entries(userCount)
         .map(([id, count]) => ({ name: person[id]?.name ?? 'User', role: person[id]?.role ?? null, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 6);
 
     const pathCount: Record<string, number> = {};
     for (const e of pageViews) {
@@ -277,7 +214,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const topPages = Object.entries(pathCount)
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 6);
 
     const quoteRef: Record<string, string> = {};
     for (const q of quotes) quoteRef[q.id] = (q as any).reference;
@@ -346,12 +283,9 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         avgResolutionMs, 
         handlingPerLevel, 
         volumeByBoiler, 
-        volumeByProject, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
-        slaThresholds, 
         agingList, 
         activitySummary, 
-        chatSummary, 
         topUsers, 
         topPages, 
         recentActivity, 

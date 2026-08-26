@@ -21,7 +21,6 @@
 
     let maxHandle = $derived(Math.max(1, ...data.handlingPerLevel.map((l: any) => l.avgMs ?? 0)));
     let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
-    let maxProject = $derived(Math.max(1, ...data.volumeByProject.map((p: any) => p.count)));
     let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
     let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
     let maxPage = $derived(Math.max(1, ...data.topPages.map((p: any) => p.count)));
@@ -97,17 +96,17 @@
             <div class="ag ontrack">
                 <span class="ag-n">{data.openAging.onTrack}</span>
                 <span class="ag-l">On track</span>
-                <span class="ag-t">&lt; {data.slaThresholds.warnHours}h</span>
+                <span class="ag-t">&lt; 24h</span>
             </div>
             <div class="ag aging">
                 <span class="ag-n">{data.openAging.aging}</span>
                 <span class="ag-l">Aging</span>
-                <span class="ag-t">&ge; {data.slaThresholds.warnHours}h</span>
+                <span class="ag-t">&ge; 24h</span>
             </div>
             <div class="ag overdue">
                 <span class="ag-n">{data.openAging.overdue}</span>
                 <span class="ag-l">Overdue</span>
-                <span class="ag-t">&ge; {data.slaThresholds.overdueHours}h</span>
+                <span class="ag-t">&ge; 48h</span>
             </div>
         </div>
 
@@ -126,39 +125,20 @@
         {/if}
     </div>
 
-    <div class="card section">
-        <h2>Average handling time per level</h2>
-        <div class="bars">
-            {#each data.handlingPerLevel as l (l.level)}
-                <div class="bar-row">
-                    <span class="bar-e">{l.label}</span>
-                    <div class="bar-track">
-                        <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
-                    </div>
-                    <span class="bar-val">{fmtDur(l.avgMs)}</span>
-                </div>
-            {/each}
-        </div>
-    </div>
-
     <div class="grid2">
         <div class="card section">
-            <h2>Requests by project</h2>
-            {#if data.volumeByProject.length === 0}
-                <p class="hint">No project data.</p>
-            {:else}
-                <div class="bars">
-                    {#each data.volumeByProject as p (p.code)}
-                        <div class="bar-row">
-                            <span class="bar-key" title={p.name}>{p.code}</span>
-                            <div class="bar-track">
-                                <div class="bar-fill blue" style="width: {Math.round((p.count / maxProject) * 100)}%"></div>
-                            </div>
-                            <span class="bar-val">{p.count}</span>
+            <h2>Average handling time per level</h2>
+            <div class="bars">
+                {#each data.handlingPerLevel as l (l.level)}
+                    <div class="bar-row">
+                        <span class="bar-e">{l.label}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill blue" style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"></div>
                         </div>
-                    {/each}
-                </div>
-            {/if}
+                        <span class="bar-val">{fmtDur(l.avgMs)}</span>
+                    </div>
+                {/each}
+            </div>
         </div>
         <div class="card section">
             <h2>Requests by boiler</h2>
@@ -188,14 +168,6 @@
             <div class="ua"><span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l">Page views</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l">Review actions</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span></div>
-        </div>
-
-        <h3 class="ua-sub">Chat activity</h3>
-        <div class="chat-stats">
-            <div class="chat-tile"><span class="chat-n">{data.chatSummary.sessions}</span><span class="chat-l">Chat sessions</span></div>
-            <div class="chat-tile"><span class="chat-n">{data.chatSummary.messages}</span><span class="chat-l">Messages</span></div>
-            <div class="chat-tile"><span class="chat-n">{data.chatSummary.users}</span><span class="chat-l">Users who chatted</span></div>
-            <div class="chat-tile"><span class="chat-n">{data.chatSummary.avgMessagesPerSession}</span><span class="chat-l">Avg. messages / session</span></div>
         </div>
 
         <h3 class="ua-sub">Daily activity</h3>
@@ -326,10 +298,6 @@
 
     .stat-value.closed {
         color: #2f5e18;
-    }
-
-    :root[data-theme='dark'] .stat-value.closed {
-        color: #9adf6c;
     }
 
     .stat-sub {
@@ -511,29 +479,14 @@
         color: #2f5e18; 
     }
 
-    :root[data-theme='dark'] .ag.ontrack {
-        background-color: #1e3212;
-        color: #9adf6c;
-    }
-
     .ag.aging   { 
         background-color: #fff3d6; 
         color: #97700a; 
     }
 
-    :root[data-theme='dark'] .ag.aging {
-        background-color: #3a2f0f;
-        color: #ffcc66;
-    }
-
     .ag.overdue { 
         background-color: #fbe3e0; 
         color: #8e261b; 
-    }
-
-    :root[data-theme='dark'] .ag.overdue {
-        background-color: #3a1c18;
-        color: #ff9d8f;
     }
 
     .aging-list { 
@@ -577,26 +530,6 @@
         gap: 12px;
         margin-bottom: 20px;
     }
-
-    .chat-stats {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 4px;
-    }
-
-    .chat-tile {
-        background: var(--bme-light-green);
-        border-radius: 10px;
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        text-align: center;
-    }
-
-    .chat-n { font-size: 24px; font-weight: 700; color: var(--bme-darker-green); }
-    .chat-l { font-size: 12.5px; color: var(--bme-muted); }
 
     .ua {
         background: var(--bme-light-green);
@@ -796,10 +729,6 @@
 
         .ua:nth-child(5) {
             grid-column: 4 / span 2;
-        }
-
-        .chat-stats {
-            grid-template-columns: repeat(2, 1fr);
         }
 
         .spark { 

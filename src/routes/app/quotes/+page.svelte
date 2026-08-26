@@ -194,7 +194,7 @@
         done = true;
         submitting = false;
 
-        addToast('Request submitted successfully.')
+        addToast('Request is submitted successfully.')
     }
 </script>
 
@@ -430,7 +430,7 @@
     }
 
     .coupon-btn.ghost {
-        background: var(--bme-surface);
+        background: #ffffff;
         color: var(--bme-dark-blue);
     }
 

@@ -2,7 +2,6 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { appUrl, ctaButton } from "../_shared/email-ui.ts";
-import { getAdminEmail } from "../_shared/settings.ts";
 
 const BRAND = {
     blue: '#004b8d',
@@ -97,9 +96,7 @@ Deno.serve(async (req) => {
         const logoUrl = Deno.env.get('LOGO_URL') ?? null;
 
         try {
-            const adminEmail = await getAdminEmail(admin);
-            if (!adminEmail) throw new Error('No admin email configured (Settings > General).');
-            await sendEmail(adminEmail, `General enquiry from ${name.trim()}`, adminHtml);
+            await sendEmail(Deno.env.get('ADMIN_EMAIL')!, `General enquiry from ${name.trim()}`, adminHtml);
         } catch (e) {
             console.error('Admin enquiry email failed:', e);
         }

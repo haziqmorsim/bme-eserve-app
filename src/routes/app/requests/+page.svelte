@@ -265,7 +265,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: var(--bme-surface);
+        background-color: #ffffff;
         color: var(--bme-muted);
         cursor: pointer;
         transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
@@ -512,11 +512,6 @@
     .status.reopened {
         background-color: #fff3d6;
         color: #97700a;
-    }
-
-    :root[data-theme='dark'] .status.reopened {
-        background-color: #3a2f0f;
-        color: #ffcc66;
     }
     
     textarea:disabled {

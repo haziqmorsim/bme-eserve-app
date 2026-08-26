@@ -2,7 +2,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { appUrl, ctaButton } from "../_shared/email-ui.ts";
-import { getAdminEmail } from "../_shared/settings.ts";
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -22,16 +21,8 @@ Deno.serve(async (req) => {
             .single();
         if (error || !quote) return json(404, { error: 'Quote not found' });
 
-        const { data: profile } = await admin
-            .from('profiles')
-            .select('company')
-            .eq('id', quote.user_id)
-            .single();
-
         const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
-
         const customerEmail = userInfo.user?.email ?? null;
-        const customerCompany = profile?.company ?? null;
 
         const rows = quote.quote_items
         .map(
@@ -55,7 +46,7 @@ Deno.serve(async (req) => {
         const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
             <h2 style="color:#004b8d">New quotation request — ${quote.reference}</h2>
-            <p>From: <strong>${customerEmail ?? 'Unknown e-mail'} (${customerCompany ?? 'Unknown company'})</strong></p>
+            <p>From: <strong>${customerEmail ?? 'unknown'}</strong></p>
             ${quote.notes ? `<p><em>Notes:</em> ${quote.notes}</p>` : ''}
             ${itemsTable}
             <p style="margin-top:20px">Review this request in the BME e-Serve Requests page.</p>
@@ -63,9 +54,7 @@ Deno.serve(async (req) => {
         </div>`;
 
         try {
-            const adminEmail = await getAdminEmail(admin);
-            if (!adminEmail) throw new Error('No admin email configured (Settings > General).');
-            await sendEmail(adminEmail, `New quotation ${quote.reference}`, adminHtml);
+            await sendEmail(Deno.env.get('ADMIN_EMAIL')!, `New quotation ${quote.reference}`, adminHtml);
         } catch (e) {
             console.error('Admin notification email failed:', e);
             warnings.push(`admin_email_failed: ${String(e)}`);

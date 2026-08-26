@@ -286,7 +286,7 @@
         padding: 0;
         border: 1px solid var(--bme-border);
         border-radius: 6px;
-        background: var(--bme-surface);
+        background: #ffffff;
         color: var(--bme-dark-blue);
         cursor: pointer;
     }

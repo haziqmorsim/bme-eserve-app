@@ -5,7 +5,7 @@
 
 <style>
     .footer {
-        background-color: var(--bme-surface);
+        background-color: #ffffff;
         border-top: 1px solid var(--bme-border);
         margin: 0 10px;
         padding: 18px 24px;

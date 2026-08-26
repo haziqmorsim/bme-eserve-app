@@ -6,24 +6,7 @@
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
 
-    let { boilers, supabase, projects = [], boilerProjects = [] } = $props<{
-        boilers: any[];
-        supabase: SupabaseClient;
-        projects?: any[];
-        boilerProjects?: any[];
-    }>();
-
-    let projectsByBoiler = $derived.by(() => {
-        const m: Record<string, string[]> = {};
-        for (const bp of boilerProjects) (m[bp.boiler_id] ??= []).push(bp.project_id);
-        return m;
-    });
-
-    function toggleProject(id: string) {
-        const set = new Set<string>(form.project_ids ?? []);
-        if (set.has(id)) set.delete(id); else set.add(id);
-        form.project_ids = [...set];
-    }
+    let { boilers, supabase } = $props<{ boilers: any[]; supabase: SupabaseClient }>();
 
     const pageSize = 20;
     let search = $state('');
@@ -52,14 +35,11 @@
         return {
             code: '', name: '', capacity: '', pressure: '',
             steam_temperature: '', fuel_type: '', year_commissioned: '', status: '',
-            description: '', design_image_url: '', project_ids: []
+            description: '', design_image_url: ''
         };
     }
     function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
-    function startEdit(b: any) {
-        form = { ...b, project_ids: [...(projectsByBoiler[b.id] ?? [])] };
-        err = ''; fieldErr = {}; editing = b.id;
-    }
+    function startEdit(b: any) { form = { ...b }; err = ''; fieldErr = {}; editing = b.id; }
     function cancel() { editing = null; err = ''; fieldErr = {}; }
 
     function validate(): boolean {
@@ -76,18 +56,6 @@
         return Object.keys(e).length === 0;
     }
 
-    async function syncProjects(boilerId: string): Promise<string | null> {
-        const wanted: string[] = form.project_ids ?? [];
-        const del = await supabase.from('boiler_projects').delete().eq('boiler_id', boilerId);
-        if (del.error) return del.error.message;
-        if (wanted.length) {
-            const rows = wanted.map((project_id: string) => ({ boiler_id: boilerId, project_id }));
-            const ins = await supabase.from('boiler_projects').insert(rows);
-            if (ins.error) return ins.error.message;
-        }
-        return null;
-    }
-
     async function save() {
         if (!validate()) return;
         busy = true; err = '';
@@ -99,22 +67,11 @@
             status: form.status || null, description: form.description || null,
             design_image_url: form.design_image_url || null
         };
-
-        let boilerId: string | null = editing === 'new' ? null : editing;
-        if (editing === 'new') {
-            const resp = await supabase.from('boilers').insert(payload).select('id').single();
-            if (resp.error) { busy = false; err = resp.error.message; return; }
-            boilerId = resp.data.id;
-        } else {
-            const resp = await supabase.from('boilers').update(payload).eq('id', editing);
-            if (resp.error) { busy = false; err = resp.error.message; return; }
-        }
-
-        if (!boilerId) { busy = false; err = 'Something went wrong saving the boiler.'; return; }
-
-        const projErr = await syncProjects(boilerId);
+        const resp = editing === 'new'
+            ? await supabase.from('boilers').insert(payload)
+            : await supabase.from('boilers').update(payload).eq('id', editing);
         busy = false;
-        if (projErr) { err = projErr; return; }
+        if (resp.error) { err = resp.error.message; return; }
         addToast(editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully');
         editing = null;
         await invalidateAll();
@@ -197,23 +154,8 @@
             <label>Status <span class="required">*</span><input bind:value={form.status} class:invalid={fieldErr.status} />
                 {#if fieldErr.status}<span class="field-err">{fieldErr.status}</span>{/if}
             </label>
+            <label class="full">Design Image URL<input bind:value={form.design_image_url} /></label>
             <label class="full">Description<textarea rows="2" bind:value={form.description}></textarea></label>
-            <div class="project-field">
-                <span class="bf-label">Project(s)</span>
-                <div class="project-picker">
-                    {#if projects.length === 0}
-                        <p class="project-empty">No projects have been added yet.</p>
-                    {:else}
-                        {#each projects as p (p.id)}
-                            <label class="project-item">
-                                <input type="checkbox" checked={(form.project_ids ?? []).includes(p.id)} onchange={() => toggleProject(p.id)} />
-                                <span><strong>{p.project_no}</strong> — {p.name} {#if p.location}<span class="pj-loc">({p.location})</span>{/if}</span>
-                            </label>
-                        {/each}
-                    {/if}
-                </div>
-                <p class="project-hint">{(form.project_ids ?? []).length} selected.</p>
-            </div>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
@@ -226,7 +168,7 @@
 {#if deleting}
     <Modal title="Delete Boiler" onclose={() => (deleting = null)}>
         <div class="modal-confirm">
-            <p>Are you sure you want to delete boiler <strong>{deleting.code}</strong>? This also removes its components, parts, and project assignments.</p>
+            <p>Are you sure you want to delete boiler <strong>{deleting.code}</strong>? This also removes its components and parts.</p>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="modal-actions">
                 <button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>
@@ -241,62 +183,5 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-    }
-
-    .project-field {
-        grid-column: 1 / -1;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .bf-label {
-        font-weight: 600;
-        font-size: 13px;
-        color: var(--bme-ink, #1b2733);
-    }
-
-    .project-picker {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        max-height: 220px;
-        overflow-y: auto;
-        border: 1px solid var(--bme-border, #e2e8ef);
-        border-radius: 8px;
-        padding: 8px 10px;
-        background: var(--bme-surface, #ffffff);
-    }
-
-    .project-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
-        padding: 5px 4px;
-        font-size: 13.5px;
-        cursor: pointer;
-    }
-
-    .project-item input {
-        width: auto;
-        margin: 0;
-        cursor: pointer;
-    }
-
-    .pj-loc {
-        color: var(--bme-muted);
-    }
-
-    .project-empty {
-        color: var(--bme-muted);
-        font-size: 13px;
-        margin: 4px;
-    }
-
-    .project-hint {
-        margin: 5px 0 0;
-        font-size: 12.5px;
-        color: var(--bme-muted);
     }
 </style>

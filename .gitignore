@@ -30,9 +30,6 @@ supabase/migrations
 # Schedule
 supabase/schedule
 
-# Diagnose
-supabase/diagnose_maintenance.sql
-
 # Python
 services/forecast/.env
 services/forecast/.venv/

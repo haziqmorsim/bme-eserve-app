@@ -6,19 +6,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BME e‑Serve App</title>
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('bme-theme');
-          var theme = stored === 'dark' || stored === 'light'
-            ? stored
-            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', theme);
-        } catch (e) {
-          // Storage unavailable (private browsing etc.) - default to light.
-        }
-      })();
-    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

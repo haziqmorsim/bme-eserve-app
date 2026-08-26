@@ -5,14 +5,10 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
-    import { page as pageStore } from "$app/stores";
-    import { toMap, num } from "$lib/settings";
 
     let { parts, components, boilers, supabase } = $props<{
         parts: any[]; components: any[]; boilers: any[]; supabase: SupabaseClient;
     }>();
-
-    let lowStockThreshold = $derived(num(toMap(($pageStore.data as any)?.settings), 'low_stock_threshold', 5));
 
     const pageSize = 20;
     let search = $state('');
@@ -164,7 +160,7 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th><!--<th>Price</th><th>Stock</th>--><th>Actions</th></tr>
+                <tr><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {#each paged as p (p.id)}
@@ -173,10 +169,8 @@
                         <td style="vertical-align: middle;">{p.name}</td>
                         <td style="text-align: center; vertical-align: middle;">{boilerCode[p.components?.boiler_id] ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{p.components?.name ?? '—'}</td>
-                        <!-- <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
-                        <td style="text-align: center; vertical-align: middle;">
-                            <span class="stock" class:out={p.stock_quantity === 0} class:low={p.stock_quantity > 0 && p.stock_quantity <= lowStockThreshold}>{p.stock_quantity}</span>
-                        </td> -->
+                        <td style="text-align: center; vertical-align: middle;">{priceCell(p)}</td>
+                        <td style="text-align: center; vertical-align: middle;">{p.stock_quantity}</td>
                         <td>
                             <div class="adm-actions">
                                 <button class="adm-link" onclick={() => startEdit(p)}>Edit</button>
@@ -219,10 +213,10 @@
             <label>Part Name <span class="required">*</span><input bind:value={form.name} class:invalid={fieldErr.name} />
                 {#if fieldErr.name}<span class="field-err">{fieldErr.name}</span>{/if}
             </label>
-            <!-- <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} class:invalid={fieldErr.price} />
+            <label>Price (RM) <span class="required">*</span><input type="number" min="0" step="0.01" bind:value={form.price} class:invalid={fieldErr.price} />
                 {#if fieldErr.price}<span class="field-err">{fieldErr.price}</span>{/if}
             </label>
-            <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label> -->
+            <label><span>Quantity In Stock</span><input type="number" min="0" bind:value={form.stock_quantity} /></label>
             <label class="full">Description<textarea rows="2" bind:value={form.description}></textarea></label>
             <div class="full img-field">
                 <span class="img-label">Part Image  <span class="required">*</span></span>
@@ -269,16 +263,6 @@
 {/if}
 
 <style>
-    /*.stock.low {
-        color: #97700a;
-        font-weight: 700;
-    }
-
-    .stock.out {
-        color: #8e261b;
-        font-weight: 700;
-    }*/
-
     .adm-bar .btn-primary {
         display: inline-flex;
         align-items: center;
