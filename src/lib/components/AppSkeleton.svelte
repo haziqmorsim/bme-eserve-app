@@ -252,7 +252,7 @@
     .skw { animation: skFade 160ms ease both; }
 
     .card {
-        background: #fff;
+        background: var(--bme-surface);
         border: 1px solid var(--bme-border);
         border-radius: 12px;
         box-shadow: var(--shadow);

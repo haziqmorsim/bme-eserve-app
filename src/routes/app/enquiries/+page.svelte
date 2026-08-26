@@ -149,7 +149,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
         color: var(--bme-muted);
         cursor: pointer;
         transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
@@ -267,7 +267,7 @@
         font-family: inherit;
         cursor: pointer;
         border: 1px solid var(--bme-dark-blue);
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
         color: var(--bme-dark-blue);
         border-radius: 8px;
         font-weight: 600;

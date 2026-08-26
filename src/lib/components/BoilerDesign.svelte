@@ -339,7 +339,7 @@
 		transform: translateX(-50%);
 		min-width: 168px;
 		max-width: 230px;
-		background: #fff;
+		background: var(--bme-surface);
 		border: 1px solid var(--border);
 		border-radius: 10px;
 		box-shadow: 0 10px 30px rgba(12, 51, 88, 0.18);
@@ -363,7 +363,7 @@
 		left: var(--arrow-x, 50%);
 		width: 10px;
 		height: 10px;
-		background: #fff;
+		background: var(--bme-surface);
 		border: 1px solid var(--border);
 		transform: translateX(-50%) rotate(45deg);
 	}
@@ -409,14 +409,29 @@
 		background: #e6f4ea;
 	}
 
+	:root[data-theme='dark'] .badge.normal {
+		color: #9adf6c;
+		background: #1e3212;
+	}
+
 	.badge.warning {
 		color: #9a6a05;
 		background: #fdf1d9;
 	}
 
+	:root[data-theme='dark'] .badge.warning {
+		color: #ffcc66;
+		background: #3a2f0f;
+	}
+
 	.badge.attention {
 		color: #b02525;
 		background: #fbe4e4;
+	}
+
+	:root[data-theme='dark'] .badge.attention {
+		color: #ff9d8f;
+		background: #3a1c18;
 	}
 
 	.tip-metrics {

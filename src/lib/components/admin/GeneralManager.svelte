@@ -404,7 +404,7 @@
         height: 20px;
         flex: 0 0 auto;
         border-radius: 999px;
-        background: #cbd5e0;
+        background: var(--bme-border);
         transition: background 160ms ease;
     }
 

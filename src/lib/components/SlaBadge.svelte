@@ -51,14 +51,29 @@
         background-color: #e4f3d8; 
         color: #2f5e18; 
     }
+
+    :root[data-theme='dark'] .sla.ontrack {
+        background-color: #1e3212;
+        color: #9adf6c;
+    }
     
     .sla.aging   { 
         background-color: #fff3d6; 
         color: #97700a; 
+    }
+
+    :root[data-theme='dark'] .sla.aging {
+        background-color: #3a2f0f;
+        color: #ffcc66;
     }
     
     .sla.overdue { 
         background-color: #fbe3e0; 
         color: #8e261b; 
         }
+
+    :root[data-theme='dark'] .sla.overdue {
+        background-color: #3a1c18;
+        color: #ff9d8f;
+    }
 </style>

@@ -238,7 +238,7 @@
     }
 
     .proj-head:hover {
-        background: #eaeff3;
+        background: var(--bme-hover);
     }
 
     .proj-title {
@@ -271,7 +271,7 @@
         font-size: 11.5px;
         font-weight: 700;
         color: var(--bme-muted);
-        background: #eaeff3;
+        background: var(--bme-hover);
         border-radius: 999px;
         padding: 2px 8px;
     }
@@ -310,7 +310,7 @@
     }
 
     .boilers li a:hover {
-        background: #eaeff3;
+        background: var(--bme-hover);
     }
 
     .boilers li a.active {

@@ -188,7 +188,14 @@
             <div class="ua"><span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l">Page views</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l">Review actions</span></div>
             <div class="ua"><span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span></div>
-            <div class="ua"><span class="ua-n">{data.chatSummary.sessions}</span><span class="ua-l">Chats</span></div>
+        </div>
+
+        <h3 class="ua-sub">Chat activity</h3>
+        <div class="chat-stats">
+            <div class="chat-tile"><span class="chat-n">{data.chatSummary.sessions}</span><span class="chat-l">Chat sessions</span></div>
+            <div class="chat-tile"><span class="chat-n">{data.chatSummary.messages}</span><span class="chat-l">Messages</span></div>
+            <div class="chat-tile"><span class="chat-n">{data.chatSummary.users}</span><span class="chat-l">Users who chatted</span></div>
+            <div class="chat-tile"><span class="chat-n">{data.chatSummary.avgMessagesPerSession}</span><span class="chat-l">Avg. messages / session</span></div>
         </div>
 
         <h3 class="ua-sub">Daily activity</h3>
@@ -319,6 +326,10 @@
 
     .stat-value.closed {
         color: #2f5e18;
+    }
+
+    :root[data-theme='dark'] .stat-value.closed {
+        color: #9adf6c;
     }
 
     .stat-sub {
@@ -500,14 +511,29 @@
         color: #2f5e18; 
     }
 
+    :root[data-theme='dark'] .ag.ontrack {
+        background-color: #1e3212;
+        color: #9adf6c;
+    }
+
     .ag.aging   { 
         background-color: #fff3d6; 
         color: #97700a; 
     }
 
+    :root[data-theme='dark'] .ag.aging {
+        background-color: #3a2f0f;
+        color: #ffcc66;
+    }
+
     .ag.overdue { 
         background-color: #fbe3e0; 
         color: #8e261b; 
+    }
+
+    :root[data-theme='dark'] .ag.overdue {
+        background-color: #3a1c18;
+        color: #ff9d8f;
     }
 
     .aging-list { 
@@ -547,10 +573,30 @@
 
     .ua-stats {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 12px;
         margin-bottom: 20px;
     }
+
+    .chat-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
+    .chat-tile {
+        background: var(--bme-light-green);
+        border-radius: 10px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .chat-n { font-size: 24px; font-weight: 700; color: var(--bme-darker-green); }
+    .chat-l { font-size: 12.5px; color: var(--bme-muted); }
 
     .ua {
         background: var(--bme-light-green);
@@ -750,6 +796,10 @@
 
         .ua:nth-child(5) {
             grid-column: 4 / span 2;
+        }
+
+        .chat-stats {
+            grid-template-columns: repeat(2, 1fr);
         }
 
         .spark { 

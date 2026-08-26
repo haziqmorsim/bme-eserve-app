@@ -90,7 +90,7 @@
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
-		background: #e0342a;
+		background: var(--bme-red, #e0342a);
 		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
 		animation: live-blink 1.6s ease-in-out infinite;
 	} */

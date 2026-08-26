@@ -127,7 +127,7 @@
         padding: 0 14px;
         border: 1px solid var(--bme-border);
         border-radius: 8px;
-        background: #ffffff;
+        background: var(--bme-surface);
         color: var(--bme-red);
         font: inherit;
         font-weight: 600;

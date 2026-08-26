@@ -78,7 +78,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
         color: var(--bme-muted);
     }
 

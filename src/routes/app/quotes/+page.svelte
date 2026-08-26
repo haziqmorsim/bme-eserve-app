@@ -430,7 +430,7 @@
     }
 
     .coupon-btn.ghost {
-        background: #ffffff;
+        background: var(--bme-surface);
         color: var(--bme-dark-blue);
     }
 

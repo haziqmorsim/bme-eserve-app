@@ -470,7 +470,7 @@
         padding: 8px 18px;
         border: 1px solid var(--bme-dark-blue);
         border-radius: 8px;
-        background: #ffffff;
+        background: var(--bme-surface);
         color: var(--bme-dark-blue);
         font: inherit;
         font-weight: 600;
@@ -495,7 +495,7 @@
         gap: 10px;
         padding: 10px 14px;
         margin-bottom: 16px;
-        background: #ffffff;
+        background: var(--bme-surface);
         border: 1px solid var(--bme-border);
         border-radius: 10px;
         color: var(--bme-muted);
@@ -548,7 +548,7 @@
         border: 1px solid var(--bme-border);
         border-radius: 8px;
         font-weight: 700;
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
         color: var(--bme-muted);
         cursor: pointer;
         transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
@@ -750,6 +750,11 @@
         color: #97700a;
     }
 
+    :root[data-theme='dark'] .status.reopened {
+        background-color: #3a2f0f;
+        color: #ffcc66;
+    }
+
     .loyalty {
         padding: 20px;
         margin-bottom: 16px;
@@ -802,7 +807,7 @@
     .loy-bar { 
         height: 10px; 
         border-radius: 999px; 
-        background: #e2ebe0; 
+        background: var(--bme-border); 
         overflow: hidden; 
     }
 
@@ -850,7 +855,7 @@
     .loy-tier {
         border: 1px solid var(--bme-border); 
         border-radius: 10px; padding: 12px; 
-        background: #fff;
+        background: var(--bme-surface);
         transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
     }
 
@@ -897,6 +902,10 @@
 
     .loy-code:hover { 
         background: #dff0d0; 
+    }
+
+    :root[data-theme='dark'] .loy-code:hover {
+        background: #1e3212;
     }
 
     .loy-locked { 
@@ -1015,7 +1024,7 @@
     .cm.assistant .cm-who {
         font-size: 12px;
         font-weight: 700;
-        color: #000000;
+        color: var(--bme-ink);
     }
 
     .cm-time {
