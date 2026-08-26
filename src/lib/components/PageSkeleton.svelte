@@ -51,7 +51,7 @@
 
     .skl-topbar {
         height: 64px;
-        background: #ffffff;
+        background: var(--bme-surface);
         border-bottom: 1px solid var(--bme-border);
         display: flex;
         align-items: center;

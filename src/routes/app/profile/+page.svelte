@@ -297,7 +297,7 @@
         border-radius: 999px;
         border: 1px solid var(--bme-border);
         color: var(--bme-dark-blue);
-        background: #ffffff;
+        background: var(--bme-surface);
     }
 
     .sect {

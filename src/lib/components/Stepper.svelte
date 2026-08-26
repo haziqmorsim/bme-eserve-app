@@ -125,7 +125,7 @@
 
     .step.upcoming .dot,
     .step.final.open .dot {
-        background: #ffffff;
+        background: var(--bme-surface);
         color: var(--bme-muted);
         border-color: var(--bme-border);
     }

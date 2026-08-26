@@ -54,12 +54,26 @@
 		return m;
 	});
 
-	const filterComponents = $derived.by(() => {
+	type ComponentGroup = { name: string; ids: string[]; count: number };
+
+	const groupedComponents = $derived.by(() => {
 		const q = compSearch.trim().toLowerCase();
-		const list = components.filter(
-			(c: Component) => c.id !== uncategorisedId && (!q || (c.name ?? '').toLowerCase().includes(q))
-		);
-		return [...list].sort((a: Component, b: Component) => (a.name ?? '').localeCompare(b.name ?? ''));
+		const byName = new Map<string, ComponentGroup>();
+
+		for (const c of components as Component[]) {
+			if (c.id === uncategorisedId) continue;
+			const name = c.name ?? '';
+			let g = byName.get(name);
+			if (!g) {
+				g = { name, ids: [], count: 0 };
+				byName.set(name, g);
+			}
+			g.ids.push(c.id);
+			g.count += countByComponent[c.id] ?? 0;
+		}
+
+		const list = [...byName.values()].filter((g) => !q || g.name.toLowerCase().includes(q));
+		return list.sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	const selectedCount = $derived(selected.size);
@@ -83,14 +97,34 @@
 		}
 	});
 
-	function toggleComponent(id: string) {
+	function isGroupChecked(ids: string[]) {
+		return ids.length > 0 && ids.every((id) => selected.has(id));
+	}
+
+	function toggleGroup(ids: string[]) {
 		const next = new Set(selected);
-		if (next.has(id)) next.delete(id); else next.add(id);
+		const checked = isGroupChecked(ids);
+		for (const id of ids) {
+			if (checked) next.delete(id); else next.add(id);
+		}
 		selected = next;
 	}
 
 	function clearAllFilters() {
 		selected = new Set();
+	}
+
+	const DESC_LINE_LIMIT = 5;
+	let expandedDescriptions = $state<Set<string>>(new Set());
+
+	function descLines(description: string): string[] {
+		return (description ?? '').split('\n');
+	}
+
+	function toggleDescription(id: string) {
+		const next = new Set(expandedDescriptions);
+		if (next.has(id)) next.delete(id); else next.add(id);
+		expandedDescriptions = next;
 	}
 
 
@@ -116,9 +150,13 @@
 		});
 	});
 
-	const selectedNames = $derived(
-		components.filter((c: Component) => selected.has(c.id)).map((c: Component) => c.name)
-	);
+	const selectedNames = $derived.by(() => {
+		const names = new Set<string>();
+		for (const c of components as Component[]) {
+			if (selected.has(c.id)) names.add(c.name ?? '');
+		}
+		return [...names];
+	});
 
 	function priceLabel(p: Part) {
 		if (p.price != null) return `RM${Number(p.price).toFixed(2)}`;
@@ -164,7 +202,7 @@
 <div class="explorer">
 	<div class="design card">
 		<div class="design-head">
-			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
+			<h3><!-- <span class="live-dot" aria-hidden="true"></span> -->Boiler Schematic</h3>
 			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no available parts.</span>
 		</div>
 		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
@@ -200,11 +238,11 @@
 						</div>
 
 						<div class="fp-list">
-							{#each filterComponents as c (c.id)}
-								<button type="button" class="fp-item" onclick={() => toggleComponent(c.id)}>
-									<span class="box" class:checked={selected.has(c.id)}>{#if selected.has(c.id)}<Check size={13} />{/if}</span>
-									<span class="fp-name">{c.name}</span>
-									<span class="fp-count">({countByComponent[c.id] ?? 0})</span>
+							{#each groupedComponents as g (g.name)}
+								<button type="button" class="fp-item" onclick={() => toggleGroup(g.ids)}>
+									<span class="box" class:checked={isGroupChecked(g.ids)}>{#if isGroupChecked(g.ids)}<Check size={13} />{/if}</span>
+									<span class="fp-name">{g.name}</span>
+									<span class="fp-count">({g.count})</span>
 								</button>
 							{:else}
 								<p class="fp-empty">No components match.</p>
@@ -236,7 +274,7 @@
 
 		{#if showUncategorised}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>uncategorised</strong> parts — {filtered.length} part{filtered.length === 1 ? '' : 's'}
+				Showing <strong>{filtered.length} uncategorised</strong> part{filtered.length === 1 ? '' : 's'}
 			</div>
 		{:else if selectedCount > 0}
 			<div class="crumb" in:fade={{ duration: 150 }}>
@@ -259,7 +297,17 @@
 						<div class="info">
 							<div class="pn">{p.part_number}</div>
 							<div class="pname">{p.name}</div>
-							{#if p.description}<div class="pdesc">{p.description}</div>{/if}
+							{#if p.description}
+								{@const lines = descLines(p.description)}
+								{@const isLong = lines.length > DESC_LINE_LIMIT}
+								{@const isExpanded = expandedDescriptions.has(p.id)}
+								<div class="pdesc">{isLong && !isExpanded ? lines.slice(0, DESC_LINE_LIMIT).join('\n') : p.description}</div>
+								{#if isLong}
+									<button type="button" class="pdesc-toggle" onclick={() => toggleDescription(p.id)}>
+										{isExpanded ? 'Show less' : 'Show more...'}
+									</button>
+								{/if}
+							{/if}
 							<!-- <div class="price">
 								{priceLabel(p)}
 							</div> -->
@@ -297,7 +345,7 @@
 			<img src={lightbox.image_url} alt={lightbox.name} />
 			<div class="lightbox-cap">
 				<strong>{lightbox.part_number}</strong> <span>{lightbox.name}</span>
-				<span class="lb-price">{priceLabel(lightbox)}</span>
+				<!-- <span class="lb-price">{priceLabel(lightbox)}</span> -->
 			</div>
 		</div>
 		<button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close">&times;</button>
@@ -353,15 +401,15 @@
 		color: var(--bme-muted);
 	}
 
-	.live-dot {
+	/* .live-dot {
 		display: inline-block;
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
-		background: #e0342a;
+		background: var(--bme-red, #e0342a);
 		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
 		animation: live-blink 1.6s ease-in-out infinite;
-	}
+	} */
 
 	@keyframes live-blink {
 		0% {
@@ -446,7 +494,7 @@
 		height: 20px;
 		flex: 0 0 auto;
 		border-radius: 999px;
-		background: #cbd5e0;
+		background: var(--bme-border);
 		cursor: pointer;
 		transition: background 160ms ease;
 	}
@@ -495,7 +543,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
-		background: #fff;
+		background: var(--bme-surface, #ffffff);
 		border: 1px solid var(--bme-border, #e2e8ef);
 		color: var(--bme-ink, #1b2733);
 		padding: 9px 16px;
@@ -522,7 +570,7 @@
 		left: 0;
 		z-index: 30;
 		width: min(340px, 88vw);
-		background: #fff;
+		background: var(--bme-surface, #ffffff);
 		border: 1px solid var(--bme-border, #e2e8ef);
 		border-radius: 12px;
 		box-shadow: 0 16px 40px rgba(12, 20, 30, 0.16);
@@ -622,12 +670,13 @@
 	}
 
 	.fp-clear {
-		background: #fff;
+		background: var(--bme-surface, #ffffff);
 		color: var(--bme-dark-blue, #10456e);
 		border: 1px solid var(--bme-dark-blue, #10456e);
 		cursor: pointer;
 		font: inherit;
-		font-weight: 700;
+		font-weight: 600;
+		font-size: 13px;
 		padding: 8px 16px;
 		border-radius: 8px;
 		transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
@@ -692,6 +741,23 @@
 		font-size: 13px;
 		color: var(--bme-muted);
 		margin-top: 2px;
+		white-space: pre-line;
+	}
+
+	.pdesc-toggle {
+		display: inline-block;
+		margin-top: 4px;
+		padding: 0;
+		border: none;
+		background: none;
+		font-size: 12.5px;
+		font-weight: 600;
+		color: var(--bme-dark-blue);
+		cursor: pointer;
+	}
+
+	.pdesc-toggle:hover {
+		text-decoration: underline;
 	}
 
 	/* .price {
@@ -787,11 +853,11 @@
 		color: var(--bme-ink, #1b2733);
 	}
 
-	.lb-price {
+	/* .lb-price {
 		margin-left: auto;
 		font-weight: 700;
 		color: var(--bme-darker-blue, #0c3358);
-	}
+	} */
 
 	.lightbox-close {
 		position: absolute;

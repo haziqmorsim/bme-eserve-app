@@ -158,7 +158,7 @@
 
     .st-card {
         width: min(420px, 100%);
-        background-color: #ffffff;
+        background-color: var(--bme-surface);
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
@@ -174,7 +174,7 @@
 
     .st-body {
         margin: 0 0 1.25rem;
-        color: #374151;
+        color: var(--bme-ink);
         line-height: 1.5;
     }
 
@@ -202,11 +202,11 @@
     .st-btn--ghost {
         background: transparent;
         color: var(--bme-dark-blue, #004b8d);
-        border: 1px solid #d1d5db;
+        border: 1px solid var(--bme-border);
     }
 
     .st-btn--ghost:hover {
-        background: #f3f4f6;
+        background: var(--bme-hover);
     }
 
     .st-btn--primary {

@@ -249,9 +249,9 @@
 		transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 	}
 
-	.hot[data-state='normal'] { --dot: #1f9d4d; }
-	.hot[data-state='warning'] { --dot: #e0a400; }
-	.hot[data-state='attention'] { --dot: #e0342a; }
+	.stage:not(.parts) .hot[data-state='normal'] { --dot: #1f9d4d; }
+	.stage:not(.parts) .hot[data-state='warning'] { --dot: #e0a400; }
+	.stage:not(.parts) .hot[data-state='attention'] { --dot: #e0342a; }
 
 	.hot .tag {
 		position: absolute;
@@ -273,8 +273,6 @@
 	.hot:hover,
 	.hot:focus-visible,
 	.hot.hovered {
-		background: rgba(16, 69, 110, 0.1);
-		border-color: rgba(16, 69, 110, 0.55);
 		outline: none;
 	}
 
@@ -341,7 +339,7 @@
 		transform: translateX(-50%);
 		min-width: 168px;
 		max-width: 230px;
-		background: #fff;
+		background: var(--bme-surface);
 		border: 1px solid var(--border);
 		border-radius: 10px;
 		box-shadow: 0 10px 30px rgba(12, 51, 88, 0.18);
@@ -365,7 +363,7 @@
 		left: var(--arrow-x, 50%);
 		width: 10px;
 		height: 10px;
-		background: #fff;
+		background: var(--bme-surface);
 		border: 1px solid var(--border);
 		transform: translateX(-50%) rotate(45deg);
 	}
@@ -411,14 +409,29 @@
 		background: #e6f4ea;
 	}
 
+	:root[data-theme='dark'] .badge.normal {
+		color: #9adf6c;
+		background: #1e3212;
+	}
+
 	.badge.warning {
 		color: #9a6a05;
 		background: #fdf1d9;
 	}
 
+	:root[data-theme='dark'] .badge.warning {
+		color: #ffcc66;
+		background: #3a2f0f;
+	}
+
 	.badge.attention {
 		color: #b02525;
 		background: #fbe4e4;
+	}
+
+	:root[data-theme='dark'] .badge.attention {
+		color: #ff9d8f;
+		background: #3a1c18;
 	}
 
 	.tip-metrics {

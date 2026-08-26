@@ -5,6 +5,19 @@ export interface Region {
     boilers?: Boiler[];
 }
 
+export interface Project {
+    id: string;
+    project_no: string;
+    name: string;
+    location: string | null;
+    sort_order: number;
+}
+
+export interface BoilerProject {
+    boiler_id: string;
+    project_id: string;
+}
+
 export interface Boiler {
     id: string;
     region_id: string;

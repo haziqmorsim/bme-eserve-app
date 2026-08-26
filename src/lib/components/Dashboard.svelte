@@ -1,30 +1,25 @@
 <script lang="ts">
 	import type { Boiler } from '$lib/types';
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
-	import { grateFor, resolveSections, specsFor } from '$lib/boiler-design';
-	import type { SpecRow, SectionReadingRow } from '$lib/boiler-design';
+	import { grateFor, resolveSections } from '$lib/boiler-design';
+	import type { SectionReadingRow } from '$lib/boiler-design';
 
-	let { boiler, specs: specRows = [], readings = [] } = $props<{
+	let { boiler, readings = [] } = $props<{
 		boiler: Boiler;
-		specs?: SpecRow[];
 		readings?: SectionReadingRow[];
 	}>();
 
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, []));
 
-	const dbSpecs = $derived([
-		{ label: 'Capacity', value: boiler.capacity },
-		{ label: 'Pressure', value: boiler.pressure },
-		{ label: 'Steam Temperature', value: boiler.steam_temperature },
-		{ label: 'Fuel Type', value: boiler.fuel_type },
-		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() },
-		{ label: 'Status', value: boiler.status }
+	const specs = $derived([
+		{ label: 'Capacity', value: boiler.capacity ?? '—' },
+		{ label: 'Pressure', value: boiler.pressure ?? '—' },
+		{ label: 'Steam Temperature', value: boiler.steam_temperature ?? '—' },
+		{ label: 'Fuel Type', value: boiler.fuel_type ?? '—' },
+		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() ?? '—' },
+		{ label: 'Status', value: boiler.status ?? '—' }
 	]);
-
-	const extraSpecs = $derived(specsFor(boiler.code, specRows));
-
-	const specs = $derived([...dbSpecs.filter((s) => s.value), ...extraSpecs]);
 </script>
 
 <div>
@@ -34,7 +29,7 @@
 
 	<div class="card design-card">
 		<div class="design-head">
-			<h3><span class="live-dot" aria-hidden="true"></span>Live Schematic</h3>
+			<h3><!-- <span class="live-dot" aria-hidden="true"></span> -->Boiler Schematic</h3>
 			<span class="hint">Hover or tap a section to view its readings.</span>
 		</div>
 		<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} {readings} />
@@ -90,15 +85,15 @@
 		color: var(--bme-muted);
 	}
 
-	.live-dot {
+	/* .live-dot {
 		display: inline-block;
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
-		background: #e0342a;
+		background: var(--bme-red, #e0342a);
 		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
 		animation: live-blink 1.6s ease-in-out infinite;
-	}
+	} */
 
 	@keyframes live-blink {
 		0% {

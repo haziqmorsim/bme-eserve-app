@@ -104,7 +104,7 @@
             </circle>
         {/each}
 
-        <circle cx={forecastPt.x} cy={forecastPt.y} r="3.5" fill="#ffffff" stroke="var(--bme-green, #6cb33f)" stroke-width="2">
+        <circle cx={forecastPt.x} cy={forecastPt.y} r="3.5" fill="var(--bme-surface, #ffffff)" stroke="var(--bme-green, #6cb33f)" stroke-width="2">
             <title>Forecast: {predicted}</title>
         </circle>
     </svg>
@@ -118,7 +118,7 @@
     }
 
     .no-data {
-        color: #9ca3af;
+        color: var(--bme-muted);
         font-size: 0.75rem;
         font-style: italic;
     }
