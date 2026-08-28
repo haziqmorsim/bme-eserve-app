@@ -1,10 +1,16 @@
 <script lang="ts">
     import { PUBLIC_WHATSAPP_BUSINESS_NUMBER } from "$env/static/public";
-    import { Headset, Image as ImageIcon } from "@lucide/svelte";
+    import { Headset, Image as ImageIcon, ThumbsDown, ThumbsUp } from "@lucide/svelte";
     import { fly } from "svelte/transition";
     import { cubicInOut } from "svelte/easing";
 
-    type Msg = { role: 'user' | 'assistant'; content: string; image?: string };
+    type Msg = {
+        role: 'user' | 'assistant';
+        content: string;
+        image?: string;
+        suggestionId?: string | null;
+        feedback?: 'accepted' | 'rejected' | null;
+    };
 
     let { supabase = null, user = null } = $props<{ supabase?: any; user?: any }>();
 
@@ -197,9 +203,11 @@
             const res = await fetch('/api/chat', {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ messages: payload })
+                body: JSON.stringify({ messages: payload, sessionId })
             });
             if (!res.ok || !res.body) throw new Error('Bad response');
+
+            messages[idx].suggestionId = res.headers.get('x-suggestion-id');
 
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
@@ -213,6 +221,22 @@
         } finally {
             loading = false;
             await persistMessage('assistant', messages[idx].content);
+        }
+    }
+
+    async function sendFeedback(i: number, outcome: 'accepted' | 'rejected') {
+        const id = messages[i].suggestionId;
+        if (!id || messages[i].feedback) return;
+        messages[i].feedback = outcome;
+        try {
+            await fetch('/api/parts/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ suggestionId: id, outcome })
+            });
+        } catch {
+            // Leave the thank-you in place; a lost label is not worth an error
+            // message to the customer.
         }
     }
 
@@ -285,7 +309,7 @@
             </div>
 
             <div class="chat-messages" bind:this={scrollEl}>
-                {#each messages as m}
+                {#each messages as m, mi}
                     <div class="chat-bubble {m.role}">
                         {#if m.image}
                             <img class="chat-bubble-img" src={m.image} alt="Uploaded boiler part" />
@@ -298,6 +322,32 @@
                         {/each}
                         {#if loading && m === messages.at(-1) && m.role === 'assistant' && !m.content}
                             <span class="chat-dots">...</span>
+                        {/if}
+
+                        {#if m.role === 'assistant' && m.suggestionId && !(loading && m === messages.at(-1))}
+                            <div class="chat-feedback">
+                                {#if m.feedback}
+                                    <span class="chat-feedback-done">Thanks for the feedback.</span>
+                                {:else}
+                                    <span class="chat-feedback-label">Was this helpful?</span>
+                                    <button
+                                        type="button"
+                                        class="chat-feedback-btn"
+                                        aria-label="Yes, this was helpful"
+                                        onclick={() => sendFeedback(mi, 'accepted')}
+                                    >
+                                        <ThumbsUp size={14} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="chat-feedback-btn"
+                                        aria-label="No, this was not helpful"
+                                        onclick={() => sendFeedback(mi, 'rejected')}
+                                    >
+                                        <ThumbsDown size={14} />
+                                    </button>
+                                {/if}
+                            </div>
                         {/if}
                     </div>
                 {/each}
@@ -440,6 +490,40 @@
 
     .chat-dots {
         opacity: 0.5;
+    }
+
+    .chat-feedback {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+        padding-top: 0.4rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .chat-feedback-label,
+    .chat-feedback-done {
+        font-size: 0.72rem;
+        opacity: 0.65;
+    }
+
+    .chat-feedback-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.15rem;
+        border: none;
+        background: none;
+        border-radius: 4px;
+        color: inherit;
+        opacity: 0.55;
+        cursor: pointer;
+        line-height: 0;
+    }
+
+    .chat-feedback-btn:hover {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.06);
     }
 
     .chat-preview {

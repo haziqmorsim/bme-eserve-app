@@ -1,5 +1,7 @@
 import { getClient, MODEL, SYSTEM_PROMPT_WEB } from '$lib/server/assistant';
 import { getPartsCatalogContext } from '$lib/server/catalog';
+import { retrieveParts, formatCandidates } from '$lib/server/retrieval';
+import { logSuggestion } from '$lib/server/suggestions';
 import type { RequestHandler } from './$types';
 
 type Block =
@@ -28,8 +30,8 @@ function sanitize(messages: InMsg[]): InMsg[] {
 	return cleaned;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
-	let body: { messages?: InMsg[] };
+export const POST: RequestHandler = async ({ request, locals }) => {
+	let body: { messages?: InMsg[]; sessionId?: string };
 	try {
 		body = await request.json();
 	} catch {
@@ -39,7 +41,25 @@ export const POST: RequestHandler = async ({ request }) => {
 	const messages = Array.isArray(body?.messages) ? sanitize(body.messages) : [];
 	if (!messages.length) return new Response('No messages', { status: 400 });
 
-	const system = SYSTEM_PROMPT_WEB + (await getPartsCatalogContext());
+	const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+	const queryText =
+		typeof lastUser?.content === 'string'
+			? lastUser.content
+			: (lastUser?.content as Block[] | undefined)
+					?.filter((b): b is Extract<Block, { type: 'text' }> => b.type === 'text')
+					.map((b) => b.text)
+					.join(' ') ?? '';
+
+	const retrieved = queryText ? await retrieveParts(queryText, 8) : [];
+	const catalogueContext = retrieved.length
+		? formatCandidates(retrieved)
+		: await getPartsCatalogContext();
+
+	const system = SYSTEM_PROMPT_WEB + catalogueContext;
+
+	const { session } = await locals.safeGetSession();
+	const userId = session?.user?.id ?? null;
+	const suggestionId = retrieved.length ? crypto.randomUUID() : null;
 
 	const stream = getClient().messages.stream({
 		model: MODEL,
@@ -51,9 +71,11 @@ export const POST: RequestHandler = async ({ request }) => {
 	const encoder = new TextEncoder();
 	const rs = new ReadableStream({
 		async start(controller) {
+			let full = '';
 			try {
 				for await (const event of stream) {
 					if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+						full += event.delta.text;
 						controller.enqueue(encoder.encode(event.delta.text));
 					}
 				}
@@ -61,9 +83,37 @@ export const POST: RequestHandler = async ({ request }) => {
 				controller.enqueue(encoder.encode('[Connection interrupted]'));
 			} finally {
 				controller.close();
+
+				if (suggestionId && retrieved.length) {
+					const haystack = full.toLowerCase();
+					const named = retrieved.find((p) =>
+						haystack.includes(p.part_number.toLowerCase())
+					);
+
+					void logSuggestion({
+						id: suggestionId,
+						userId,
+						sessionId: body.sessionId ?? null,
+						channel: 'web',
+						queryText,
+						retrieved,
+						suggestedPartId: named?.id ?? null,
+						suggestedPartNumber: named?.part_number ?? null,
+						reasoning: full.slice(0, 2000),
+						confidence: null
+					}).catch(() => {});
+				}
 			}
 		}
 	});
 
-	return new Response(rs, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+	const headers: Record<string, string> = {
+		'Content-Type': 'text/plain; charset=utf-8'
+	};
+	if (suggestionId) {
+		headers['x-suggestion-id'] = suggestionId;
+		headers['Access-Control-Expose-Headers'] = 'x-suggestion-id';
+	}
+
+	return new Response(rs, { headers });
 };

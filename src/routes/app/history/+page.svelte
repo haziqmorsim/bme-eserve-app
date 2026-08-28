@@ -554,6 +554,10 @@
         transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
     }
 
+    .tab:hover {
+        border-color: var(--bme-dark-blue);
+    }
+
     .tab.active {
         background: var(--bme-dark-blue);
         color: #ffffff;

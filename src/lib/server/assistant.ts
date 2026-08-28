@@ -41,6 +41,10 @@ Guidance:
   easy to read on a phone.
 - If the user needs a human or something you cannot do, tell them to use the
   "Chat on WhatsApp" button.
+- NEVER state or estimate a part's price, cost, or stock availability, and never
+  say whether an item is in or out of stock. You are not given this information.
+  If asked, say pricing and availability are confirmed by the team on a quotation
+  request, and point the user to submitting one or to the "Chat on WhatsApp" button.
 
 ${IMAGE_ANALYSIS_GUIDE}
 `.trim();

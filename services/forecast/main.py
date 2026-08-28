@@ -62,8 +62,13 @@ def run_replacements(x_eserve_key: str | None = Header(default=None)):
     )
     regions = sb.table("regions").select("id, name").execute().data or []
     boilers = sb.table("boilers").select("id, code").execute().data or []
+    service_intervals = (
+        sb.table("service_intervals").select("part_id, interval_days").execute().data or []
+    )
 
-    rows = compute_replacements(quotes, items, profiles, regions, boilers)
+    rows = compute_replacements(
+        quotes, items, profiles, regions, boilers, service_intervals=service_intervals
+    )
     payload = [r.__dict__ for r in rows]
 
     if payload:

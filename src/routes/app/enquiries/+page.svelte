@@ -8,6 +8,16 @@
     let tab = $state<'unreplied' | 'replied'>('unreplied');
     let busy = $state<Set<string>>(new Set());
     let isDeveloper = $derived(data.profile?.role === 'developer');
+    let picking = $state<string | null>(null);
+    let pickQuery = $state('');
+
+    let pickMatches = $derived.by(() => {
+        const q = pickQuery.trim().toLowerCase();
+        if (!q) return data.parts.slice(0, 8);
+        return data.parts
+            .filter((p: any) => `${p.part_number} ${p.name}`.toLowerCase().includes(q))
+            .slice(0, 8);
+    });
 
     let filtered = $derived(data.enquiries.filter((e: any) => {
         const q = search.trim().toLowerCase();
@@ -21,6 +31,38 @@
 
     function when(ts: string): string {
         return new Date(ts).toLocaleString();
+    }
+
+    async function saveResolution(
+        e: any,
+        resolution: 'part_identified' | 'no_part_needed' | 'not_applicable',
+        partId: string | null
+    ) {
+        if (busy.has(e.id) || isDeveloper) return;
+        busy = new Set(busy).add(e.id);
+
+        const { error } = await data.supabase
+            .from('enquiries')
+            .update({
+                resolution,
+                resolved_part_id: partId,
+                resolved_by: data.profile?.id ?? null,
+                resolved_at: new Date().toISOString()
+            })
+            .eq('id', e.id);
+
+        const next = new Set(busy);
+        next.delete(e.id);
+        busy = next;
+        picking = null;
+        pickQuery = '';
+
+        if (error) {
+            addToast(`Could not save resolution: ${error.message}`);
+            return;
+        }
+        await invalidateAll();
+        addToast('Enquiry resolution saved.');
     }
 
     async function markAsReplied(e: any) {
@@ -101,6 +143,54 @@
                         </button>
                     {/if}
                 </div>
+
+                <div class="resolution">
+                    {#if e.resolution === 'part_identified' && e.resolved_part_number}
+                        <span class="rlabel">Resolved to</span>
+                        <strong class="rpart">{e.resolved_part_number}</strong>
+                        <span class="rname">{e.resolved_part_name}</span>
+                        {#if !isDeveloper}
+                            <button class="rchange" onclick={() => (picking = e.id)}>Change</button>
+                        {/if}
+                    {:else if e.resolution === 'no_part_needed'}
+                        <span class="rtag">No part needed</span>
+                        {#if !isDeveloper}
+                            <button class="rchange" onclick={() => (picking = e.id)}>Change</button>
+                        {/if}
+                    {:else if e.resolution === 'not_applicable'}
+                        <span class="rtag muted-tag">Not applicable</span>
+                        {#if !isDeveloper}
+                            <button class="rchange" onclick={() => (picking = e.id)}>Change</button>
+                        {/if}
+                    {:else if picking !== e.id}
+                        <span class="rlabel">Which part did this turn out to need?</span>
+                        {#if !isDeveloper}
+                            <button class="rbtn" onclick={() => (picking = e.id)}>Tag a part</button>
+                            <button class="rbtn" disabled={busy.has(e.id)} onclick={() => saveResolution(e, 'no_part_needed', null)}>
+                                No part needed
+                            </button>
+                            <button class="rbtn" disabled={busy.has(e.id)} onclick={() => saveResolution(e, 'not_applicable', null)}>
+                                Not applicable
+                            </button>
+                        {/if}
+                    {/if}
+
+                    {#if picking === e.id}
+                        <div class="picker">
+                            <input type="search" placeholder="Search the catalogue..." bind:value={pickQuery} />
+                            {#each pickMatches as p (p.id)}
+                                <button class="pick" onclick={() => saveResolution(e, 'part_identified', p.id)}>
+                                    <strong>{p.part_number}</strong> <span>{p.name}</span>
+                                </button>
+                            {/each}
+                            {#if pickMatches.length === 0}
+                                <p class="nomatch">No matching parts.</p>
+                            {/if}
+                            <button class="cancel" onclick={() => { picking = null; pickQuery = ''; }}>Cancel</button>
+                        </div>
+                    {/if}
+                </div>
+
                 {#if isDeveloper}
                     <p class="hint">Read-only for the developer role.</p>
                 {/if}
@@ -291,6 +381,117 @@
         margin: 10px 0 0;
         font-size: 13px;
         color: var(--bme-muted);
+    }
+
+    
+    .resolution {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid var(--bme-border, #e5e7eb);
+        font-size: 0.82rem;
+    }
+
+    .rlabel {
+        color: var(--bme-muted, #6b7280);
+        font-size: 0.78rem;
+    }
+
+    .rpart {
+        color: var(--bme-green, #6CB33F);
+        font-weight: 700;
+    }
+
+    .rname {
+        color: var(--bme-muted, #6b7280);
+    }
+
+    .rtag {
+        background: #e8f2e0;
+        color: #3f6212;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .rtag.muted-tag {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .rbtn,
+    .rchange {
+        border: 1px solid var(--bme-border, #d1d5db);
+        background: #fff;
+        border-radius: 6px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.78rem;
+        color: #374151;
+        cursor: pointer;
+    }
+
+    .rbtn:hover:not(:disabled),
+    .rchange:hover { background: #f9fafb; }
+    .rbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .rchange {
+        border: none;
+        color: var(--bme-muted, #6b7280);
+        text-decoration: underline;
+        padding: 0.2rem 0.3rem;
+    }
+
+    .picker {
+        width: 100%;
+        border: 1px solid var(--bme-border, #e5e7eb);
+        border-radius: 8px;
+        padding: 0.5rem;
+        margin-top: 0.35rem;
+    }
+
+    .picker input {
+        width: 100%;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--bme-border, #d1d5db);
+        border-radius: 6px;
+        font-size: 0.83rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .pick {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: none;
+        padding: 0.35rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.83rem;
+        cursor: pointer;
+    }
+
+    .pick:hover { background: #f3f4f6; }
+    .pick span { color: var(--bme-muted, #6b7280); margin-left: 0.4rem; }
+
+    .nomatch {
+        color: var(--bme-muted, #6b7280);
+        font-size: 0.8rem;
+        padding: 0.3rem 0.4rem;
+        margin: 0;
+    }
+
+    .cancel {
+        margin-top: 0.3rem;
+        border: none;
+        background: none;
+        color: var(--bme-muted, #6b7280);
+        font-size: 0.78rem;
+        cursor: pointer;
+        padding: 0.2rem 0.4rem;
     }
  
     @media (max-width: 640px) {

@@ -83,18 +83,51 @@ def pool_intervals_by_part(events) -> dict:
                 by_part[part_id].append(gap)
     return by_part
 
-def _confidence(samples: int, asset_orders: int) -> str:
+def pool_service_intervals(rows) -> dict:
+    by_part: dict = defaultdict(list)
+    for r in rows:
+        part_id = r.get("part_id")
+        days = r.get("interval_days")
+        if not part_id or days is None:
+            continue
+        try:
+            gap = int(days)
+        except (TypeError, ValueError):
+            continue
+        if MIN_INTERVAL_DAYS <= gap <= MAX_INTERVAL_DAYS:
+            by_part[part_id].append(gap)
+    return by_part
+
+
+def _confidence(samples: int, asset_orders: int, source: str = "quote") -> str:
+    # A measured interval is direct evidence, so it clears the bar with fewer
+    # samples than an inferred purchase gap.
+    if source == "service":
+        if samples >= 4 and asset_orders >= 2:
+            return "high"
+        if samples >= 2:
+            return "medium"
+        return "low"
     if samples >= 6 and asset_orders >= 3:
         return "high"
     if samples >=3 and asset_orders >=2:
         return "medium"
     return "low"
 
-def compute_replacements(quotes, items, profiles, regions, boilers, as_of: date | None = None):
+def compute_replacements(
+    quotes,
+    items,
+    profiles,
+    regions,
+    boilers,
+    service_intervals=None,
+    as_of: date | None = None,
+):
     as_of = as_of or datetime.now(timezone.utc).date()
 
     events, labels = build_asset_events(quotes, items)
-    pooled = pool_intervals_by_part(events)
+    quote_pooled = pool_intervals_by_part(events)
+    service_pooled = pool_service_intervals(service_intervals or [])
 
     profile_by_id = {p["id"]: p for p in profiles}
     region_name = {r["id"]: r.get("name") for r in regions}
@@ -107,7 +140,11 @@ def compute_replacements(quotes, items, profiles, regions, boilers, as_of: date 
     out: list[ReplacementRow] = []
     for key, dates in events.items():
         user_id, boiler_code, part_id = key
-        samples = pooled.get(part_id, [])
+        samples = service_pooled.get(part_id, [])
+        source = "service"
+        if len(samples) < MIN_SAMPLES_TO_PREDICT:
+            samples = quote_pooled.get(part_id, [])
+            source = "quote"
         if len(samples) < MIN_SAMPLES_TO_PREDICT:
             continue
 
@@ -137,7 +174,7 @@ def compute_replacements(quotes, items, profiles, regions, boilers, as_of: date 
                 next_due_on=next_due.isoformat(),
                 interval_samples=len(samples),
                 asset_orders=len(dates),
-                confidence=_confidence(len(samples), len(dates)),
+                confidence=_confidence(len(samples), len(dates), source),
             )
         )
 

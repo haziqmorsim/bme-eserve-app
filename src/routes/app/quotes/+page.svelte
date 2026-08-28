@@ -188,6 +188,14 @@
             return;
         }
 
+        void fetch('/api/parts/label', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                partIds: $quoteItems.map((i) => i.partId).filter(Boolean)
+            })
+        }).catch(() => {});
+
         await supabase.functions.invoke('notify-admin', { body: { quote_id: quote.id } });
 
         clearCart();

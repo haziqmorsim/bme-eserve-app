@@ -46,7 +46,12 @@
 
 <div class="head">
     <h1>Analytics</h1>
-    <a href="/app/analytics/forecasts"><button class="btn-primary">Forecasts</button></a>
+    <div class="head-actions">
+        <a href="/app/analytics/training-data"><button class="tab">Training Data</button></a>
+        <a href="/app/analytics/service-records"><button class="tab">Service Records</button></a>
+        <a href="/app/analytics/suggestions"><button class="tab">Suggestion Reviews</button></a>
+        <a href="/app/analytics/forecasts"><button class="tab">Demand Forecasts</button></a>
+    </div>
 </div>
 
 {#if data.total === 0}
@@ -268,6 +273,34 @@
 {/if}
 
 <style>
+    .head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tab {
+        padding: 9px 22px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-weight: 700;
+        background-color: var(--bme-surface);
+        color: var(--bme-muted);
+        cursor: pointer;
+        transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .tab:hover {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .tab.active {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        border-color: var(--bme-dark-blue);
+    }
+
     .head {
         display: flex;
         align-items: center;
