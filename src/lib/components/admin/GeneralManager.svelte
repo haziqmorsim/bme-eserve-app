@@ -53,7 +53,7 @@
 			['sla_warn_hours', 'Aging threshold'],
 			['sla_overdue_hours', 'Overdue threshold'],
 			['quote_validity_days', 'Quote validity'],
-			['low_stock_threshold', 'Low stock threshold'],
+			['quote_auto_close_days', 'Auto-close'],
 			['chatbot_daily_limit', 'Chatbot daily limit']
 		] as [string, string][]) {
 			const v = (form[key] ?? '').trim();
@@ -69,6 +69,11 @@
 		const prefix = (form.quote_ref_prefix ?? '').trim();
 		if (prefix && !/^[A-Za-z0-9]{1,10}$/.test(prefix)) {
 			e.quote_ref_prefix = 'Use 1-10 letters or digits only.';
+		}
+
+		const semail = (form.support_email ?? '').trim();
+		if (semail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(semail)) {
+			e.support_email = 'Enter a valid e-mail address.';
 		}
 
 		if (form.whats_new_enabled === 'on') {
@@ -232,9 +237,21 @@
 						>{fieldErr.quote_validity_days}</span
 					>{/if}
 			</label>
+			<label
+				>Auto-Close After (days)
+				<input
+					class="w-25"
+					bind:value={form.quote_auto_close_days}
+					placeholder="14"
+					class:invalid={fieldErr.quote_auto_close_days}
+				/>
+				{#if fieldErr.quote_auto_close_days}<span class="field-err"
+						>{fieldErr.quote_auto_close_days}</span
+					>{/if}
+			</label>
 			<label class="full"
-				>Quotation Footer Note
-				<textarea rows="3" bind:value={form.quote_footer_note}></textarea>
+				>Quotation Terms
+				<textarea rows="3" bind:value={form.quote_terms}></textarea>
 			</label>
 		</div>
 	</section>
@@ -258,6 +275,17 @@
 				<textarea rows="3" bind:value={form.maintenance_message}></textarea>
 			</label>
 			<label
+				>Support E-mail
+				<input
+					type="email"
+					class="w-50"
+					bind:value={form.support_email}
+					placeholder="support@boilermech.com"
+					class:invalid={fieldErr.support_email}
+				/>
+				{#if fieldErr.support_email}<span class="field-err">{fieldErr.support_email}</span>{/if}
+			</label>
+			<label
 				>Chatbot
 				<select class="w-25" bind:value={form.chatbot_enabled}>
 					<option value="on">Enabled</option>
@@ -274,18 +302,6 @@
 				/>
 				{#if fieldErr.chatbot_daily_limit}<span class="field-err"
 						>{fieldErr.chatbot_daily_limit}</span
-					>{/if}
-			</label>
-			<label
-				>Low Stock Threshold
-				<input
-					class="w-25"
-					bind:value={form.low_stock_threshold}
-					placeholder="5"
-					class:invalid={fieldErr.low_stock_threshold}
-				/>
-				{#if fieldErr.low_stock_threshold}<span class="field-err"
-						>{fieldErr.low_stock_threshold}</span
 					>{/if}
 			</label>
 		</div>
@@ -318,7 +334,7 @@
 
 			<div class="full toggle-field wn-field">
 				<div class="toggle-head">
-					<span class="toggle-title">What's New Announcement (shown after sign-in)</span>
+					<span class="toggle-title">What's New (shown after sign-in)</span>
 					<label class="toggle-switch">
 						<input
 							type="checkbox"

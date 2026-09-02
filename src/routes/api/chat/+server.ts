@@ -3,6 +3,7 @@ import { getPartsCatalogContext } from '$lib/server/catalog';
 import { retrieveParts, formatCandidates } from '$lib/server/retrieval';
 import { logSuggestion } from '$lib/server/suggestions';
 import { describePartImage, extractImages } from '$lib/server/vision';
+import { toMap, num } from '$lib/settings';
 import type { RequestHandler } from './$types';
 
 type Block =
@@ -42,6 +43,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const messages = Array.isArray(body?.messages) ? sanitize(body.messages) : [];
 	if (!messages.length) return new Response('No messages', { status: 400 });
 
+	const { session } = await locals.safeGetSession();
+	const userId = session?.user?.id ?? null;
+
+	if (userId) {
+		const { data: settingRows } = await locals.supabase
+			.from('app_settings')
+			.select('key, value')
+			.eq('key', 'chatbot_daily_limit');
+		const dailyLimit = num(toMap(settingRows), 'chatbot_daily_limit', 0);
+
+		if (dailyLimit > 0) {
+			const since = new Date();
+			since.setHours(0, 0, 0, 0);
+			const { count } = await locals.supabase
+				.from('chat_messages')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', userId)
+				.eq('role', 'user')
+				.gte('created_at', since.toISOString());
+
+			if ((count ?? 0) >= dailyLimit) {
+				return new Response(
+					`You have reached today's limit of ${dailyLimit} messages. Please try again tomorrow, or contact us directly if it is urgent.`,
+					{ status: 429, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+				);
+			}
+		}
+	}
+
 	const lastUser = [...messages].reverse().find((m) => m.role === 'user');
 	const caption =
 		typeof lastUser?.content === 'string'
@@ -63,8 +93,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const system = SYSTEM_PROMPT_WEB + catalogueContext;
 
-	const { session } = await locals.safeGetSession();
-	const userId = session?.user?.id ?? null;
 	const suggestionId = retrieved.length ? crypto.randomUUID() : null;
 
 	const stream = getClient().messages.stream({
