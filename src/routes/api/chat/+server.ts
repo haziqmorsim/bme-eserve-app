@@ -2,6 +2,7 @@ import { getClient, MODEL, SYSTEM_PROMPT_WEB } from '$lib/server/assistant';
 import { getPartsCatalogContext } from '$lib/server/catalog';
 import { retrieveParts, formatCandidates } from '$lib/server/retrieval';
 import { logSuggestion } from '$lib/server/suggestions';
+import { describePartImage, extractImages } from '$lib/server/vision';
 import type { RequestHandler } from './$types';
 
 type Block =
@@ -42,13 +43,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!messages.length) return new Response('No messages', { status: 400 });
 
 	const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-	const queryText =
+	const caption =
 		typeof lastUser?.content === 'string'
 			? lastUser.content
-			: (lastUser?.content as Block[] | undefined)
+			: ((lastUser?.content as Block[] | undefined)
 					?.filter((b): b is Extract<Block, { type: 'text' }> => b.type === 'text')
 					.map((b) => b.text)
-					.join(' ') ?? '';
+					.join(' ') ?? '');
+
+	const images = extractImages(lastUser?.content);
+	const imageDescription = images.length ? await describePartImage(images, caption) : null;
+
+	const queryText = [caption.trim(), imageDescription ?? ''].filter(Boolean).join(' ');
 
 	const retrieved = queryText ? await retrieveParts(queryText, 8) : [];
 	const catalogueContext = retrieved.length
@@ -86,9 +92,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				if (suggestionId && retrieved.length) {
 					const haystack = full.toLowerCase();
-					const named = retrieved.find((p) =>
-						haystack.includes(p.part_number.toLowerCase())
-					);
+					const named = retrieved.find((p) => haystack.includes(p.part_number.toLowerCase()));
 
 					void logSuggestion({
 						id: suggestionId,
@@ -97,6 +101,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						channel: 'web',
 						queryText,
 						retrieved,
+						hasImage: images.length > 0,
+						imageDescription,
 						suggestedPartId: named?.id ?? null,
 						suggestedPartNumber: named?.part_number ?? null,
 						reasoning: full.slice(0, 2000),
