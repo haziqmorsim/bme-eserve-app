@@ -17,8 +17,7 @@
 		{ label: 'Pressure', value: boiler.pressure ?? '—' },
 		{ label: 'Steam Temperature', value: boiler.steam_temperature ?? '—' },
 		{ label: 'Fuel Type', value: boiler.fuel_type ?? '—' },
-		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() ?? '—' },
-		{ label: 'Status', value: boiler.status ?? '—' }
+		{ label: 'Year Commissioned', value: boiler.year_commissioned?.toString() ?? '—' }
 	]);
 </script>
 
@@ -61,7 +60,7 @@
 		padding: 16px 18px;
 		margin-bottom: 20px;
 	}
-    
+
 	.design-head {
 		display: flex;
 		align-items: baseline;
@@ -136,9 +135,9 @@
 		color: var(--bme-darker-blue, #0c3358);
 	}
 
-    @media (max-width: 640px) {
-        .grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
+	@media (max-width: 640px) {
+		.grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
 </style>

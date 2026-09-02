@@ -1,47 +1,47 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeaders, json } from "../_shared/cors.ts";
-import { sendEmail } from "../_shared/email.ts";
-import { appUrl, ctaButton } from "../_shared/email-ui.ts";
-import { getAdminEmail } from "../_shared/settings.ts";
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { corsHeaders, json } from '../_shared/cors.ts';
+import { sendEmail } from '../_shared/email.ts';
+import { appUrl, ctaButton } from '../_shared/email-ui.ts';
+import { getAdminEmail } from '../_shared/settings.ts';
 
 Deno.serve(async (req) => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+	if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-    try {
-        const { quote_id } = await req.json();
+	try {
+		const { quote_id } = await req.json();
 
-        const admin = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
+		const admin = createClient(
+			Deno.env.get('SUPABASE_URL')!,
+			Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+		);
 
-        const { data: quote, error } = await admin
-            .from('quotes')
-            .select('id, reference, notes, user_id, quote_items(*)')
-            .eq('id', quote_id)
-            .single();
-        if (error || !quote) return json(404, { error: 'Quote not found' });
+		const { data: quote, error } = await admin
+			.from('quotes')
+			.select('id, reference, notes, user_id, quote_items(*)')
+			.eq('id', quote_id)
+			.single();
+		if (error || !quote) return json(404, { error: 'Quote not found' });
 
-        const { data: profile } = await admin
-            .from('profiles')
-            .select('company')
-            .eq('id', quote.user_id)
-            .single();
+		const { data: profile } = await admin
+			.from('profiles')
+			.select('company')
+			.eq('id', quote.user_id)
+			.single();
 
-        const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
+		const { data: userInfo } = await admin.auth.admin.getUserById(quote.user_id);
 
-        const customerEmail = userInfo.user?.email ?? null;
-        const customerCompany = profile?.company ?? null;
+		const customerEmail = userInfo.user?.email ?? null;
+		const customerCompany = profile?.company ?? null;
 
-        const rows = quote.quote_items
-        .map(
-            (i: any) =>
-            `<tr><td>${i.part_number}</td><td>${i.part_name}</td><td>${i.boiler_code}</td>` +
-            `<td align="center">${i.quantity}</td></tr>`
-        )
-        .join('');
+		const rows = quote.quote_items
+			.map(
+				(i: any) =>
+					`<tr><td>${i.part_number}</td><td>${i.part_name}</td><td>${i.boiler_code}</td>` +
+					`<td align="center">${i.quantity}</td></tr>`
+			)
+			.join('');
 
-        const itemsTable = `
+		const itemsTable = `
             <table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:14px">
             <thead><tr style="background:#e7f0f8">
                 <th align="left">Part No.</th><th align="left">Name</th><th align="left">Boiler</th>
@@ -50,9 +50,9 @@ Deno.serve(async (req) => {
             <tbody>${rows}</tbody>
             </table>`;
 
-        const warnings: string[] = [];
+		const warnings: string[] = [];
 
-        const adminHtml = `
+		const adminHtml = `
         <div style="font-family:Arial,sans-serif;color:#1C2A14">
             <h2 style="color:#004b8d">New quotation request — ${quote.reference}</h2>
             <p>From: <strong>${customerEmail ?? 'Unknown e-mail'} (${customerCompany ?? 'Unknown company'})</strong></p>
@@ -62,17 +62,20 @@ Deno.serve(async (req) => {
             ${ctaButton('Review Request', appUrl('/app/requests'), '#004b8d')}
         </div>`;
 
-        try {
-            const adminEmail = await getAdminEmail(admin);
-            if (!adminEmail) throw new Error('No admin email configured (Settings > General).');
-            await sendEmail(adminEmail, `New quotation ${quote.reference}`, adminHtml);
-        } catch (e) {
-            console.error('Admin notification email failed:', e);
-            warnings.push(`admin_email_failed: ${String(e)}`);
-        }
+		try {
+			const adminEmail = await getAdminEmail(admin);
+			if (!adminEmail) throw new Error('No admin email configured (Settings > General).');
+			await sendEmail(adminEmail, `New quotation ${quote.reference}`, adminHtml, undefined, {
+				kind: 'quote_admin',
+				relatedRef: quote.reference
+			});
+		} catch (e) {
+			console.error('Admin notification email failed:', e);
+			warnings.push(`admin_email_failed: ${String(e)}`);
+		}
 
-        if (customerEmail) {
-            const customerHtml = `
+		if (customerEmail) {
+			const customerHtml = `
             <div style="font-family:Arial,sans-serif;color:#1C2A14">
                 <h2 style="color:#004b8d">We've received your quotation request</h2>
                 <p>Thank you for your request. Your reference number is
@@ -90,22 +93,24 @@ Deno.serve(async (req) => {
                 </p>
             </div>`;
 
-            try {
-                await sendEmail(
-                    customerEmail,
-                    `BME e-Serve — quotation request received (${quote.reference})`,
-                    customerHtml
-                );
-            } catch (e) {
-                console.error('Customer confirmation email failed:', e);
-                warnings.push(`customer_email_failed: ${String(e)}`);
-            }
-        } else {
-            warnings.push('customer_email_missing');
-        }
+			try {
+				await sendEmail(
+					customerEmail,
+					`BME e-Serve — quotation request received (${quote.reference})`,
+					customerHtml,
+					undefined,
+					{ kind: 'quote_customer', relatedRef: quote.reference }
+				);
+			} catch (e) {
+				console.error('Customer confirmation email failed:', e);
+				warnings.push(`customer_email_failed: ${String(e)}`);
+			}
+		} else {
+			warnings.push('customer_email_missing');
+		}
 
-        return json(200, { ok: true, warnings });
-    } catch (e) {
-        return json(400, { error: String(e) });
-    }
+		return json(200, { ok: true, warnings });
+	} catch (e) {
+		return json(400, { error: String(e) });
+	}
 });
