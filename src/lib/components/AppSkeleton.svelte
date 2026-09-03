@@ -8,7 +8,16 @@
     <div class="home">
         <aside class="card side">
             <div class="sk s-input"></div>
-            {#each n(7) as i (i)}<div class="sk s-item"></div>{/each}
+            {#each n(5) as i (i)}
+                <div class="proj-sk">
+                    <div class="proj-sk-text">
+                        <div class="sk s-xs w50"></div>
+                        <div class="sk s-xxs w70"></div>
+                    </div>
+                    <div class="sk s-badge"></div>
+                    <div class="sk s-chev"></div>
+                </div>
+            {/each}
         </aside>
         <div class="home-main">
             <div class="tabbar"><div class="sk s-tab"></div><div class="sk s-tab"></div></div>
@@ -176,6 +185,78 @@
         </div>
     {/each}
 
+{:else if route === '/app/analytics/suggestions'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="sk s-xs w70 mb"></div>
+    <div class="card searchbar"><div class="sk s-search full"></div></div>
+    <div class="tabbar">{#each n(3) as i (i)}<div class="sk s-tab"></div>{/each}</div>
+    <div class="rows">
+        {#each n(3) as i (i)}
+            <div class="card row">
+                <div class="meta">
+                    <div class="sk s-pill"></div>
+                    <div class="sk s-xs w20"></div>
+                    <div class="sk s-pill"></div>
+                </div>
+                <div class="sk s-md w80 mt6"></div>
+                <div class="sugg"><div class="sk s-xs w25"></div><div class="sk s-sm w30"></div></div>
+                <div class="brow mt"><div class="sk s-btn"></div><div class="sk s-btn"></div><div class="sk s-btn"></div></div>
+            </div>
+        {/each}
+    </div>
+
+{:else if route === '/app/analytics/training-data'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="sk s-xs w70 mb"></div>
+    <div class="card sect">
+        <div class="sk s-h2 w45"></div>
+        <div class="sk s-num w30 mt6"></div>
+        <div class="sk s-xs w60 mt6"></div>
+    </div>
+    <div class="sk s-h2 w35 mt"></div>
+    <div class="stats">
+        {#each n(4) as i (i)}<div class="card stat"><div class="sk s-xs w60"></div><div class="sk s-num"></div><div class="sk s-xs w40"></div></div>{/each}
+    </div>
+    {#each n(2) as i (i)}
+        <div class="card sect mt">
+            <div class="sk s-xs w80"></div>
+        </div>
+    {/each}
+    <div class="sk s-h2 w40 mt"></div>
+    <div class="card pad">
+        <div class="tbl4">
+            <div class="tr th">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>
+            {#each n(3) as r (r)}<div class="tr">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+        </div>
+    </div>
+    <div class="sk s-h2 w35 mt"></div>
+    <div class="card pad">
+        <div class="tbl5 th">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>
+        {#each n(4) as r (r)}<div class="tbl5">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+    </div>
+
+{:else if route === '/app/analytics/service-records'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="head-actions"><div class="sk s-btn"></div><div class="sk s-btn"></div></div></div>
+    <div class="sk s-xs w70 mb"></div>
+    <div class="card searchbar"><div class="sk s-search full"></div></div>
+    <div class="card pad">
+        <div class="tbl7 th">{#each n(7) as j (j)}<div class="sk s-xs"></div>{/each}</div>
+        {#each n(5) as r (r)}<div class="tbl7">{#each n(7) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+    </div>
+
+{:else if route === '/app/analytics/email-log'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="sk s-xs w70 mb"></div>
+    <div class="stats stats3">
+        {#each n(3) as i (i)}<div class="card stat"><div class="sk s-num"></div><div class="sk s-xs w60 mt6"></div><div class="sk s-xs w70"></div></div>{/each}
+    </div>
+    <div class="card searchbar"><div class="sk s-search full"></div></div>
+    <div class="tabbar">{#each n(2) as i (i)}<div class="sk s-tab"></div>{/each}</div>
+    <div class="card pad">
+        <div class="tbl5 th">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>
+        {#each n(5) as r (r)}<div class="tbl5">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+    </div>
+
 {:else if route === '/app/enquiries'}
     <div class="sk s-title"></div>
     <div class="card searchbar"><div class="sk s-search full"></div></div>
@@ -191,25 +272,13 @@
 
 {:else if route?.startsWith('/app/settings')}
     <div class="sk s-title"></div>
-    <div class="tabbar">{#each n(4) as i (i)}<div class="sk s-tab"></div>{/each}</div>
+    <div class="tabbar">{#each n(6) as i (i)}<div class="sk s-tab"></div>{/each}</div>
     <div class="toolbar"><div class="sk s-search-sm"></div><div class="sk s-btn"></div></div>
     <div class="card pad">
-        <div class="tbl5 th">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>
-        {#each n(5) as r (r)}<div class="tbl5">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
-    </div>
-    <div class="bd-head mt">
-        <div class="sk s-h2 w45"></div>
-        <div class="sk s-select"></div>
-    </div>
-    <div class="toolbar"><div class="sk s-h3 w25"></div><div class="sk s-btn"></div></div>
-    <div class="card pad mb">
-        <div class="tbl4 th">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>
-        {#each n(2) as r (r)}<div class="tr">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
-    </div>
-    <div class="toolbar"><div class="sk s-h3 w35"></div><div class="sk s-btn"></div></div>
-    <div class="card pad">
-        <div class="tbl5b th">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>
-        {#each n(3) as r (r)}<div class="tbl5b">{#each n(5) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+        <div class="tbl4">
+            <div class="tr th">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>
+            {#each n(6) as r (r)}<div class="tr">{#each n(4) as j (j)}<div class="sk s-xs"></div>{/each}</div>{/each}
+        </div>
     </div>
 
 {:else if route === '/app/profile'}
@@ -295,7 +364,6 @@
     .s-num{ height:34px; width:70%; }
     .s-num.sm{ height:24px; width:50%; margin:0 auto; }
     .s-dot{ height:8px; width:8px; border-radius:50%; flex:0 0 auto; }
-    .s-select{ height:38px; width:220px; border-radius:8px; }
     .s-search-sm{ height:38px; width:220px; border-radius:8px; }
     .s-filterbtn{ height:38px; width:170px; border-radius:10px; }
     .s-toggle{ height:38px; width:190px; border-radius:10px; }
@@ -323,8 +391,6 @@
     .tbl4 .th{ border-top:none; }
     .tbl5{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:11px 0; border-top:1px solid var(--bme-border); }
     .tbl5.th{ border-top:none; }
-    .tbl5b{ display:grid; grid-template-columns:0.6fr 1.4fr 1fr 2fr 0.9fr; gap:12px; padding:11px 0; border-top:1px solid var(--bme-border); align-items:center; }
-    .tbl5b.th{ border-top:none; }
     .tbl-fc{ display:grid; grid-template-columns:1.6fr 0.8fr 2fr 0.8fr; gap:12px; padding:10px 0; border-top:1px solid var(--bme-border); align-items:center; }
     .tbl-fc.th{ border-top:none; }
     .brow{ display:flex; gap:10px; margin-top:14px; }
@@ -364,11 +430,25 @@
 
     .faqrow{ padding:18px 20px; }
 
-    .bd-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+    .proj-sk{ display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--bme-border); border-radius:8px; }
+    .proj-sk-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+    .s-xxs{ height:9px; }
+    .s-badge{ height:18px; width:22px; border-radius:999px; flex:0 0 auto; }
+    .s-chev{ height:15px; width:15px; border-radius:4px; flex:0 0 auto; }
+
+    .rows{ display:flex; flex-direction:column; gap:14px; }
+    .meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .sugg{ display:flex; align-items:baseline; gap:10px; padding:10px 12px; margin-top:8px; background:var(--bme-surface-2); border-radius:8px; }
+
+    .head-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    .tbl7{ display:grid; grid-template-columns:repeat(7,1fr); gap:10px; padding:9px 0; border-top:1px solid var(--bme-border); }
+    .tbl7.th{ border-top:none; }
+
+    .stats3{ grid-template-columns:repeat(3,1fr); }
 
     .home{ display:grid; grid-template-columns:280px 1fr; gap:10px; align-items:stretch; }
     .side{ padding:16px; display:flex; flex-direction:column; gap:8px; }
-    .s-item{ height:34px; border-radius:8px; }
     .home-main{ min-width:0; }
     .explorer{ display:flex; flex-direction:column; gap:16px; }
     .design{ padding:16px; width:100%; }
@@ -402,9 +482,9 @@
         .tabbar .s-tab{ max-width:none; }
         .rhead{ flex-direction:column; align-items:flex-start; gap:8px; }
         .cust{ margin-bottom:10px; }
-        .tbl4 .tr, .tbl4 .th, .tbl5, .tbl5.th, .tbl5b, .tbl5b.th{ grid-template-columns:1fr; gap:4px; }
+        .tbl4 .tr, .tbl4 .th, .tbl5, .tbl5.th, .tbl7, .tbl7.th{ grid-template-columns:1fr; gap:4px; }
         .toolbar{ flex-direction:column; align-items:stretch; }
-        .s-search-sm, .s-select{ width:100%; }
+        .s-search-sm{ width:100%; }
         .who{ flex-direction:column; align-items:flex-start; }
         .prow{ flex-direction:column; gap:4px; }
     }

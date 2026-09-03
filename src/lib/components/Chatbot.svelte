@@ -422,10 +422,10 @@
 				>
 			</div>
 
-			<button class="chat-whatsapp" onclick={openWhatsapp}>
+			<!-- <button class="chat-whatsapp" onclick={openWhatsapp}>
 				Chat on WhatsApp
 				<i class="fa-brands fa-whatsapp whatsapp-icon"></i>
-			</button>
+			</button> -->
 		</div>
 	{/if}
 

@@ -44,8 +44,7 @@ Deno.serve(async (req) => {
 		const itemsTable = `
             <table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:14px">
             <thead><tr style="background:#e7f0f8">
-                <th align="left">Part No.</th><th align="left">Name</th><th align="left">Boiler</th>
-                <th>Qty</th>
+                <th align="left">Part No.</th><th align="left">Part Name</th><th align="left">Boiler</th><th>Quantity</th>
             </tr></thead>
             <tbody>${rows}</tbody>
             </table>`;
