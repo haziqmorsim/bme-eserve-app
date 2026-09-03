@@ -30,7 +30,7 @@
 	let qty = $state<Record<string, number>>({});
 	let lightbox = $state<Part | null>(null);
 
-	const UNCATEGORISED = 'Uncategorised';
+	const UNCATEGORISED = 'Panel/Instrument';
 	let showUncategorised = $state(false);
 
 	const uncategorisedId = $derived(
@@ -105,7 +105,8 @@
 		const next = new Set(selected);
 		const checked = isGroupChecked(ids);
 		for (const id of ids) {
-			if (checked) next.delete(id); else next.add(id);
+			if (checked) next.delete(id);
+			else next.add(id);
 		}
 		selected = next;
 	}
@@ -123,10 +124,10 @@
 
 	function toggleDescription(id: string) {
 		const next = new Set(expandedDescriptions);
-		if (next.has(id)) next.delete(id); else next.add(id);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
 		expandedDescriptions = next;
 	}
-
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
@@ -136,7 +137,8 @@
 			if (showUncategorised !== isUncat) return false;
 
 			if (!showUncategorised) {
-				const inComp = selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
+				const inComp =
+					selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
 				if (!inComp) return false;
 			}
 			if (!q) return true;
@@ -184,7 +186,7 @@
 			priceMax: p.price_max ?? p.price ?? 0,
 			quantity: q
 		});
-		addToast('Part added to cart list.')
+		addToast('Part added to cart list.');
 	}
 </script>
 
@@ -203,9 +205,20 @@
 	<div class="design card">
 		<div class="design-head">
 			<h3><!-- <span class="live-dot" aria-hidden="true"></span> -->Boiler Schematic</h3>
-			<span class="legend">Click a highlighted section to see its spare parts. Dimmed sections have no available parts.</span>
+			<span class="legend"
+				>Click a highlighted section to see its spare parts. Dimmed sections have no available
+				parts.</span
+			>
 		</div>
-		<BoilerDesign {def} {sections} mode="parts" boilerCode={boiler.code} {activeKey} {readings} onselect={onSectionSelect} />
+		<BoilerDesign
+			{def}
+			{sections}
+			mode="parts"
+			boilerCode={boiler.code}
+			{activeKey}
+			{readings}
+			onselect={onSectionSelect}
+		/>
 	</div>
 
 	<div class="side">
@@ -223,7 +236,7 @@
 					class="filter-trigger"
 					class:on={selectedCount > 0}
 					onclick={() => (filterOpen = !filterOpen)}
-					aria-expanded={filterOpen} 
+					aria-expanded={filterOpen}
 					disabled={showUncategorised}
 				>
 					<Funnel size={16} />
@@ -240,7 +253,9 @@
 						<div class="fp-list">
 							{#each groupedComponents as g (g.name)}
 								<button type="button" class="fp-item" onclick={() => toggleGroup(g.ids)}>
-									<span class="box" class:checked={isGroupChecked(g.ids)}>{#if isGroupChecked(g.ids)}<Check size={13} />{/if}</span>
+									<span class="box" class:checked={isGroupChecked(g.ids)}
+										>{#if isGroupChecked(g.ids)}<Check size={13} />{/if}</span
+									>
 									<span class="fp-name">{g.name}</span>
 									<span class="fp-count">({g.count})</span>
 								</button>
@@ -255,8 +270,8 @@
 								type="button"
 								class="fp-clear"
 								onclick={clearAllFilters}
-								disabled={selectedCount === 0}
-							>Clear All Filters</button>
+								disabled={selectedCount === 0}>Clear All Filters</button
+							>
 						</div>
 					</div>
 				{/if}
@@ -266,19 +281,25 @@
 					type="checkbox"
 					bind:checked={showUncategorised}
 					disabled={uncategorisedCount === 0}
-					aria-label="Show uncategorised parts" />
-				<span class="uc-label">Uncategorised Parts ({uncategorisedCount})</span>
+					aria-label="Show uncategorised parts"
+				/>
+				<span class="uc-label">Panel / Instrument Parts ({uncategorisedCount})</span>
 				<span class="uc-track"><span class="uc-thumb"></span></span>
 			</label>
 		</div>
 
 		{#if showUncategorised}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{filtered.length} uncategorised</strong> part{filtered.length === 1 ? '' : 's'}
+				Showing <strong>{filtered.length} uncategorised</strong> part{filtered.length === 1
+					? ''
+					: 's'}
 			</div>
 		{:else if selectedCount > 0}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{selectedNames.join(', ')}</strong> — {filtered.length} part{filtered.length === 1 ? '' : 's'}
+				Showing <strong>{selectedNames.join(', ')}</strong> — {filtered.length} part{filtered.length ===
+				1
+					? ''
+					: 's'}
 			</div>
 		{/if}
 
@@ -301,9 +322,17 @@
 								{@const lines = descLines(p.description)}
 								{@const isLong = lines.length > DESC_LINE_LIMIT}
 								{@const isExpanded = expandedDescriptions.has(p.id)}
-								<div class="pdesc">{isLong && !isExpanded ? lines.slice(0, DESC_LINE_LIMIT).join('\n') : p.description}</div>
+								<div class="pdesc">
+									{isLong && !isExpanded
+										? lines.slice(0, DESC_LINE_LIMIT).join('\n')
+										: p.description}
+								</div>
 								{#if isLong}
-									<button type="button" class="pdesc-toggle" onclick={() => toggleDescription(p.id)}>
+									<button
+										type="button"
+										class="pdesc-toggle"
+										onclick={() => toggleDescription(p.id)}
+									>
 										{isExpanded ? 'Show less' : 'Show more...'}
 									</button>
 								{/if}
@@ -340,7 +369,12 @@
 </div>
 
 {#if lightbox}
-	<div class="lightbox" onclick={() => (lightbox = null)} role="presentation" transition:fade={{ duration: 150 }}>
+	<div
+		class="lightbox"
+		onclick={() => (lightbox = null)}
+		role="presentation"
+		transition:fade={{ duration: 150 }}
+	>
 		<div class="lightbox-inner" onclick={(e) => e.stopPropagation()} role="presentation">
 			<img src={lightbox.image_url} alt={lightbox.name} />
 			<div class="lightbox-cap">
@@ -348,7 +382,9 @@
 				<!-- <span class="lb-price">{priceLabel(lightbox)}</span> -->
 			</div>
 		</div>
-		<button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close">&times;</button>
+		<button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close"
+			>&times;</button
+		>
 	</div>
 {/if}
 
@@ -555,7 +591,10 @@
 		font-size: 14px;
 		font-weight: 600;
 		cursor: pointer;
-		transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+		transition:
+			border-color 140ms ease,
+			background 140ms ease,
+			color 140ms ease;
 	}
 
 	.filter-trigger:hover {
@@ -683,7 +722,10 @@
 		font-size: 13px;
 		padding: 8px 16px;
 		border-radius: 8px;
-		transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+		transition:
+			background 140ms ease,
+			color 140ms ease,
+			border-color 140ms ease;
 	}
 
 	.fp-clear:hover:not(:disabled) {
@@ -794,7 +836,9 @@
 		cursor: pointer;
 		background: #f4f6f8;
 		flex-shrink: 0;
-		transition: border-color 140ms ease, transform 140ms ease;
+		transition:
+			border-color 140ms ease,
+			transform 140ms ease;
 	}
 
 	.thumb:hover {

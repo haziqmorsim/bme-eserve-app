@@ -57,7 +57,7 @@
 		<a href="/app/analytics/service-records"><button class="tab">Service Records</button></a>
 		<a href="/app/analytics/suggestions"><button class="tab">Suggestion Reviews</button></a>
 		<a href="/app/analytics/forecasts"><button class="tab">Demand Forecasts</button></a>
-		<a href="/app/analytics/email-log"><button class="tab">Email Deliveries</button></a>
+		<a href="/app/analytics/email-log"><button class="tab">E-mail Deliveries</button></a>
 	</div>
 </div>
 
