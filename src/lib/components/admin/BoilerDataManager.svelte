@@ -345,10 +345,8 @@
 			</label>
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="adm-form-actions">
-				<button class="btn-primary" onclick={saveSpec} disabled={busy}
-					>{busy ? 'Saving...' : 'Save'}</button
-				>
 				<button class="btn-ghost" onclick={() => (editSpec = null)} disabled={busy}>Cancel</button>
+				<button class="btn-primary" onclick={saveSpec} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
 			</div>
 		</div>
 	</Modal>
@@ -413,12 +411,8 @@
 
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="adm-form-actions">
-				<button class="btn-primary" onclick={saveReading} disabled={busy}
-					>{busy ? 'Saving...' : 'Save'}</button
-				>
-				<button class="btn-ghost" onclick={() => (editReading = null)} disabled={busy}
-					>Cancel</button
-				>
+				<button class="btn-ghost" onclick={() => (editReading = null)} disabled={busy}>Cancel</button>
+				<button class="btn-primary" onclick={saveReading} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
 			</div>
 		</div>
 	</Modal>
@@ -430,11 +424,8 @@
 			<p>Are you sure you want to delete <strong>{deleteSpec.label}</strong>?</p>
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="modal-actions">
-				<button class="btn-ghost" onclick={() => (deleteSpec = null)} disabled={busy}>Cancel</button
-				>
-				<button class="btn-danger" onclick={confirmDeleteSpec} disabled={busy}
-					>{busy ? 'Deleting...' : 'Delete'}</button
-				>
+				<button class="btn-ghost" onclick={() => (deleteSpec = null)} disabled={busy}>Cancel</button>
+				<button class="btn-danger" onclick={confirmDeleteSpec} disabled={busy}>{busy ? 'Deleting...' : 'Delete'}</button>
 			</div>
 		</div>
 	</Modal>
@@ -450,12 +441,8 @@
 			</p>
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="modal-actions">
-				<button class="btn-ghost" onclick={() => (deleteReading = null)} disabled={busy}
-					>Cancel</button
-				>
-				<button class="btn-danger" onclick={confirmDeleteReading} disabled={busy}
-					>{busy ? 'Deleting...' : 'Delete'}</button
-				>
+				<button class="btn-ghost" onclick={() => (deleteReading = null)} disabled={busy}>Cancel</button>
+				<button class="btn-danger" onclick={confirmDeleteReading} disabled={busy}>{busy ? 'Deleting...' : 'Delete'}</button>
 			</div>
 		</div>
 	</Modal>

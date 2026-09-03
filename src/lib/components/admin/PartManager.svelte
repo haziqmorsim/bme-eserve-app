@@ -351,10 +351,8 @@
 			</div>
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="adm-form-actions">
-				<button class="btn-primary" onclick={save} disabled={busy}
-					>{busy ? 'Saving...' : 'Save'}</button
-				>
 				<button class="btn-ghost" onclick={cancel} disabled={busy}>Cancel</button>
+				<button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
 			</div>
 		</div>
 	</Modal>
@@ -367,9 +365,7 @@
 			{#if err}<p class="adm-err">{err}</p>{/if}
 			<div class="modal-actions">
 				<button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>
-				<button class="btn-danger" onclick={confirmDelete} disabled={busy}
-					>{busy ? 'Deleting...' : 'Delete'}</button
-				>
+				<button class="btn-danger" onclick={confirmDelete} disabled={busy}>{busy ? 'Deleting...' : 'Delete'}</button>
 			</div>
 		</div>
 	</Modal>
