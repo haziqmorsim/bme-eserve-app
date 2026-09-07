@@ -281,7 +281,7 @@
 					type="checkbox"
 					bind:checked={showUncategorised}
 					disabled={uncategorisedCount === 0}
-					aria-label="Show uncategorised parts"
+					aria-label="Show panel/instrument parts"
 				/>
 				<span class="uc-label">Panel / Instrument Parts ({uncategorisedCount})</span>
 				<span class="uc-track"><span class="uc-thumb"></span></span>
@@ -290,7 +290,7 @@
 
 		{#if showUncategorised}
 			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{filtered.length} uncategorised</strong> part{filtered.length === 1
+				Showing <strong>{filtered.length} panel/instrument</strong> part{filtered.length === 1
 					? ''
 					: 's'}
 			</div>

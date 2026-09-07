@@ -153,7 +153,8 @@
                 notes, 
                 coupon_code: appliedCoupon?.code ?? null, 
                 discount_percent: discountPercent, 
-                attachments: uploaded
+                attachments: uploaded,
+                ref_boiler_code: $quoteItems[0]?.boilerCode ?? null
             })
             .select()
             .single();

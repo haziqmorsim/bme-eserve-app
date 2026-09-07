@@ -36,15 +36,10 @@
         if (!email) e.admin_email = 'Admin e-mail is required.';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.admin_email = 'Enter a valid e-mail address.';
 
-        const days = (form.quote_reply_days ?? '').trim();
-        if (days && (!/^\d+$/.test(days) || Number(days) < 1)) {
-            e.quote_reply_days = 'Enter a whole number of day(s).';
-        }
-
         for (const [key, label] of [
             ['sla_warn_hours', 'Aging threshold'],
             ['sla_overdue_hours', 'Overdue threshold'],
-            ['quote_validity_days', 'Quote validity'],
+            // ['quote_validity_days', 'Quote validity'],
             ['chatbot_daily_limit', 'Chatbot daily limit']
         ] as [string, string][]) {
             const v = (form[key] ?? '').trim();
@@ -129,6 +124,47 @@
         const checked = (e.currentTarget as HTMLInputElement).checked;
         form.whats_new_enabled = checked ? 'on' : 'off';
     }
+
+    const REF_TOKENS = [
+        { value: 'year', label: 'Current year (2026)' },
+        { value: 'date', label: 'Submit date (DDMMYYYY)' },
+        { value: 'project', label: 'Project no. (PB0928)' },
+        { value: 'boiler', label: 'Boiler code (BM-0001)' },
+        { value: 'index', label: 'Index (0001)' },
+        { value: 'none', label: 'None' }
+    ];
+
+    function sampleToken(token: string): string {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        switch (token) {
+            case 'year': return String(now.getFullYear());
+            case 'date': return `${dd}${mm}${now.getFullYear()}`;
+            case 'project': return 'PB0928';
+            case 'boiler': return 'BM-0001';
+            case 'index': return '0001';
+            default: return '';
+        }
+    }
+
+    let refPreview = $derived.by(() => {
+        const sepRaw = form.quote_ref_separator ?? '-';
+        const sep = sepRaw === 'none' ? '' : sepRaw;
+        const parts = [
+            (form.quote_ref_prefix ?? '').trim(),
+            sampleToken(form.quote_ref_middle ?? 'year'),
+            sampleToken(form.quote_ref_suffix ?? 'index')
+        ].filter((p) => p !== '');
+        return parts.length ? parts.join(sep) : '(empty)';
+    });
+
+    let refWarning = $derived.by(() => {
+        const mid = form.quote_ref_middle ?? 'year';
+        const suf = form.quote_ref_suffix ?? 'index';
+        if (mid === 'index' || suf === 'index') return '';
+        return 'Without an Index part, two requests can produce the same reference. A running number is appended automatically when that happens.';
+    });
 </script>
 
 <div class="gen-wrap">
@@ -139,13 +175,6 @@
             <label>Admin E-mail <span class="required">*</span>
                 <input type="email" class="w-50" bind:value={form.admin_email} placeholder="admin@boilermech.com" class:invalid={fieldErr.admin_email} />
                 {#if fieldErr.admin_email}<span class="field-err">{fieldErr.admin_email}</span>{/if}
-            </label>
-            <label>Support Phone No.
-                <input class="w-50" bind:value={form.support_phone} placeholder="+603-8023 9137" />
-            </label>
-            <label>Target Reply Time (days)
-                <input class="w-25" bind:value={form.quote_reply_days} placeholder="3" class:invalid={fieldErr.quote_reply_days} />
-                {#if fieldErr.quote_reply_days}<span class="field-err">{fieldErr.quote_reply_days}</span>{/if}
             </label>
         </div>
     </section>
@@ -167,16 +196,42 @@
 
     <section class="card gen-card">
         <h2>Quotations</h2>
-        <p class="gen-hint">The prefix applies to newly created requests only, existing reference numbers are never rewritten.</p>
+        <p class="gen-hint">The reference format applies to newly created requests only, existing reference numbers are never rewritten.</p>
         <div class="adm-form">
             <label>Reference Prefix
                 <input class="w-50" bind:value={form.quote_ref_prefix} placeholder="BME" class:invalid={fieldErr.quote_ref_prefix} />
                 {#if fieldErr.quote_ref_prefix}<span class="field-err">{fieldErr.quote_ref_prefix}</span>{/if}
             </label>
-            <label>Quote Validity (days)
+            <label>Separator
+                <select class="w-25" bind:value={form.quote_ref_separator}>
+                    <option value="-">Hyphen ( - )</option>
+                    <option value="_">Underscore ( _ )</option>
+                    <option value="none">No separator</option>
+                </select>
+            </label>
+            <label>Middle Part
+                <select class="w-50" bind:value={form.quote_ref_middle}>
+                    {#each REF_TOKENS as t (t.value)}
+                        <option value={t.value}>{t.label}</option>
+                    {/each}
+                </select>
+            </label>
+            <label>Suffix
+                <select class="w-50" bind:value={form.quote_ref_suffix}>
+                    {#each REF_TOKENS as t (t.value)}
+                        <option value={t.value}>{t.label}</option>
+                    {/each}
+                </select>
+            </label>
+            <div class="full ref-preview">
+                <span class="rp-label">Example reference</span>
+                <code class="rp-value">{refPreview}</code>
+                {#if refWarning}<p class="rp-warn">{refWarning}</p>{/if}
+            </div>
+            <!-- <label>Quote Validity (days)
                 <input class="w-25" bind:value={form.quote_validity_days} placeholder="30" class:invalid={fieldErr.quote_validity_days} />
                 {#if fieldErr.quote_validity_days}<span class="field-err">{fieldErr.quote_validity_days}</span>{/if}
-            </label>
+            </label> -->
         </div>
     </section>
 
@@ -206,6 +261,9 @@
 			<label>Support E-mail
                 <input type="email" class="w-50" bind:value={form.support_email} placeholder="support@boilermech.com" class:invalid={fieldErr.support_email} />
                 {#if fieldErr.support_email}<span class="field-err">{fieldErr.support_email}</span>{/if}
+            </label>            
+            <label>Support Phone No.
+                <input class="w-50" bind:value={form.support_phone} placeholder="+603-8023 9137" />
             </label>
         </div>
     </section>
@@ -314,6 +372,39 @@
         margin: 0 0 12px;
         font-size: 12.5px;
         color: var(--bme-muted);
+    }
+
+    .ref-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 12px 14px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        background: var(--bme-surface-2);
+    }
+
+    .rp-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: var(--bme-muted);
+    }
+
+    .rp-value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--bme-dark-blue);
+        word-break: break-all;
+    }
+
+    .rp-warn {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #b45309;
     }
 
     .gen-card textarea {
