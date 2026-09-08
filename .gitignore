@@ -38,4 +38,10 @@ supabase/diagnose_maintenance.sql
 services/forecast/.env
 services/forecast/.venv/
 services/forecast/__pycache__/
+services/imaging/.env
+services/imaging/.venv/
+services/imaging/__pycache__/
+services/worker/.env
+services/worker/.venv
+services/worker/__pycache__/
 *.pyc
