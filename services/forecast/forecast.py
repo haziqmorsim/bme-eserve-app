@@ -13,9 +13,11 @@ def _next_month(d: date) -> date:
 
 @dataclass
 class ForecastRow:
-    region_id: str
+    project_id: str
     part_id: str
-    region_name: str | None
+    project_no: str | None
+    project_name: str | None
+    boiler_code: str | None
     part_number: str | None
     part_name: str | None
     period_month: str
@@ -26,41 +28,79 @@ class ForecastRow:
     history_months: int
     history: list
 
-def build_monthly_series(quotes, items, profiles, regions):
-    region_of = {p["id"]: p.get("region_id") for p in profiles}
-    region_name = {r["id"]: r.get("name") for r in regions}
+def build_project_resolver(customer_projects, projects, boiler_projects, part_boiler):
+    order = {p["id"]: (p.get("sort_order") or 0, p.get("project_no") or "") for p in projects}
+
+    by_user: dict = defaultdict(list)
+    for row in customer_projects:
+        uid, pid = row.get("user_id"), row.get("project_id")
+        if uid and pid:
+            by_user[uid].append(pid)
+
+    by_boiler: dict = defaultdict(set)
+    for row in boiler_projects:
+        bid, pid = row.get("boiler_id"), row.get("project_id")
+        if bid and pid:
+            by_boiler[bid].add(pid)
+
+    def pick(candidates: list[str]) -> str | None:
+        if not candidates:
+            return None
+        return sorted(candidates, key=lambda pid: order.get(pid, (9999, "")))[0]
+
+    def resolve(user_id: str | None, part_id: str | None) -> str | None:
+        if not user_id:
+            return None
+        held = by_user.get(user_id) or []
+        if not held:
+            return None
+        boiler_id = part_boiler.get(part_id)
+        if boiler_id:
+            overlap = [pid for pid in held if pid in by_boiler.get(boiler_id, ())]
+            if overlap:
+                return pick(overlap)
+        return pick(held)
+
+    return resolve
+
+def build_monthly_series(quotes, items, resolve, part_meta):
     q_meta = {}
     for q in quotes:
         created = q.get("created_at")
         if not created:
             continue
-
-        dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-        q_meta[q["id"]] = (region_of.get(q.get("user_id")), _month_start(dt.date()))
+        dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+        q_meta[q["id"]] = (q.get("user_id"), _month_start(dt.date()))
 
     series: dict = defaultdict(lambda: defaultdict(float))
     labels: dict = {}
+
     for it in items:
         part_id = it.get("part_id")
         if not part_id:
             continue
-
         meta = q_meta.get(it.get("quote_id"))
         if not meta:
             continue
-        region_id, month = meta
-        if not region_id:
-            continue
+        user_id, month = meta
         qty = float(it.get("quantity") or 0)
         if qty <= 0:
             continue
-        key = (region_id, part_id)
+
+        project_id = resolve(user_id, part_id)
+        if not project_id:
+            continue
+
+        key = (project_id, part_id)
         series[key][month] += qty
+
+        info = part_meta.get(part_id, {})
         labels[key] = (
-            region_name.get(region_id),
-            it.get("part_number"),
-            it.get("part_name"),
+            info.get("boiler_code"),
+            info.get("part_number") or it.get("part_number"),
+            info.get("name") or it.get("part_name"),
         )
+
     return series, labels
 
 def _contiguous_history(by_month: dict, max_points: int = 12) -> list[dict]:
@@ -74,7 +114,7 @@ def _contiguous_history(by_month: dict, max_points: int = 12) -> list[dict]:
         cursor = _next_month(cursor)
     return out[-max_points:]
 
-def _wma(values: list[float]) -> tuple[float, str]: # weighted moving average
+def _wma(values: list[float]) -> tuple[float, str]:
     tail = values[-3:]
     if len(tail) >= 3:
         w = [1, 2, 3]
@@ -83,34 +123,66 @@ def _wma(values: list[float]) -> tuple[float, str]: # weighted moving average
         return (tail[0] * 1 + tail[1] * 2) / 3, "wma2"
     return tail[0], "last1"
 
-def compute_forecasts(quotes, items, profiles, regions, as_of: date | None = None):
+def compute_forecasts(
+    quotes,
+    items,
+    projects,
+    customer_projects,
+    boiler_projects,
+    parts,
+    components,
+    boilers,
+    as_of: date | None = None,
+):
+    """One ForecastRow per (project, part) for the next calendar month."""
     as_of = as_of or datetime.now(timezone.utc).date()
     target = _next_month(_month_start(as_of)).isoformat()
 
-    series, labels = build_monthly_series(quotes, items, profiles, regions)
-    out: list[ForecastRow] = []
+    boiler_by_id = {b["id"]: b for b in boilers}
+    component_boiler = {c["id"]: c.get("boiler_id") for c in components}
 
+    part_meta: dict = {}
+    part_boiler: dict = {}
+    for p in parts:
+        boiler_id = component_boiler.get(p.get("component_id"))
+        part_boiler[p["id"]] = boiler_id
+        part_meta[p["id"]] = {
+            "part_number": p.get("part_number"),
+            "name": p.get("name"),
+            "boiler_code": (boiler_by_id.get(boiler_id) or {}).get("code"),
+        }
+
+    project_by_id = {p["id"]: p for p in projects}
+    resolve = build_project_resolver(customer_projects, projects, boiler_projects, part_boiler)
+    series, labels = build_monthly_series(quotes, items, resolve, part_meta)
+
+    out: list[ForecastRow] = []
     for key, by_month in series.items():
-        region_id, part_id = key
+        project_id, part_id = key
         months = sorted(by_month)
         values = [by_month[m] for m in months]
         predicted, method = _wma(values)
         spread = pstdev(values) if len(values) > 1 else 0.0
-        rname, pnum, pname = labels.get(key, (None, None, None))
+
+        boiler_code, part_number, part_name = labels.get(key, (None, None, None))
+        project = project_by_id.get(project_id, {})
+
         out.append(
             ForecastRow(
-                region_id=region_id, 
-                part_id=part_id, 
-                region_name=rname, 
-                part_number=pnum, 
-                part_name=pname, 
-                period_month=target, 
-                predicted_qty=round(predicted, 2), 
-                lower_qty=round(max(0.0, predicted - spread), 2), 
-                upper_qty=round(predicted + spread, 2), 
-                method=method, 
-                history_months=len(months), 
-                history=_contiguous_history(by_month)
+                project_id=project_id,
+                part_id=part_id,
+                project_no=project.get("project_no"),
+                project_name=project.get("name"),
+                boiler_code=boiler_code,
+                part_number=part_number,
+                part_name=part_name,
+                period_month=target,
+                predicted_qty=round(predicted, 2),
+                lower_qty=round(max(0.0, predicted - spread), 2),
+                upper_qty=round(predicted + spread, 2),
+                method=method,
+                history_months=len(months),
+                history=_contiguous_history(by_month),
             )
         )
     return out

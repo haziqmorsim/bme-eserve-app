@@ -12,7 +12,6 @@ from replacement import compute_replacements
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-
 def _required(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -23,13 +22,11 @@ def _required(name: str) -> str:
         )
     return value
 
-
 SUPABASE_URL = _required("SUPABASE_URL")
 SERVICE_ROLE_KEY = _required("SUPABASE_SERVICE_ROLE_KEY")
 ESERVE_KEY = os.environ.get("ESERVE_KEY")
 
 app = FastAPI(title="BME e-Serve Forecast Service")
-
 
 def _client() -> Client:
     return create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
@@ -91,15 +88,36 @@ def run(x_eserve_key: str | None = Header(default=None)):
         .data
         or []
     )
-    profiles = sb.table("profiles").select("id, region_id").execute().data or []
-    regions = sb.table("regions").select("id, name").execute().data or []
+    projects = (
+        sb.table("projects").select("id, project_no, name, sort_order").execute().data or []
+    )
+    customer_projects = (
+        sb.table("customer_projects").select("user_id, project_id").execute().data or []
+    )
+    boiler_projects = (
+        sb.table("boiler_projects").select("boiler_id, project_id").execute().data or []
+    )
+    parts = (
+        sb.table("parts").select("id, component_id, part_number, name").execute().data or []
+    )
+    components = sb.table("components").select("id, boiler_id").execute().data or []
+    boilers = sb.table("boilers").select("id, code").execute().data or []
 
-    rows = compute_forecasts(quotes, items, profiles, regions)
+    rows = compute_forecasts(
+        quotes,
+        items,
+        projects,
+        customer_projects,
+        boiler_projects,
+        parts,
+        components,
+        boilers,
+    )
     payload = [r.__dict__ for r in rows]
 
     if payload:
         sb.table("part_demand_forecasts").upsert(
-            payload, on_conflict="region_id,part_id,period_month"
+            payload, on_conflict="project_id,part_id,period_month"
         ).execute()
 
     return {"ok": True, "forecasts_written": len(payload)}

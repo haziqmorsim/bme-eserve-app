@@ -4,14 +4,12 @@
 
     let { data } = $props();
 
-    /* -------- Section 1: regional demand forecast -------- */
-    const regions = $derived(Object.entries(data.byRegion));
+    const projects = $derived(Object.entries(data.byProject));
     const fmtQty = (n: number | null) => (n == null ? '\u2014' : Number(n).toLocaleString());
     const fmtDate = (s: string | null) => s
         ? new Date(s + 'T00:00:00Z').toLocaleDateString('en-MY', { year: 'numeric', month: 'long' }) 
         : '\u2014';
 
-    /* -------- Section 2: predictive replacement schedule -------- */
     let showLater = $state(false);
 
     const visible = $derived(
@@ -44,7 +42,7 @@
 
 <section class="wrap">
     <header>
-        <h2>Regional demand forecast</h2>
+        <h2>Demand forecast by project</h2>
         {#if data.period}
             <p class="sub">
                 Projected for {fmtDate(data.period)}
@@ -58,16 +56,17 @@
         </div>
     </header>
 
-    {#if regions.length === 0}
+    {#if projects.length === 0}
         <p class="empty">No forecasts yet. They appear after the weekly job runs.</p>
     {:else}
-        {#each regions as [region, rows] (region)}
-            <div class="region">
-                <h3>{region}</h3>
+        {#each projects as [project, rows] (project)}
+            <div class="project">
+                <h3>{project}</h3>
                 <table>
                     <thead>
                         <tr>
                             <th style="text-align: center;">Part</th>
+                            <th class="num boiler-col">Boiler</th>
                             <th class="chart-col">Trend</th>
                             <th class="num">Predicted</th>
                             <th class="num">Range</th>
@@ -75,12 +74,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each rows as f (f.part_number + f.region_id)}
+                        {#each rows as f (f.id)}
                             <tr>
-                                <td style="width: 30%;">
+                                <td style="width: 26%;">
                                     <span class="pn">{f.part_number ?? '\u2014'}</span>
                                     <span class="nm">{f.part_name ?? '\u2014'}</span>
                                 </td>
+                                <td class="num boiler-col">{f.boiler_code ?? '\u2014'}</td>
                                 <td class="chart-col">
                                     <ForecastTrendChart
                                         history={f.history} 
@@ -163,7 +163,7 @@
                 </tr>
             </thead>
             <tbody>
-                {#each visible as r (r.user_id + r.boiler_code + r.part_number)}
+                {#each visible as r (r.user_id + '|' + r.boiler_code + '|' + r.part_number)}
                     <tr class={r.bucket}>
                         <td>
                             <span class="strong">{r.company ?? r.customer_name ?? 'Unknown'}</span>
@@ -284,7 +284,7 @@
         width: 8px; 
     }
 
-    .region {
+    .project {
         margin-bottom: 1.75rem;
     }
 
@@ -470,6 +470,12 @@
         color: #ffcc66;
     }
 
+    .boiler-col {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
     .mono {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 0.82rem;
@@ -539,6 +545,10 @@
 
     @media (max-width: 860px) {
         .mono {
+            display: none;
+        }
+
+        .boiler-col {
             display: none;
         }
     }

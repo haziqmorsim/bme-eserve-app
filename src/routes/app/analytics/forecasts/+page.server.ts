@@ -34,8 +34,9 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const [forecastRes, replacementRes] = await Promise.all([
         supabase
             .from('part_demand_forecasts')
-            .select('region_id, region_name, part_number, part_name, period_month, predicted_qty, lower_qty, upper_qty, method, history_months, generated_at, history')
-            .order('region_name', { ascending: true })
+            .select('id, project_id, project_no, project_name, boiler_code, part_number, part_name, period_month, predicted_qty, lower_qty, upper_qty, method, history_months, generated_at, history')
+            .order('period_month', { ascending: false })
+            .order('project_no', { ascending: true })
             .order('predicted_qty', { ascending: false }),
         supabase
             .from('part_replacement_schedule')
@@ -43,9 +44,13 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             .order('next_due_on', { ascending: true })
     ]);
 
-    /* ---------------- Section 1: regional demand forecast ---------------- */
+    const allForecasts = forecastRes.data ?? [];
+    const latestPeriod = allForecasts[0]?.period_month ?? null;
+    const currentRows = latestPeriod
+        ? allForecasts.filter((f) => f.period_month === latestPeriod)
+        : [];
 
-    const forecasts = (forecastRes.data ?? []).map((f) => {
+    const forecasts = currentRows.map((f) => {
         const history: HistoryPoint[] = Array.isArray(f.history)
             ? (f.history as HistoryPoint[]).map((h) => ({
                 month: String(h.month), 
@@ -60,16 +65,14 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         return { ...f, history, predicted_qty: predicted, direction, lastObserved: last };
     });
 
-    const period = forecasts[0]?.period_month ?? null;
+    const period = latestPeriod;
     const forecastGeneratedAt = forecasts[0]?.generated_at ?? null;
 
-    const byRegion: Record<string, typeof forecasts> = {};
+    const byProject: Record<string, typeof forecasts> = {};
     for (const f of forecasts) {
-        const key = f.region_name ?? 'Unassigned';
-        (byRegion[key] ??= []).push(f);
+        const key = f.project_no ? `${f.project_no} — ${f.project_name ?? ''}`.trim() : 'Unassigned';
+        (byProject[key] ??= []).push(f);
     }
-
-    /* -------------- Section 2: predictive replacement schedule -------------- */
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -99,7 +102,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     return { 
         period, 
         forecastGeneratedAt, 
-        byRegion, 
+        byProject, 
         replacements, 
         counts, 
         replacementGeneratedAt, 
