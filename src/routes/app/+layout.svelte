@@ -60,6 +60,7 @@
     let showSkeleton = $state(false);
     let skTimer: ReturnType<typeof setTimeout> | undefined;
     let dest = $derived($navigating?.to?.route?.id ?? '');
+    let destTab = $derived($navigating?.to?.url?.searchParams?.get('tab') ?? '');
     $effect(() => {
         const nav = $navigating;
         clearTimeout(skTimer);
@@ -91,7 +92,7 @@
     {/if}
     <main>
         {#if showSkeleton}
-            <AppSkeleton route={dest} />
+            <AppSkeleton route={dest} tab={destTab} />
         {:else}
             {@render children()}
         {/if}

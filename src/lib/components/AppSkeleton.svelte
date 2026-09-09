@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { route = '' } = $props<{ route?: string }>();
+    let { route = '', tab = '' } = $props<{ route?: string; tab?: string }>();
     const n = (count: number) => Array.from({ length: count }, (_, i) => i);
 </script>
 
@@ -21,41 +21,68 @@
         </aside>
         <div class="home-main">
             <div class="tabbar"><div class="sk s-tab"></div><div class="sk s-tab"></div></div>
-            <div class="sk s-h2 w40"></div>
-            <div class="explorer">
+
+            {#if tab === 'parts'}
+                <div class="sk s-h2 w40"></div>
+                <div class="explorer">
+                    <div class="card design">
+                        <div class="design-head-sk">
+                            <div class="sk s-h3 w30"></div>
+                            <div class="sk s-xs w35"></div>
+                        </div>
+                        <div class="sk s-diagram"></div>
+                        <div class="sk s-xs w60 mt"></div>
+                    </div>
+                    <div class="side-panel">
+                        <div class="sk s-input"></div>
+                        <div class="fbar">
+                            <div class="sk s-filterbtn"></div>
+                            <div class="sk s-toggle"></div>
+                        </div>
+                        <div class="parts">
+                            {#each n(4) as i (i)}
+                                <div class="card part">
+                                    <div class="p-info">
+                                        <div class="sk s-xs w35"></div>
+                                        <div class="sk s-md w70"></div>
+                                        <div class="sk s-xs w50"></div>
+                                        <div class="sk s-sm w25"></div>
+                                    </div>
+                                    <div class="p-act">
+                                        <div class="sk s-thumb"></div>
+                                        <div class="sk s-qty"></div>
+                                        <div class="sk s-add"></div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                </div>
+            {:else}
+                <div class="sk s-title2 w25"></div>
+                <div class="sk s-xs w30 mb"></div>
+
+                <div class="subtabs-sk">
+                    {#each n(6) as i (i)}<div class="sk s-stab"></div>{/each}
+                </div>
+
                 <div class="card design">
                     <div class="design-head-sk">
                         <div class="sk s-h3 w30"></div>
                         <div class="sk s-xs w35"></div>
                     </div>
                     <div class="sk s-diagram"></div>
-                    <div class="sk s-xs w60 mt"></div>
                 </div>
-                <div class="side-panel">
-                    <div class="sk s-input"></div>
-                    <div class="fbar">
-                        <div class="sk s-filterbtn"></div>
-                        <div class="sk s-toggle"></div>
-                    </div>
-                    <div class="parts">
-                        {#each n(4) as i (i)}
-                            <div class="card part">
-                                <div class="p-info">
-                                    <div class="sk s-xs w35"></div>
-                                    <div class="sk s-md w70"></div>
-                                    <div class="sk s-xs w50"></div>
-                                    <div class="sk s-sm w25"></div>
-                                </div>
-                                <div class="p-act">
-                                    <div class="sk s-thumb"></div>
-                                    <div class="sk s-qty"></div>
-                                    <div class="sk s-add"></div>
-                                </div>
-                            </div>
-                        {/each}
-                    </div>
+
+                <div class="ov-grid">
+                    {#each n(15) as i (i)}
+                        <div class="card ov-spec">
+                            <div class="sk s-xs w60"></div>
+                            <div class="sk s-md w45 mt6"></div>
+                        </div>
+                    {/each}
                 </div>
-            </div>
+            {/if}
         </div>
     </div>
 
@@ -339,6 +366,11 @@
         animation: skShimmer 1.3s ease infinite;
     }
 
+    :root[data-theme='dark'] .sk {
+        background: linear-gradient(90deg, #26374b 25%, #3a556f 37%, #26374b 63%);
+        background-size: 400% 100%;
+    }
+
     .w15{width:15%}.w20{width:20%}.w25{width:25%}.w30{width:30%}
     .w35{width:35%}.w40{width:40%}.w45{width:45%}.w50{width:50%}.w55{width:55%}
     .w60{width:60%}.w70{width:70%}.w90{width:90%}
@@ -358,6 +390,14 @@
     .s-pill{ height:22px; width:64px; border-radius:999px; }
     .s-pill.wide{ width:120px; }
     .s-tab{ height:36px; width:96px; border-radius:8px; flex:1; max-width:150px; }
+
+    .s-title2{ height:24px; margin:6px 0 4px; }
+    .subtabs-sk{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .s-stab{ height:34px; width:112px; border-radius:8px; }
+
+    .ov-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:14px; margin-top:16px; }
+    .ov-spec{ padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+
     .s-tile{ height:74px; border-radius:10px; }
     .cc{ margin:0 auto; width:60%; }
     .s-x{ height:16px; width:16px; margin-left:auto; }

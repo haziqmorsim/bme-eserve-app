@@ -13,7 +13,7 @@
 			(function () {
 				try {
 					var stored = localStorage.getItem('bme-theme');
-					var theme = stored === 'dark' ? 'dark' : 'light';
+					var theme = stored === 'light' ? 'light' : 'dark';
 					document.documentElement.setAttribute('data-theme', theme);
 				} catch (e) {
 					// Storage unavailable (private browsing etc.) - default to light.

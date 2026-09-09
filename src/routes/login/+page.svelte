@@ -22,7 +22,7 @@
 <div class="auth">
     <Announcement message={data.announcement} />
     <div class="card panel">
-        <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
+        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
         <h1>BME e-Serve App</h1>
         <p class="sub">Sign In</p>
 
@@ -77,7 +77,7 @@
     .panel {
         width: 100%;
         max-width: 400px;
-        padding: 36px 32px;
+        padding: 15px 30px;
     }
 
     .logo {

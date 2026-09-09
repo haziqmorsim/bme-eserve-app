@@ -188,7 +188,6 @@ export const BOILER_DESIGNS: Record<string, GrateDef> = {
     }
 };
 
-
 export const GRATES: Record<GrateType, GrateDef> = {
     fixed: {
         type: 'fixed',
@@ -201,7 +200,7 @@ export const GRATES: Record<GrateType, GrateDef> = {
             { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 27, t: 48, w: 14, h: 14 } },
             { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 58, t: 16, w: 20, h: 14 } },
             { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 47, t: 70, w: 22, h: 14 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 14.5, t: 90, w: 16, h: 14 } }
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 14.5, t: 88, w: 16, h: 14 } }
         ]
     },
 
@@ -216,7 +215,7 @@ export const GRATES: Record<GrateType, GrateDef> = {
             { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 26.5, t: 49, w: 14, h: 14 } },
             { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 59, t: 15, w: 20, h: 14 } },
             { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 48, t: 72, w: 22, h: 14 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 93, w: 16, h: 14 } }
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 88, w: 16, h: 14 } }
         ]
     },
 
@@ -231,7 +230,7 @@ export const GRATES: Record<GrateType, GrateDef> = {
             { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 27, t: 45, w: 14, h: 14 } },
             { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 53, t: 17, w: 21, h: 14 } },
             { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 42, t: 78, w: 26, h: 14 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 15.5, t: 98, w: 16, h: 14 } }
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 15.5, t: 88, w: 16, h: 14 } }
         ]
     },
 
@@ -246,7 +245,7 @@ export const GRATES: Record<GrateType, GrateDef> = {
             { key: 'dust_collector', label: 'Dust Collector', num: 3, keywords: ['dust collector', 'dust', 'cast iron', 'cyclone'], rect: { l: 31.5, t: 55, w: 13, h: 14 } },
             { key: 'boiler_front', label: 'Boiler Front Section', num: 4, keywords: ['boiler front', 'front section', 'pressure transmitter', 'fire door', 'cylinder', 'pneumatic'], rect: { l: 59, t: 13, w: 23, h: 14 } },
             { key: 'grate_section', label: 'Grate Section', num: 5, keywords: ['grate', 'fix grate', 'reciprocating grate', 'vibrating grate', 'panel electrical', 'inverter', 'rocker'], rect: { l: 43, t: 72, w: 33, h: 12 } },
-            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 96, w: 16, h: 14 } }
+            { key: 'fan_pump', label: 'Fan & Pump', num: 6, keywords: ['fan', 'pump', 'fan and pump', 'feed water', 'blower', 'draught'], rect: { l: 13.5, t: 88, w: 16, h: 14 } }
         ]
     }
 };

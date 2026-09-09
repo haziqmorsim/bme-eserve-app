@@ -32,7 +32,14 @@
                 {#if data.tab === 'parts'}
                     <PartsExplorer boiler={data.boiler} components={data.components} parts={data.parts} readings={data.sectionReadings} />
                 {:else}
-                    <Dashboard boiler={data.boiler} readings={data.sectionReadings} />
+                    <Dashboard
+                        boiler={data.boiler}
+                        readings={data.sectionReadings}
+                        metrics={data.metrics}
+                        telemetry={data.telemetry}
+                        rul={data.rul}
+                        motors={data.motors}
+                        maintenance={data.maintenance} />
                 {/if}
             </div>
         {/if}

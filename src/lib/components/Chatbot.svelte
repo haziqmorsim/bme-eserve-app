@@ -3,6 +3,9 @@
 	import { Headset, Image as ImageIcon, ThumbsDown, ThumbsUp } from '@lucide/svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicInOut } from 'svelte/easing';
+	import { page } from '$app/state';
+
+	let isLoginPage = $derived(page.url.pathname === '/login');
 
 	type Msg = {
 		role: 'user' | 'assistant';
@@ -326,6 +329,7 @@
 	}
 </script>
 
+{#if !isLoginPage}
 <div class="chat-root">
 	{#if open}
 		<div
@@ -437,6 +441,7 @@
 		{#if open}×{:else}<Headset size={24} />{/if}
 	</button>
 </div>
+{/if}
 
 <style>
 	.chat-root {

@@ -91,7 +91,7 @@
 
 <aside class="sidebar" class:open>
     <a href="/app" class="side-logo" onclick={close}>
-        <img src="/images/bme-logo.jpg" alt="BME e-Serve" />
+        <img src="/images/bme-logo.png" alt="BME e-Serve" />
     </a>
 
     <button class="menu-btn" onclick={() => (open = !open)} aria-label="Toggle menu" aria-expanded={open}>
@@ -125,10 +125,12 @@
         </nav>
 
         <nav class="side-group bottom">
+            <div class="side-bell">
+                <ThemeToggle size={18} />
+            </div>
             <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
             <div class="side-bell">
                 <NotificationBell {notifications} {supabase} label="Notifications" />
-                <ThemeToggle size={18} />
             </div>
             {#if isAdmin}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>

@@ -3,9 +3,9 @@ export type Theme = 'light' | 'dark';
 const STORAGE_KEY = 'bme-theme';
 
 function readInitial(): Theme {
-    if (typeof document === 'undefined') return 'light';
+    if (typeof document === 'undefined') return 'dark';
     const attr = document.documentElement.getAttribute('data-theme');
-    return attr === 'dark' ? 'dark' : 'light';
+    return attr === 'light' ? 'light' : 'dark';
 }
 
 class ThemeStore {

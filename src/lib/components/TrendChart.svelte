@@ -1,25 +1,41 @@
 <script lang="ts">
-    import type { TrendPoint, TrendSeries } from "$lib/telemetry";
-    
+    import type { TrendPoint, TrendSeries } from '$lib/telemetry';
+
     let {
         series = [],
         height = 150,
         fill = true,
-        yTicks = 5
+        yTicks = 5,
+        tickHours = 1
     } = $props<{
         series?: TrendSeries[];
         height?: number;
         fill?: boolean;
         yTicks?: number;
+        tickHours?: number;
     }>();
 
-    const VW = 700;
     const PAD_L = 40;
-    const PAD_R = 12;
+    const PAD_R = 16;
     const PAD_T = 10;
     const PAD_B = 22;
 
+    const TICK_PX = 96;
+    const MIN_W = 640;
+
     let vh = $derived(height);
+
+    let spanHours = $derived.by(() => {
+        if (basePoints.length < 2) return 24;
+        const a = new Date(basePoints[0].t).getTime();
+        const b = new Date(basePoints[basePoints.length - 1].t).getTime();
+        return Math.max(0.5, (b - a) / 3600000);
+    });
+
+    let VW = $derived(
+        Math.max(MIN_W, Math.round(PAD_L + PAD_R + (spanHours / Math.max(tickHours, 0.5)) * TICK_PX))
+    );
+
     let plotW = $derived(VW - PAD_L - PAD_R);
     let plotH = $derived(vh - PAD_T - PAD_B);
 
@@ -60,7 +76,7 @@
         const x0 = xAt(0, pts.length).toFixed(2);
         const x1 = xAt(pts.length - 1, pts.length).toFixed(2);
         const yBase = (PAD_T + plotH).toFixed(2);
-        return `${top} L${x1}.${yBase} L${x0},${yBase} Z`;
+        return `${top} L${x1},${yBase} L${x0},${yBase} Z`;
     }
 
     let yLabels = $derived.by(() => {
@@ -69,7 +85,7 @@
         for (let i = 0; i < yTicks; i++) {
             const v = lo + ((hi - lo) * i) / (yTicks - 1);
             const abs = Math.abs(v);
-            out.push({ y: yAt(v), text: abs >= 100 ? v.toFixed(0) : abs >= 10 ? v.toFixed(0) : v.toFixed(1)});
+            out.push({ y: yAt(v), text: abs >= 100 ? v.toFixed(0) : abs >= 10 ? v.toFixed(0) : v.toFixed(1) });
         }
         return out;
     });
@@ -79,13 +95,27 @@
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
 
+    let tStart = $derived(basePoints.length ? new Date(basePoints[0].t).getTime() : 0);
+    let tEnd = $derived(basePoints.length ? new Date(basePoints[basePoints.length - 1].t).getTime() : 0);
+
+    const xAtTime = (ms: number) =>
+        tEnd === tStart ? PAD_L + plotW / 2 : PAD_L + ((ms - tStart) / (tEnd - tStart)) * plotW;
+
     let xLabels = $derived.by(() => {
         if (n < 2) return [];
+        const step = Math.max(1, Math.round(tickHours));
+        const stepMs = step * 3600000;
+        const d = new Date(tStart);
+        d.setMinutes(0, 0, 0);
+        let ms = d.getTime();
+        if (ms < tStart) ms += 3600000;
+        let guard = 0;
+        while (new Date(ms).getHours() % step !== 0 && ms <= tEnd && guard++ < 24) {
+            ms += 3600000;
+        }
         const out: { x: number; text: string }[] = [];
-        const count = 6;
-        for (let i = 0; i < count; i++) {
-            const idx = Math.round((i / (count - 1)) * (n - 1));
-            out.push({ x: xAt(idx, n), text: hhmm(basePoints[idx].t) });
+        for (; ms <= tEnd; ms += stepMs) {
+            out.push({ x: xAtTime(ms), text: hhmm(new Date(ms).toISOString()) });
         }
         return out;
     });
@@ -105,12 +135,20 @@
     const clearHover = () => (hoverIdx = null);
 
     let hoverX = $derived(hoverIdx === null ? 0 : xAt(hoverIdx, n));
-
     let tipLeft = $derived(hoverX > VW * 0.62);
 </script>
 
 <div class="tc">
-    <svg viewBox={`0 0 ${VW} ${vh}`} preserveAspectRatio="none" role="img" aria-label={series.map((s: TrendSeries) => s.label).join(', ')} onpointermove={onMove} onpointerleave={clearHover}>
+    <div class="scroll">
+    <svg
+        viewBox={`0 0 ${VW} ${vh}`}
+        width={VW}
+        height={vh}
+        role="img"
+        aria-label={series.map((s: TrendSeries) => s.label).join(', ')}
+        onpointermove={onMove}
+        onpointerleave={clearHover}
+    >
         <defs>
             {#each series as s (s.key)}
                 <linearGradient id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -147,20 +185,21 @@
         {/if}
     </svg>
 
-    {#if hoverIdx !== null  && basePoints[hoverIdx]}
-        <div class="tip" class:left={tipLeft} style={`left:${(hoverX / VW) * 100}%`}>
+    {#if hoverIdx !== null && basePoints[hoverIdx]}
+        <div class="tip" class:left={tipLeft} style={`left:${hoverX}px`}>
             <span class="tip-t">{hhmm(basePoints[hoverIdx].t)}</span>
             {#each series as s (s.key)}
                 {#if s.points[hoverIdx]}
                     <span class="tip-r">
                         <span class="dot" style={`background:${s.colour}`}></span>
                         <span class="tip-l">{s.label}</span>
-                        <span class="tip-v">{s.points[hoverIdx].v} {s.unit ? ` ${s.unit}` : ''}</span>
+                        <span class="tip-v">{s.points[hoverIdx].v}{s.unit ? ` ${s.unit}` : ''}</span>
                     </span>
                 {/if}
             {/each}
         </div>
     {/if}
+    </div>
 </div>
 
 <style>
@@ -169,11 +208,17 @@
         width: 100%;
     }
 
+    .scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        position: relative;
+        scrollbar-width: thin;
+    }
+
     svg {
         display: block;
-        width: 100%;
-        height: auto;
-        touch-action: none;
+        max-width: none;
+        touch-action: pan-x;
     }
 
     .grid {
