@@ -224,7 +224,7 @@
 			<div class="card empty">No telemetry has been recorded for this boiler yet.</div>
 		{:else}
 			<div class="toolbar">
-				<p class="lead">Last 24 hours. Hover any chart to read the exact value at that time.</p>
+				<p class="lead">Component metrics over the last 24 hours.</p>
 				<label class="ivl">
 					<span>Interval</span>
 					<select bind:value={tickHours}>
@@ -264,7 +264,9 @@
 			{#if motors.length === 0}
 				<div class="card empty">No motor data has been recorded for this boiler yet.</div>
 			{:else}
-				<p class="lead">Rotating equipment, measured against each drive's own rating.</p>
+				<div class="toolbar">
+					<p class="lead">Rotating equipment, measured against each drive's own rating.</p>
+				</div>
 				<div class="motors">
 					{#each motors as m (m.id)}
 						<div class="card motor {motorLevel(m)}">
@@ -571,7 +573,15 @@
 
 	@media (max-width: 640px) {
 		.grid { grid-template-columns: repeat(2, 1fr); }
-		.charts { grid-template-columns: 1fr; }
+		.subtabs {
+			width: 100%;
+			justify-content: space-between;
+		}
+		.stab {
+			width: 31%;
+			justify-content: center;
+			text-align: center;
+		}
 		.motors { grid-template-columns: 1fr; }
 	}
 </style>

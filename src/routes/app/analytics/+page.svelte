@@ -53,11 +53,11 @@
 <div class="head">
 	<h1>Analytics</h1>
 	<div class="head-actions">
-		<a href="/app/analytics/training-data"><button class="tab">Training Data</button></a>
-		<a href="/app/analytics/service-records"><button class="tab">Service Records</button></a>
-		<a href="/app/analytics/suggestions"><button class="tab">Suggestion Reviews</button></a>
-		<a href="/app/analytics/forecasts"><button class="tab">Demand Forecasts</button></a>
-		<a href="/app/analytics/email-log"><button class="tab">E-mail Deliveries</button></a>
+		<a href="/app/analytics/training-data" class="actions-tab"><button class="tab">Training Data</button></a>
+		<a href="/app/analytics/service-records" class="actions-tab"><button class="tab">Service Records</button></a>
+		<a href="/app/analytics/suggestions" class="actions-tab"><button class="tab">Suggestion Reviews</button></a>
+		<a href="/app/analytics/forecasts" class="actions-tab"><button class="tab">Demand Forecasts</button></a>
+		<a href="/app/analytics/email-log" class="actions-tab"><button class="tab">E-mail Deliveries</button></a>
 	</div>
 </div>
 
@@ -854,6 +854,15 @@
 	}
 
 	@media (max-width: 480px) {
+		.head-actions {
+			width: 100%;
+			justify-content: center;
+		}
+		.actions-tab {
+			width: 30%;
+			text-align: center;
+			justify-content: center;
+		}
 		.stats {
 			grid-template-columns: repeat(2, 1fr);
 			gap: 6px;

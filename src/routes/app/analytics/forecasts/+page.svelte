@@ -66,7 +66,7 @@
                     <thead>
                         <tr>
                             <th style="text-align: center;">Part</th>
-                            <th class="num boiler-col">Boiler</th>
+                            <th class="num">Boiler</th>
                             <th class="chart-col">Trend</th>
                             <th class="num">Predicted</th>
                             <th class="num">Range</th>
@@ -80,7 +80,7 @@
                                     <span class="pn">{f.part_number ?? '\u2014'}</span>
                                     <span class="nm">{f.part_name ?? '\u2014'}</span>
                                 </td>
-                                <td class="num boiler-col">{f.boiler_code ?? '\u2014'}</td>
+                                <td class="num">{f.boiler_code ?? '\u2014'}</td>
                                 <td class="chart-col">
                                     <ForecastTrendChart
                                         history={f.history} 

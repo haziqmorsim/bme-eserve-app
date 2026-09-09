@@ -126,7 +126,7 @@
 
         <nav class="side-group bottom">
             <div class="side-bell">
-                <ThemeToggle size={18} />
+                <ThemeToggle variant="segmented" />
             </div>
             <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
             <div class="side-bell">
