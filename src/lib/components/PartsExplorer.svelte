@@ -204,7 +204,7 @@
 <div class="explorer">
 	<div class="design card">
 		<div class="design-head">
-			<h3><!-- <span class="live-dot" aria-hidden="true"></span> -->Boiler Schematic</h3>
+			<h3><span class="live-dot" aria-hidden="true"></span>Boiler Schematic</h3>
 			<span class="legend"
 				>Click a highlighted section to see its spare parts. Dimmed sections have no available
 				parts.</span
@@ -437,15 +437,15 @@
 		color: var(--bme-muted);
 	}
 
-	/* .live-dot {
+	.live-dot {
 		display: inline-block;
-		width: 9px;
-		height: 9px;
+		width: 10px;
+		height: 10px;
 		border-radius: 50%;
 		background: var(--bme-red, #e0342a);
 		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
 		animation: live-blink 1.6s ease-in-out infinite;
-	} */
+	}
 
 	@keyframes live-blink {
 		0% {

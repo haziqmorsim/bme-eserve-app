@@ -211,6 +211,7 @@
         display: flex;
         flex-direction: row;
         gap: 20px;
+        margin-top: 15px;
     }
 
     .actions {

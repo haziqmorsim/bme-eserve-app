@@ -3,6 +3,8 @@
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
+	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
 	import type { SectionReadingRow } from '$lib/boiler-design';
@@ -18,7 +20,11 @@
 		telemetry = [],
 		rul = [],
 		motors = [],
-		maintenance = []
+		maintenance = [],
+		supabase = null,
+		projects = [],
+		boilerProjects = [],
+		activeProjectId = null
 	} = $props<{
 		boiler: Boiler;
 		readings?: SectionReadingRow[];
@@ -27,7 +33,29 @@
 		rul?: RulRow[];
 		motors?: any[];
 		maintenance?: any[];
+		supabase?: any;
+		projects?: any[];
+		boilerProjects?: any[];
+		activeProjectId?: string | null;
 	}>();
+
+	const resolvedProject = $derived.by(() => {
+		const ids = new Set(
+			(boilerProjects as any[])
+				.filter((bp) => bp.boiler_id === boiler.id)
+				.map((bp) => bp.project_id)
+		);
+		if (!ids.size) return null;
+
+		const matches = (projects as any[]).filter((p) => ids.has(p.id));
+		if (!matches.length) return null;
+
+		if (activeProjectId && ids.has(activeProjectId)) {
+			return matches.find((p) => p.id === activeProjectId) ?? null;
+		}
+
+		return [...matches].sort((a, b) => a.project_no.localeCompare(b.project_no))[0];
+	});
 
 	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'maintenance';
 	let sub = $state<SubTab>('overview');
@@ -39,6 +67,11 @@
 		{ value: 24, label: '24 hours' }
 	];
 	let tickHours = $state(1);
+
+	$effect(() => {
+		sub;
+		tickHours = 1;
+	});
 
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, []));
@@ -61,9 +94,79 @@
 
 	const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1));
 
+	const LIVE_MS = 5000;
+
+	let liveLatest = $state<Record<string, { v: number; t: string }> | null>(null);
+	let liveMotors = $state<any[] | null>(null);
+	let liveKey = $state('');
+
+	function stepValue(v: number, m: MetricRow): number {
+		const lo = Number(m.min_normal);
+		const hi = Number(m.max_normal);
+		const span = Math.max(hi - lo, 0.001);
+		const mid = (lo + hi) / 2;
+
+		let next = v + (mid - v) * 0.12 + (Math.random() - 0.5) * span * 0.18;
+
+		if (Math.random() < 0.04) {
+			next += (Math.random() < 0.5 ? -1 : 1) * span * 0.6;
+		}
+
+		const floor = Number(m.min_warning) - span * 0.2;
+		const ceil = Number(m.max_warning) + span * 0.2;
+		next = Math.max(floor, Math.min(ceil, next));
+		return Math.round(next * 100) / 100;
+	}
+
+	function stepMotor(mo: any) {
+		const jitter = (val: number, rating: number, lo: number, hi: number) => {
+			const r = Number(rating) || 1;
+			let next = Number(val) + (Math.random() - 0.5) * r * 0.05;
+			next = Math.max(r * lo, Math.min(r * hi, next));
+			return Math.round(next * 100) / 100;
+		};
+		return {
+			...mo,
+			vibration: jitter(mo.vibration, mo.vibration_limit, 0.12, 1.08),
+			current_a: jitter(mo.current_a, mo.current_rating_a, 0.45, 1.05),
+			power_kw: jitter(mo.power_kw, mo.power_rating_kw, 0.45, 1.05)
+		};
+	}
+
+	$effect(() => {
+		const key = boiler.code ?? '';
+		if (key === untrack(() => liveKey)) return;
+		liveKey = key;
+		liveLatest = { ...untrack(() => latest) };
+		liveMotors = (untrack(() => motors) as any[]).map((m) => ({ ...m }));
+	});
+
+	$effect(() => {
+		const id = setInterval(() => {
+			const ms = untrack(() => metrics) as MetricRow[];
+			const base = untrack(() => liveLatest);
+			if (base) {
+				const now = new Date().toISOString();
+				const next: Record<string, { v: number; t: string }> = {};
+				for (const m of ms) {
+					const cur = base[m.metric_key];
+					if (!cur) continue;
+					next[m.metric_key] = { v: stepValue(cur.v, m), t: now };
+				}
+				liveLatest = next;
+			}
+			const mo = untrack(() => liveMotors);
+			if (mo) liveMotors = mo.map(stepMotor);
+		}, LIVE_MS);
+		return () => clearInterval(id);
+	});
+
+	const effLatest = $derived(liveLatest ?? latest);
+	const effMotors = $derived(liveMotors ?? motors);
+
 	const overviewCards = $derived.by(() => {
 		const cards = (metrics as MetricRow[]).map((m) => {
-			const l = latest[m.metric_key];
+			const l = effLatest[m.metric_key];
 			return {
 				key: m.metric_key,
 				label: m.label,
@@ -85,7 +188,7 @@
 	const alerts = $derived.by(() => {
 		const out: AlertItem[] = [];
 		for (const m of metrics as MetricRow[]) {
-			const l = latest[m.metric_key];
+			const l = effLatest[m.metric_key];
 			if (!l) continue;
 			const level = levelFor(l.v, m);
 			if (level === 'normal') continue;
@@ -117,6 +220,65 @@
 			label: GROUP_LABELS[key] ?? key,
 			series: ms.map((m) => seriesFor(m, byMetric[m.metric_key] ?? []))
 		}));
+	});
+
+	const liveReadings = $derived.by(() => {
+		const rows: SectionReadingRow[] = [];
+		for (const s of def.sections as { key: string }[]) {
+			const ms = (metrics as MetricRow[]).filter((m) => m.section_key === s.key);
+			if (!ms.length) continue;
+
+			let state: 'Normal' | 'Warning' | 'Attention' = 'Normal';
+			const out = ms.map((m) => {
+				const l = effLatest[m.metric_key];
+				const lv = l ? levelFor(l.v, m) : 'normal';
+				if (lv === 'attention') state = 'Attention';
+				else if (lv === 'warning' && state === 'Normal') state = 'Warning';
+				return { label: m.label, value: l ? `${fmt(l.v)} ${m.unit}`.trim() : '\u2014' };
+			});
+
+			rows.push({ section_key: s.key, state, metrics: out });
+		}
+		return rows.length ? rows : (readings as SectionReadingRow[]);
+	});
+
+	let notified = new Set<string>();
+
+	$effect(() => {
+		const current = alerts;
+		untrack(() => {
+			const attentionKeys = new Set(
+				current.filter((a) => a.level === 'attention').map((a) => a.metric_key)
+			);
+
+			for (const a of current) {
+				if (a.level !== 'attention' || notified.has(a.metric_key)) continue;
+				notified.add(a.metric_key);
+
+				const reading = `${fmt(a.value)} ${a.unit}`.trim();
+
+				supabase
+					?.rpc('notify_boiler_alert', {
+						p_boiler_code: boiler.code,
+						p_metric_label: a.label,
+						p_reading: reading,
+						p_section: a.sectionLabel
+					})
+					?.then?.((res: { data: string | null; error: unknown }) => {
+						if (res?.error) {
+							console.error('notify_boiler_alert failed:', res.error);
+							return;
+						}
+						if (res?.data) invalidateAll();
+					}, (err: unknown) => {
+						console.error('notify_boiler_alert request failed:', err);
+					});
+			}
+
+			for (const key of [...notified]) {
+				if (!attentionKeys.has(key)) notified.delete(key);
+			}
+		});
 	});
 
 	const rulRows = $derived.by(() =>
@@ -181,7 +343,7 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code}</h2>
+	<h2 class="title">{boiler.code} {#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
 	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 
 	<div class="subtabs">
@@ -200,10 +362,10 @@
 	{#if sub === 'overview'}
 		<div class="card design-card">
 			<div class="design-head">
-				<h3>Boiler Schematic</h3>
+				<h3><span class="live-dot" aria-hidden="true"></span>Boiler Schematic</h3>
 				<span class="hint">Hover or tap a section to view its readings.</span>
 			</div>
-			<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} {readings} />
+			<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} readings={liveReadings} />
 		</div>
 
 		{#if !hasData}
@@ -261,14 +423,14 @@
 		{/if}
 
 	{:else if sub === 'motors'}
-			{#if motors.length === 0}
+			{#if effMotors.length === 0}
 				<div class="card empty">No motor data has been recorded for this boiler yet.</div>
 			{:else}
 				<div class="toolbar">
 					<p class="lead">Rotating equipment, measured against each drive's own rating.</p>
 				</div>
 				<div class="motors">
-					{#each motors as m (m.id)}
+					{#each effMotors as m (m.id)}
 						<div class="card motor {motorLevel(m)}">
 							<div class="m-head">
 								<div>
@@ -313,7 +475,7 @@
 						<span class="mt-part">{row.part_name}</span>
 						<span class="mt-reason">{row.reason}</span>
 						<span class="mt-overdue">{dueDays(row.due_on)} d overdue</span>
-						<span class="mt-hrs">{row.est_hours ? `${Math.round(row.est_hours)}h` : '—'}</span>
+						<!-- <span class="mt-hrs">{row.est_hours ? `${Math.round(row.est_hours)}h` : '—'}</span> -->
 						<!-- <span class="mt-cost">{money(row.est_cost)}</span> -->
 						 <button class="mt-add" onclick={() => addMaintenancePart(row)} disabled={adding === row.id || !row.parts} title={row.parts ? 'Add this part to cart' : 'Not linked to a catalogue part'}>
 							{adding === row.id? 'Added' : 'Add'}
@@ -385,6 +547,7 @@
 
 <style>
 	.title { margin: 0 0 6px; font-size: 22px; }
+	.title-project { font-size: 18px; font-weight: 400; color: var(--bme-muted); }
 	.desc { color: var(--bme-muted); margin: 0 0 16px; max-width: 60ch; }
 	.lead { color: var(--bme-muted); font-size: 13px; margin: 0; }
 
@@ -433,8 +596,40 @@
 
 	.design-card { padding: 16px 18px; margin-bottom: 20px; }
 	.design-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-	.design-head h3 { margin: 0; font-size: 14px; color: var(--bme-dark-blue); }
+	.design-head h3 {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: var(--bme-darker-blue, #0c3358);
+	}
 	.design-head .hint { font-size: 12px; color: var(--bme-muted); }
+
+	.live-dot {
+		display: inline-block;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--bme-red, #e0342a);
+		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
+		animation: live-blink 1.6s ease-in-out infinite;
+	}
+
+	@keyframes live-blink {
+		0% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.55);
+		}
+		70% {
+			opacity: 0.35;
+			box-shadow: 0 0 0 6px rgba(224, 52, 42, 0);
+		}
+		100% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0);
+		}
+	}
 
 	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 	.spec { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; border-left: 3px solid transparent; }
@@ -518,9 +713,68 @@
 	.m-code { display: block; margin-top: 2px; font-size: 11px; color: var(--bme-muted); }
  
 	.m-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; margin-top: 3px; }
-	.m-dot.normal { background: var(--bme-green); }
-	.m-dot.warning { background: var(--bme-amber); }
-	.m-dot.attention { background: var(--bme-red); }
+	.m-dot.normal {
+		background: var(--bme-green, #6cb33f);
+		box-shadow: 0 0 0 0 rgba(108, 179, 63, 0.65);
+		animation: dot-blink-normal 1.6s ease-in-out infinite;
+	}
+ 
+	.m-dot.warning {
+		background: var(--bme-amber, #f2a900);
+		box-shadow: 0 0 0 0 rgba(242, 169, 0, 0.65);
+		animation: dot-blink-warning 1.6s ease-in-out infinite;
+	}
+ 
+	.m-dot.attention {
+		background: var(--bme-red, #c0392b);
+		box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.65);
+		animation: dot-blink-attention 1.6s ease-in-out infinite;
+	}
+ 
+	@keyframes dot-blink-normal {
+		0% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(108, 179, 63, 0.55);
+		}
+		70% {
+			opacity: 0.35;
+			box-shadow: 0 0 0 6px rgba(108, 179, 63, 0);
+		}
+		100% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(108, 179, 63, 0);
+		}
+	}
+ 
+	@keyframes dot-blink-warning {
+		0% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(242, 169, 0, 0.55);
+		}
+		70% {
+			opacity: 0.35;
+			box-shadow: 0 0 0 6px rgba(242, 169, 0, 0);
+		}
+		100% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(242, 169, 0, 0);
+		}
+	}
+ 
+	@keyframes dot-blink-attention {
+		0% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.55);
+		}
+		70% {
+			opacity: 0.35;
+			box-shadow: 0 0 0 6px rgba(192, 57, 43, 0);
+		}
+		100% {
+			opacity: 1;
+			box-shadow: 0 0 0 0 rgba(192, 57, 43, 0);
+		}
+	}
  
 	.m-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--bme-border); border-radius: 8px; overflow: hidden; }
 	.m-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; border-right: 1px solid var(--bme-border); }
@@ -536,7 +790,7 @@
  
 	.mt-row {
 		display: grid;
-		grid-template-columns: 96px minmax(120px, 1.4fr) minmax(110px, 1.2fr) auto 46px 78px;
+		grid-template-columns: 96px minmax(120px, 1.4fr) minmax(110px, 1.2fr) auto 78px;
 		align-items: center;
 		gap: 12px;
 		padding: 12px 16px;

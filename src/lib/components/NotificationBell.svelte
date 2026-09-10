@@ -232,6 +232,7 @@
  
     .bell-btn {
         position: relative;
+        overflow: visible;
         display: grid;
         place-items: center;
         width: 40px;
@@ -258,13 +259,14 @@
  
     .dot {
         position: absolute;
-        top: 7px;
-        right: 7px;
-        width: 10px;
-        height: 10px;
+        top: 0;
+        right: 0;
+        transform: translate(50%, -50%);
+        min-width: 15px;
+        height: 15px;
         border-radius: 50%;
         background: var(--bme-red);
-        border: 2px solid #ffffff;
+        pointer-events: none;
     }
  
     .panel {
