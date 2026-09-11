@@ -40,7 +40,6 @@
                         rul={data.rul}
                         motors={data.motors}
                         maintenance={data.maintenance}
-                        supabase={data.supabase}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
                         activeProjectId={data.activeProjectId} />

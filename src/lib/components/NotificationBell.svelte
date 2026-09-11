@@ -53,6 +53,11 @@
             await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
             await invalidateAll();
         }
+        if (n.type === 'boiler_alert' && n.data?.boiler_id) {
+            goto(`/app?boiler=${n.data.boiler_id}&tab=dashboard&sub=alerts`);
+            return;
+        }
+
         const dest =
             n.type === 'request_reminder' || n.type === 'request_escalation' ? '/app/requests'
             : n.type === 'enquiry_reminder' ? '/app/enquiries'

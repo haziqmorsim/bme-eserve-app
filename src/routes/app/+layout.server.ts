@@ -69,6 +69,35 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         enquiryCount = count ?? 0;
     }
 
+    const [{ data: fleetBoilers }, { data: fleetMetrics }, { data: fleetLatest }, { data: fleetLinks }, { data: fleetProjects }] =
+        await Promise.all([
+            supabase.from('boilers').select('id, code, name').order('code'),
+            supabase
+                .from('boiler_metrics')
+                .select('metric_key, label, unit, min_normal, max_normal, min_warning, max_warning, colour, section_key, group_key, sort_order')
+                .order('sort_order', { ascending: true }),
+            supabase.from('boiler_latest_metrics').select('boiler_id, metric_key, value, recorded_at'),
+            supabase.from('boiler_projects').select('boiler_id, project_id'),
+            supabase.from('projects').select('id, project_no, sort_order')
+        ]);
+
+    const projectById = new Map((fleetProjects ?? []).map((p: any) => [p.id, p]));
+    const projectNoByBoiler: Record<string, string> = {};
+    for (const link of fleetLinks ?? []) {
+        const proj: any = projectById.get(link.project_id);
+        if (!proj) continue;
+        const current = projectNoByBoiler[link.boiler_id];
+        if (!current || proj.project_no.localeCompare(current) < 0) {
+            projectNoByBoiler[link.boiler_id] = proj.project_no;
+        }
+    }
+
+    const fleet = (fleetBoilers ?? []).map((b: any) => ({
+        id: b.id,
+        code: b.code,
+        projectNo: projectNoByBoiler[b.id] ?? null
+    }));
+
     const { data: notifications } = await supabase
         .from('notifications')
         .select('id, type, title, body, is_read, created_at, quote_id, data, response, responded_at')
@@ -82,6 +111,9 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount,
         enquiryCount,
         notifications: notifications ?? [],
+        fleet,
+        fleetMetrics: fleetMetrics ?? [],
+        fleetLatest: fleetLatest ?? [],
         settings: settingRows ?? [],
         whatsNew
     };

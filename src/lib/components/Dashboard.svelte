@@ -4,7 +4,8 @@
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { untrack } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { live } from '$lib/stores/live.svelte';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
 	import type { SectionReadingRow } from '$lib/boiler-design';
@@ -21,7 +22,6 @@
 		rul = [],
 		motors = [],
 		maintenance = [],
-		supabase = null,
 		projects = [],
 		boilerProjects = [],
 		activeProjectId = null
@@ -33,7 +33,6 @@
 		rul?: RulRow[];
 		motors?: any[];
 		maintenance?: any[];
-		supabase?: any;
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
@@ -58,7 +57,10 @@
 	});
 
 	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'maintenance';
-	let sub = $state<SubTab>('overview');
+	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'maintenance'];
+
+	const urlSub = $page.url.searchParams.get('sub') as SubTab | null;
+	let sub = $state<SubTab>(urlSub && SUB_TABS.includes(urlSub) ? urlSub : 'overview');
 
 	const INTERVALS = [
 		{ value: 1, label: '1 hour' },
@@ -96,27 +98,8 @@
 
 	const LIVE_MS = 5000;
 
-	let liveLatest = $state<Record<string, { v: number; t: string }> | null>(null);
 	let liveMotors = $state<any[] | null>(null);
-	let liveKey = $state('');
-
-	function stepValue(v: number, m: MetricRow): number {
-		const lo = Number(m.min_normal);
-		const hi = Number(m.max_normal);
-		const span = Math.max(hi - lo, 0.001);
-		const mid = (lo + hi) / 2;
-
-		let next = v + (mid - v) * 0.12 + (Math.random() - 0.5) * span * 0.18;
-
-		if (Math.random() < 0.04) {
-			next += (Math.random() < 0.5 ? -1 : 1) * span * 0.6;
-		}
-
-		const floor = Number(m.min_warning) - span * 0.2;
-		const ceil = Number(m.max_warning) + span * 0.2;
-		next = Math.max(floor, Math.min(ceil, next));
-		return Math.round(next * 100) / 100;
-	}
+	let motorKey = $state('');
 
 	function stepMotor(mo: any) {
 		const jitter = (val: number, rating: number, lo: number, hi: number) => {
@@ -135,33 +118,23 @@
 
 	$effect(() => {
 		const key = boiler.code ?? '';
-		if (key === untrack(() => liveKey)) return;
-		liveKey = key;
-		liveLatest = { ...untrack(() => latest) };
+		if (key === untrack(() => motorKey)) return;
+		motorKey = key;
 		liveMotors = (untrack(() => motors) as any[]).map((m) => ({ ...m }));
 	});
 
 	$effect(() => {
 		const id = setInterval(() => {
-			const ms = untrack(() => metrics) as MetricRow[];
-			const base = untrack(() => liveLatest);
-			if (base) {
-				const now = new Date().toISOString();
-				const next: Record<string, { v: number; t: string }> = {};
-				for (const m of ms) {
-					const cur = base[m.metric_key];
-					if (!cur) continue;
-					next[m.metric_key] = { v: stepValue(cur.v, m), t: now };
-				}
-				liveLatest = next;
-			}
 			const mo = untrack(() => liveMotors);
 			if (mo) liveMotors = mo.map(stepMotor);
 		}, LIVE_MS);
 		return () => clearInterval(id);
 	});
 
-	const effLatest = $derived(liveLatest ?? latest);
+	const effLatest = $derived.by(() => {
+		const shared = live.valuesFor(boiler.id);
+		return Object.keys(shared).length ? shared : latest;
+	});
 	const effMotors = $derived(liveMotors ?? motors);
 
 	const overviewCards = $derived.by(() => {
@@ -242,45 +215,6 @@
 		return rows.length ? rows : (readings as SectionReadingRow[]);
 	});
 
-	let notified = new Set<string>();
-
-	$effect(() => {
-		const current = alerts;
-		untrack(() => {
-			const attentionKeys = new Set(
-				current.filter((a) => a.level === 'attention').map((a) => a.metric_key)
-			);
-
-			for (const a of current) {
-				if (a.level !== 'attention' || notified.has(a.metric_key)) continue;
-				notified.add(a.metric_key);
-
-				const reading = `${fmt(a.value)} ${a.unit}`.trim();
-
-				supabase
-					?.rpc('notify_boiler_alert', {
-						p_boiler_code: boiler.code,
-						p_metric_label: a.label,
-						p_reading: reading,
-						p_section: a.sectionLabel
-					})
-					?.then?.((res: { data: string | null; error: unknown }) => {
-						if (res?.error) {
-							console.error('notify_boiler_alert failed:', res.error);
-							return;
-						}
-						if (res?.data) invalidateAll();
-					}, (err: unknown) => {
-						console.error('notify_boiler_alert request failed:', err);
-					});
-			}
-
-			for (const key of [...notified]) {
-				if (!attentionKeys.has(key)) notified.delete(key);
-			}
-		});
-	});
-
 	const rulRows = $derived.by(() =>
 		[...(rul as RulRow[])]
 			.map((r) => ({ ...r, label: sectionLabel(r.section_key) }))
@@ -343,7 +277,7 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code} {#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
+	<h2 class="title">{boiler.code}{#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
 	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 
 	<div class="subtabs">
@@ -547,7 +481,7 @@
 
 <style>
 	.title { margin: 0 0 6px; font-size: 22px; }
-	.title-project { font-size: 18px; font-weight: 400; color: var(--bme-muted); }
+	.title-project { font-weight: 400; color: var(--bme-muted); }
 	.desc { color: var(--bme-muted); margin: 0 0 16px; max-width: 60ch; }
 	.lead { color: var(--bme-muted); font-size: 13px; margin: 0; }
 
