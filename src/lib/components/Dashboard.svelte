@@ -22,6 +22,8 @@
 		rul = [],
 		motors = [],
 		maintenance = [],
+		metricGroups = [],
+		motorCells = [],
 		projects = [],
 		boilerProjects = [],
 		activeProjectId = null
@@ -33,6 +35,8 @@
 		rul?: RulRow[];
 		motors?: any[];
 		maintenance?: any[];
+		metricGroups?: any[];
+		motorCells?: any[];
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
@@ -137,8 +141,15 @@
 	});
 	const effMotors = $derived(liveMotors ?? motors);
 
+	const visibleOverview = $derived(
+		(metrics as any[]).filter((m) => m.show_in_overview !== false)
+	);
+	const visibleTrends = $derived(
+		(metrics as any[]).filter((m) => m.show_in_trends !== false)
+	);
+
 	const overviewCards = $derived.by(() => {
-		const cards = (metrics as MetricRow[]).map((m) => {
+		const cards = (visibleOverview as MetricRow[]).map((m) => {
 			const l = effLatest[m.metric_key];
 			return {
 				key: m.metric_key,
@@ -183,16 +194,24 @@
 
 	const groups = $derived.by(() => {
 		const map = new Map<string, MetricRow[]>();
-		for (const m of metrics as MetricRow[]) {
-			if (!m.group_key) continue;
+		for (const m of metrics as any[]) {
+			if (!m.group_key || m.show_in_analytics === false) continue;
 			if (!map.has(m.group_key)) map.set(m.group_key, []);
 			map.get(m.group_key)!.push(m);
 		}
-		return [...map.entries()].map(([key, ms]) => ({
-			key,
-			label: GROUP_LABELS[key] ?? key,
-			series: ms.map((m) => seriesFor(m, byMetric[m.metric_key] ?? []))
-		}));
+
+		const configured = (metricGroups as any[]).filter((g) => g.is_visible !== false);
+		const order = configured.length
+			? configured.map((g) => g.group_key)
+			: [...map.keys()];
+
+		return order
+			.filter((key) => (map.get(key)?.length ?? 0) > 0)
+			.map((key) => ({
+				key,
+				label: configured.find((g) => g.group_key === key)?.label ?? GROUP_LABELS[key] ?? key,
+				series: map.get(key)!.map((m) => seriesFor(m, byMetric[m.metric_key] ?? []))
+			}));
 	});
 
 	const liveReadings = $derived.by(() => {
@@ -216,12 +235,48 @@
 	});
 
 	const rulRows = $derived.by(() =>
-		[...(rul as RulRow[])]
-			.map((r) => ({ ...r, label: sectionLabel(r.section_key) }))
+		[...(rul as any[])]
+			.filter((r) => r.is_visible !== false)
+			.map((r) => ({ ...r, label: r.label || sectionLabel(r.section_key) }))
 			.sort((a, b) => a.rul_percent - b.rul_percent)
 	);
 
 	const rulLevel = (p: number) => (p < 25 ? 'attention' : p < 50 ? 'warning' : 'normal');
+
+	const DEFAULT_CELLS = [
+		{ id: 'vib', label: 'VIB', unit: 'mm/s', source_field: 'vibration', rating_field: 'vibration_limit' },
+		{ id: 'amp', label: 'AMP', unit: '', source_field: 'current_a', rating_field: 'current_rating_a' },
+		{ id: 'kw', label: 'kW', unit: '', source_field: 'power_kw', rating_field: 'power_rating_kw' }
+	];
+
+	const cells = $derived.by(() => {
+		const configured = (motorCells as any[]).filter((c) => c.is_visible !== false);
+		return configured.length
+			? [...configured].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+			: DEFAULT_CELLS;
+	});
+
+	const cellValue = (mo: any, cell: any) => {
+		const raw = Number(mo[cell.source_field]);
+		if (!Number.isFinite(raw)) return '—';
+		return cell.source_field === 'vibration' ? raw.toFixed(1) : String(Math.round(raw));
+	};
+
+	const cellRating = (mo: any, cell: any) => {
+		if (!cell.rating_field) return cell.unit || '';
+		const r = Number(mo[cell.rating_field]);
+		if (!Number.isFinite(r)) return cell.unit || '';
+		return `${Math.round(r)}${cell.unit ?? ''}`;
+	};
+
+	const cellLevel = (mo: any, cell: any) => {
+		if (!cell.rating_field) return '';
+		const r = Number(mo[cell.rating_field]);
+		const v = Number(mo[cell.source_field]);
+		if (!Number.isFinite(r) || !Number.isFinite(v) || r === 0) return '';
+		const ratio = v / r;
+		return ratio >= 1 ? 'attention' : ratio >= 0.85 ? 'warning' : 'normal';
+	};
 
 	const when = (iso: string) => new Date(iso).toLocaleString();
 
@@ -235,11 +290,6 @@
 		if (worst >= 1) return 'attention';
 		if (worst >= 0.85) return 'warning';
 		return 'normal';
-	};
-
-	const vibLevel = (m: any) => {
-		const r = Number(m.vibration) / Number(m.vibration_limit || 1);
-		return r >= 1 ? 'attention' : r>= 0.85 ? 'warning' : 'normal';
 	};
 
 	const money = (n: number | null) => {
@@ -277,7 +327,7 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code}{#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
+	<h2 class="title">{boiler.code} {#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
 	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 
 	<div class="subtabs">
@@ -329,7 +379,7 @@
 				</label>
 			</div>
 			<div class="charts">
-				{#each metrics as m (m.metric_key)}
+				{#each visibleTrends as m (m.metric_key)}
 					<div class="card chart">
 						<h4 style={`color:${m.colour}`}>{m.label}{m.unit ? ` ${m.unit}` : ''}</h4>
 						<TrendChart series={[seriesFor(m, byMetric[m.metric_key] ?? [])]} height={150} {tickHours} />
@@ -373,22 +423,14 @@
 								</div>
 								<span class="m-dot {motorLevel(m)}" aria-label={motorLevel(m)}></span>
 							</div>
-							<div class="m-grid">
-								<div class="m-cell">
-									<span class="m-k">VIB</span>
-									<span class="m-v {vibLevel(m)}">{Number(m.vibration).toFixed(1)}</span>
-									<span class="m-sub">mm/s</span>
-								</div>
-								<div class="m-cell">
-									<span class="m-k">AMP</span>
-									<span class="m-v">{Math.round(Number(m.current_a))}</span>
-									<span class="m-sub">{Math.round(Number(m.current_rating_a))}</span>
-								</div>
-								<div class="m-cell">
-									<span class="m-k">kW</span>
-									<span class="m-v">{Math.round(Number(m.power_kw))}</span>
-									<span class="m-sub">{Math.round(Number(m.power_rating_kw))}</span>
-								</div>
+							<div class="m-grid" style={`grid-template-columns: repeat(${Math.max(cells.length, 1)}, 1fr)`}>
+								{#each cells as cell (cell.id)}
+									<div class="m-cell">
+										<span class="m-k">{cell.label}</span>
+										<span class="m-v {cellLevel(m, cell)}">{cellValue(m, cell)}</span>
+										<span class="m-sub">{cellRating(m, cell)}</span>
+									</div>
+								{/each}
 							</div>
 						</div>
 					{/each}

@@ -40,6 +40,8 @@
                         rul={data.rul}
                         motors={data.motors}
                         maintenance={data.maintenance}
+                        metricGroups={data.metricGroups}
+                        motorCells={data.motorCells}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
                         activeProjectId={data.activeProjectId} />

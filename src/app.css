@@ -598,6 +598,10 @@ textarea:focus {
 	outline-color: var(--bme-red);
 }
 
+label input, label select, label textarea {
+	margin-top: 10px;
+}
+
 @keyframes bmeFadeInUp {
 	from {
 		opacity: 0;

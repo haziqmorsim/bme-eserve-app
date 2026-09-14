@@ -401,7 +401,7 @@
 		font-size: 13px;
 		font-weight: 600;
 		color: var(--bme-ink);
-		margin-bottom: 6px;
+		margin-bottom: 10px;
 	}
 
 	.img-row {

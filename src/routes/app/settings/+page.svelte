@@ -6,14 +6,16 @@
     import UserManager from "$lib/components/admin/UserManager.svelte";
     import FaqManager from "$lib/components/admin/FaqManager.svelte";
     import BoilerDataManager from "$lib/components/admin/BoilerDataManager.svelte";
+    import DashboardManager from "$lib/components/admin/DashboardManager.svelte";
 
     let { data } = $props();
-    let tab = $state<'general' | 'projects' | 'boilers' | 'parts' | 'users' | 'faq'>('projects');
+    let tab = $state<'dashboard' | 'general' | 'projects' | 'boilers' | 'parts' | 'users' | 'faq'>('dashboard');
 </script>
 
 <h1>Settings</h1>
 
 <div class="tabbar">
+    <button class="tab" class:active={tab === 'dashboard'} onclick={() => (tab = 'dashboard')}>Dashboard</button>
     <button class="tab" class:active={tab === 'projects'} onclick={() => (tab = 'projects')}>Projects</button>
     <button class="tab" class:active={tab === 'boilers'} onclick={() => (tab = 'boilers')}>Boilers</button>
     <button class="tab" class:active={tab === 'parts'} onclick={() => (tab = 'parts')}>Parts</button>
@@ -22,7 +24,18 @@
     <button class="tab" class:active={tab === 'faq'} onclick={() => (tab = 'faq')}>FAQ</button>
 </div>
 
-{#if tab === 'general'}
+{#if tab === 'dashboard'}
+    <section>
+        <DashboardManager
+            metrics={data.dashMetrics}
+            groups={data.dashGroups}
+            motors={data.dashMotors}
+            motorCells={data.dashMotorCells}
+            rul={data.dashRul}
+            boilers={data.boilers}
+            supabase={data.supabase} />
+    </section>
+{:else if tab === 'general'}
     <section>
         <GeneralManager settings={data.appSettings} supabase={data.supabase} profile={data.profile} />
     </section>
@@ -100,6 +113,7 @@
 
         .tab {
             width: 30%;
+            padding: 9px;
         }
     }
 </style>

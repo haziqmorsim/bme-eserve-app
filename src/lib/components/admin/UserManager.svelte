@@ -264,6 +264,7 @@
         font-weight: 600;
         font-size: 13px;
         color: var(--bme-ink);
+        margin-bottom: 5px;
     }
 
     .project-picker.invalid {

@@ -62,6 +62,8 @@ export const load: PageLoad = async ({ parent, url }) => {
     let rul: any[] = [];
     let motors: any[] = [];
     let maintenance: any[] = [];
+    let metricGroups: any[] = [];
+    let motorCells: any[] = [];
 
     const canViewBoiler = !!boilerId && (!isCustomer || assignedIds!.has(boilerId));
     if (canViewBoiler) {
@@ -88,7 +90,7 @@ export const load: PageLoad = async ({ parent, url }) => {
             parts = p ?? [];
         }
 
-        const [{ data: r }, { data: m }, { data: t }, { data: ru }, { data: mo }, { data: mt }] = await Promise.all([
+        const [{ data: r }, { data: m }, { data: t }, { data: ru }, { data: mo }, { data: mt }, { data: mg }, { data: mc }] = await Promise.all([
             supabase
                 .from('boiler_section_readings')
                 .select('id, section_key, state, metrics, sort_order')
@@ -119,7 +121,9 @@ export const load: PageLoad = async ({ parent, url }) => {
                 .eq('boiler_id', boilerId)
                 .is('completed_at', null)
                 .lte('due_on', new Date().toISOString().slice(0, 10))
-                .order('due_on', { ascending: true })
+                .order('due_on', { ascending: true }),
+            supabase.from('boiler_metric_groups').select('*').order('sort_order', { ascending: true }),
+            supabase.from('boiler_motor_cells').select('*').order('sort_order', { ascending: true })
         ]);
 
         sectionReadings = r ?? [];
@@ -127,6 +131,8 @@ export const load: PageLoad = async ({ parent, url }) => {
         rul = ru ?? [];
         motors = mo ?? [];
         maintenance = mt ?? [];
+        metricGroups = mg ?? [];
+        motorCells = mc ?? [];
 
         const raw = t ?? [];
         if (raw.length) {
@@ -161,6 +167,8 @@ export const load: PageLoad = async ({ parent, url }) => {
         rul, 
         motors, 
         maintenance, 
+        metricGroups, 
+        motorCells, 
         boilerId: canViewBoiler ? boilerId : null, 
         activeProjectId, 
         tab, 

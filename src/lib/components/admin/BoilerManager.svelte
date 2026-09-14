@@ -254,6 +254,7 @@
         font-weight: 600;
         font-size: 13px;
         color: var(--bme-ink, #1b2733);
+        margin-bottom: 5px;
     }
 
     .project-picker {
