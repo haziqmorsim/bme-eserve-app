@@ -42,6 +42,7 @@
                         maintenance={data.maintenance}
                         metricGroups={data.metricGroups}
                         motorCells={data.motorCells}
+                        baselines={data.baselines}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
                         activeProjectId={data.activeProjectId} />

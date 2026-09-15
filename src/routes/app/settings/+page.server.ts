@@ -5,7 +5,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const { profile } = await parent();
     if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Forbidden');
 
-    const [boilers, components, parts, users, customerProjects, lastSignIns, faqs, boilerSpecs, boilerReadings, projects, boilerProjects, appSettings, dashMetrics, dashGroups, dashMotors, dashMotorCells, dashRul] = await Promise.all([
+    const [boilers, components, parts, users, customerProjects, lastSignIns, faqs, boilerSpecs, boilerReadings, projects, boilerProjects, appSettings, dashMetrics, dashGroups, dashMotors, dashMotorCells, dashRul, dashBaselines] = await Promise.all([
         supabase.from('boilers').select('*').order('code'),
         supabase.from('components').select('id, name, boiler_id').order('name'),
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
@@ -25,7 +25,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         supabase.from('boiler_metric_groups').select('*').order('sort_order', { ascending: true }),
         supabase.from('boiler_motors').select('*').order('sort_order', { ascending: true }),
         supabase.from('boiler_motor_cells').select('*').order('sort_order', { ascending: true }),
-        supabase.from('boiler_section_rul').select('*')
+        supabase.from('boiler_section_rul').select('*'),
+        supabase.from('boiler_metric_baselines').select('*')
     ]);
 
     const lastSignInById: Record<string, string | null> = {};
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         dashMotors: dashMotors.data ?? [],
         dashMotorCells: dashMotorCells.data ?? [],
         dashRul: dashRul.data ?? [],
+        dashBaselines: dashBaselines.data ?? [],
         title: "Settings"
     };
 };

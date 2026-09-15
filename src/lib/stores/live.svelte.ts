@@ -1,4 +1,4 @@
-import { levelFor, type MetricRow } from "$lib/telemetry";
+import { levelFor, baselineIndex, type MetricRow, type MetricBaseline } from "$lib/telemetry";
 
 export type Reading = { v: number; t: string };
 export type BoilerValues = Record<string, Reading>;
@@ -43,17 +43,24 @@ class LiveTelemetry {
     values = $state<Record<string, BoilerValues>>({});
 
     #meta: Record<string, BoilerMeta> = {};
+    #baselines: Record<string, MetricBaseline> = {};
     #timer: ReturnType<typeof setInterval> | null = null;
     #seedKey = '';
     #notified = new Set<string>();
     #onAttention: ((e: AttentionEvent) => void) | null = null;
 
-    seed(metrics: MetricRow[], rows: { boiler_id: string; metric_key: string; value: number; recorded_at: string }[], meta: BoilerMeta[]) {
+    seed(
+        metrics: MetricRow[],
+        rows: { boiler_id: string; metric_key: string; value: number; recorded_at: string }[],
+        meta: BoilerMeta[],
+        baselines: MetricBaseline[] = []
+    ) {
         const key = meta.map((m) => m.id).sort().join(',') + '|' + metrics.length;
         if (key === this.#seedKey) return;
         this.#seedKey = key;
 
         this.metrics = metrics;
+        this.#baselines = baselineIndex(baselines);
         this.#meta = Object.fromEntries(meta.map((m) => [m.id, m]));
 
         const next: Record<string, BoilerValues> = {};
@@ -100,7 +107,7 @@ class LiveTelemetry {
                 out[m.metric_key] = { v, t: now };
 
                 const key = `${boilerId}:${m.metric_key}`;
-                if (levelFor(v, m) === 'attention') {
+                if (levelFor(v, m, this.#baselines[`${boilerId}:${m.metric_key}`]) === 'attention') {
                     stillAttention.add(key);
                     if (!this.#notified.has(key)) {
                         const meta = this.#meta[boilerId];

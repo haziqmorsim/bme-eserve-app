@@ -32,6 +32,7 @@
             motors={data.dashMotors}
             motorCells={data.dashMotorCells}
             rul={data.dashRul}
+            baselines={data.dashBaselines}
             boilers={data.boilers}
             supabase={data.supabase} />
     </section>
@@ -113,7 +114,6 @@
 
         .tab {
             width: 30%;
-            padding: 9px;
         }
     }
 </style>

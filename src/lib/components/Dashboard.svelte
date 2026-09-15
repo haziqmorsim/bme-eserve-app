@@ -10,7 +10,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import type { SectionReadingRow } from '$lib/boiler-design';
 	import {
-		levelFor, pointsByMetric, seriesFor, GROUP_LABELS,
+		levelFor, baselineIndex, pointsByMetric, seriesFor, GROUP_LABELS,
 		type MetricRow, type TelemetryRow, type RulRow, type AlertItem
 	} from '$lib/telemetry';
 
@@ -24,6 +24,7 @@
 		maintenance = [],
 		metricGroups = [],
 		motorCells = [],
+		baselines = [],
 		projects = [],
 		boilerProjects = [],
 		activeProjectId = null
@@ -37,6 +38,7 @@
 		maintenance?: any[];
 		metricGroups?: any[];
 		motorCells?: any[];
+		baselines?: any[];
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
@@ -100,6 +102,9 @@
 
 	const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1));
 
+	const baseIndex = $derived(baselineIndex(baselines as any[]));
+	const baseFor = (metricKey: string) => baseIndex[`${boiler.id}:${metricKey}`];
+
 	const LIVE_MS = 5000;
 
 	let liveMotors = $state<any[] | null>(null);
@@ -155,7 +160,7 @@
 				key: m.metric_key,
 				label: m.label,
 				value: l ? `${fmt(l.v)} ${m.unit}`.trim() : '—',
-				level: l ? levelFor(l.v, m) : ('normal' as const),
+				level: l ? levelFor(l.v, m, baseFor(m.metric_key)) : ('normal' as const),
 				colour: m.colour
 			};
 		});
@@ -174,7 +179,7 @@
 		for (const m of metrics as MetricRow[]) {
 			const l = effLatest[m.metric_key];
 			if (!l) continue;
-			const level = levelFor(l.v, m);
+			const level = levelFor(l.v, m, baseFor(m.metric_key));
 			if (level === 'normal') continue;
 			out.push({
 				metric_key: m.metric_key,
@@ -223,7 +228,7 @@
 			let state: 'Normal' | 'Warning' | 'Attention' = 'Normal';
 			const out = ms.map((m) => {
 				const l = effLatest[m.metric_key];
-				const lv = l ? levelFor(l.v, m) : 'normal';
+				const lv = l ? levelFor(l.v, m, baseFor(m.metric_key)) : 'normal';
 				if (lv === 'attention') state = 'Attention';
 				else if (lv === 'warning' && state === 'Normal') state = 'Warning';
 				return { label: m.label, value: l ? `${fmt(l.v)} ${m.unit}`.trim() : '\u2014' };

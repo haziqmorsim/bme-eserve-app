@@ -46,9 +46,38 @@ export type AlertItem = {
     at: string;
 };
 
-export function levelFor(value: number, m: MetricRow): AlertLevel {
-    if (value < m.min_warning || value > m.max_warning) return 'attention';
-    if (value < m.min_normal || value > m.max_normal) return 'warning';
+export type MetricBaseline = {
+    boiler_id: string;
+    metric_key: string;
+    baseline_value?: number | null;
+    min_normal?: number | null;
+    max_normal?: number | null;
+    min_warning?: number | null;
+    max_warning?: number | null;
+    at_load?: number | null;
+};
+
+export function thresholdsFor(m: MetricRow, b?: MetricBaseline | null) {
+    const pick = (o: number | null | undefined, fallback: number) =>
+        o === null || o === undefined ? Number(fallback) : Number(o);
+    return {
+        minNormal: pick(b?.min_normal, m.min_normal),
+        maxNormal: pick(b?.max_normal, m.max_normal),
+        minWarning: pick(b?.min_warning, m.min_warning),
+        maxWarning: pick(b?.max_warning, m.max_warning)
+    };
+}
+
+export function baselineIndex(rows: MetricBaseline[] = []): Record<string, MetricBaseline> {
+    const out: Record<string, MetricBaseline> = {};
+    for (const r of rows) out[`${r.boiler_id}:${r.metric_key}`] = r;
+    return out;
+}
+
+export function levelFor(value: number, m: MetricRow, b?: MetricBaseline | null): AlertLevel {
+    const t = thresholdsFor(m, b);
+    if (value < t.minWarning || value > t.maxWarning) return 'attention';
+    if (value < t.minNormal || value > t.maxNormal) return 'warning';
     return 'normal';
 }
 

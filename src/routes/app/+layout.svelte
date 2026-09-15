@@ -19,7 +19,7 @@
     let whatsNewSnapshot = $state(untrack(() => data.whatsNew));
 
     $effect(() => {
-        live.seed(data.fleetMetrics ?? [], data.fleetLatest ?? [], data.fleet ?? []);
+        live.seed(data.fleetMetrics ?? [], data.fleetLatest ?? [], data.fleet ?? [], data.fleetBaselines ?? []);
     });
 
     $effect(() => {

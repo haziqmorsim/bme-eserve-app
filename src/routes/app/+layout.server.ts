@@ -69,7 +69,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         enquiryCount = count ?? 0;
     }
 
-    const [{ data: fleetBoilers }, { data: fleetMetrics }, { data: fleetLatest }, { data: fleetLinks }, { data: fleetProjects }] =
+    const [{ data: fleetBoilers }, { data: fleetMetrics }, { data: fleetLatest }, { data: fleetBaselines }, { data: fleetLinks }, { data: fleetProjects }] =
         await Promise.all([
             supabase.from('boilers').select('id, code, name').order('code'),
             supabase
@@ -77,6 +77,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
                 .select('metric_key, label, unit, min_normal, max_normal, min_warning, max_warning, colour, section_key, group_key, sort_order')
                 .order('sort_order', { ascending: true }),
             supabase.from('boiler_latest_metrics').select('boiler_id, metric_key, value, recorded_at'),
+            supabase.from('boiler_metric_baselines').select('*'),
             supabase.from('boiler_projects').select('boiler_id, project_id'),
             supabase.from('projects').select('id, project_no, sort_order')
         ]);
@@ -114,6 +115,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         fleet,
         fleetMetrics: fleetMetrics ?? [],
         fleetLatest: fleetLatest ?? [],
+        fleetBaselines: fleetBaselines ?? [],
         settings: settingRows ?? [],
         whatsNew
     };

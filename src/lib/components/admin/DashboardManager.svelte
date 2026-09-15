@@ -11,6 +11,7 @@
         motorCells = [],
         rul = [],
         boilers = [],
+        baselines = [],
         supabase
     } = $props<{
         metrics?: any[];
@@ -19,13 +20,14 @@
         motorCells: any[];
         rul?: any[];
         boilers?: any[];
+        baselines?: any[];
         supabase: SupabaseClient;
     }>();
 
-    type Section = 'overview' | 'trends' | 'motors' | 'analytics';
+    type Section = 'overview' | 'trends' | 'motors' | 'analytics' | 'baselines';
     let section = $state<Section>('overview');
 
-    type EditKind = 'metric' | 'rul' | 'motor' | 'cell' | 'group';
+    type EditKind = 'metric' | 'rul' | 'motor' | 'cell' | 'group' | 'baseline';
 
     let editing = $state<{ kind: EditKind; row: any } | null>(null);
     let deleting = $state<{ kind: EditKind; row: any; label: string } | null>(null);
@@ -49,6 +51,26 @@
     const sortedMotors = $derived([...motors].sort((a, b) => boilerLabel(a.boiler_id).localeCompare(boilerLabel(b.boiler_id)) || (a.sort_order ?? 0) - (b.sort_order ?? 0)));
     const sortedRul = $derived([...rul].sort((a, b) => boilerLabel(a.boiler_id).localeCompare(boilerLabel(b.boiler_id)) || a.section_key.localeCompare(b.section_key)));
 
+    const metricLabel = (key: string) =>
+        (metrics as any[]).find((m) => m.metric_key === key)?.label ?? key;
+
+    const metricFor = (key: string) => (metrics as any[]).find((m) => m.metric_key === key);
+
+    const sortedBaselines = $derived(
+        [...baselines].sort(
+            (a, b) =>
+                boilerLabel(a.boiler_id).localeCompare(boilerLabel(b.boiler_id)) ||
+                metricLabel(a.metric_key).localeCompare(metricLabel(b.metric_key))
+        )
+    );
+
+    function boundText(row: any, field: string) {
+        const v = row[field];
+        if (v !== null && v !== undefined) return { text: String(v), inherited: false };
+        const m = metricFor(row.metric_key);
+        return { text: m ? String(m[field]) : '—', inherited: true };
+    }
+
     const seriesFor = (key: string) =>
     (metrics as any[]).filter((m) => m.group_key === key);
 
@@ -71,6 +93,15 @@
                   }
                 : kind === 'cell'
                 ? { label: '', unit: '', source_field: 'vibration', rating_field: 'vibration_limit', is_visible: true, sort_order: motorCells.length + 1 }
+                : kind === 'baseline'
+                ? {
+                    boiler_id: boilers[0]?.id ?? '',
+                    metric_key: (metrics as any[])[0]?.metric_key ?? '',
+                    baseline_value: null, at_load: null,
+                    min_normal: null, max_normal: null,
+                    min_warning: null, max_warning: null,
+                    note: ''
+                  }
                 : { group_key: '', label: '', sort_order: groups.length + 1, is_visible: true, series: [] };
             editing = { kind, row: null };
     }
@@ -152,7 +183,8 @@
         rul: 'boiler_section_rul',
         motor: 'boiler_motors',
         cell: 'boiler_motor_cells',
-        group: 'boiler_metric_groups'
+        group: 'boiler_metric_groups',
+        baseline: 'boiler_metric_baselines'
     };
 
     function validate(kind: EditKind) {
@@ -185,6 +217,28 @@
         } else if (kind === 'cell') {
             req('label', 'Label is required.');
             req('source_field', 'Data source is required.');
+        } else if (kind === 'baseline') {
+            req('boiler_id', 'Boiler is required.');
+            req('metric_key', 'Metric is required.');
+
+            if (
+                !editing?.row &&
+                (baselines as any[]).some(
+                    (b) => b.boiler_id === form.boiler_id && b.metric_key === form.metric_key
+                )
+            ) {
+                e.metric_key = 'This boiler already has a baseline for that metric.';
+            }
+
+            const pair = (lo: string, hi: string, label: string) => {
+                const a = form[lo];
+                const b = form[hi];
+                if (a !== null && a !== '' && b !== null && b !== '' && Number(a) > Number(b)) {
+                    e[hi] = `${label} maximum must not be below its minimum.`;
+                }
+            };
+            pair('min_normal', 'max_normal', 'Normal');
+            pair('min_warning', 'max_warning', 'Warning');
         } else {
             req('label', 'Label is required.');
             if (!editing?.row) {
@@ -206,6 +260,7 @@
         if (kind === 'rul') return { boiler_id: row.boiler_id, section_key: row.section_key };
         if (kind === 'metric') return { metric_key: row.metric_key };
         if (kind === 'group') return { group_key: row.group_key };
+        if (kind === 'baseline') return { boiler_id: row.boiler_id, metric_key: row.metric_key };
         return { id: row.id };
     }
 
@@ -221,12 +276,24 @@
         const selectedSeries: string[] | null = kind === 'group' ? (form.series ?? []) : null;
         delete payload.series;
 
+        if (kind === 'baseline') {
+            for (const k of ['baseline_value', 'at_load', 'min_normal', 'max_normal', 'min_warning', 'max_warning']) {
+                const v = payload[k];
+                payload[k] = v === '' || v === undefined || v === null ? null : Number(v);
+            }
+            if (!String(payload.note ?? '').trim()) payload.note = null;
+        }
+
         if (row) {
             if (kind === 'metric') delete payload.metric_key;
             if (kind === 'group') delete payload.group_key;
             if (kind === 'rul') {
                 delete payload.boiler_id;
                 delete payload.section_key;
+            }
+            if (kind === 'baseline') {
+                delete payload.boiler_id;
+                delete payload.metric_key;
             }
             delete payload.id;
         }
@@ -307,6 +374,7 @@
             <option value="trends">Trends</option>
             <option value="motors">Motors</option>
             <option value="analytics">Analytics</option>
+            <option value="baselines">Baselines</option>
         </select>
     </label>
 
@@ -469,7 +537,7 @@
             </table>
         {/if}
 
-    {:else}
+    {:else if section === 'analytics'}
         <div class="adm-bar">
             <p class="dm-hint">Group cards shown on the dashboard 'Analytics' sub-tab. Each group plots its series together.</p>
             <button class="btn-primary" onclick={() => startNew('group')}>+ Add Group</button>
@@ -512,11 +580,61 @@
                 </div>
             {/each}
         {/if}
+
+    {:else}
+        <div class="adm-bar">
+            <p class="dm-hint">Per-boiler thresholds from the Tier 2 baseline audit. Anything left blank inherits the fleet-wide value from the metric.</p>
+            <button class="btn-primary" onclick={() => startNew('baseline')}>+ Add Baseline</button>
+        </div>
+        {#if sortedBaselines.length === 0}
+            <div class="adm-empty">No baselines set. Every boiler currently uses the fleet-wide thresholds.</div>
+        {:else}
+            <table class="adm-table">
+                <thead>
+                    <tr>
+                        <th>Boiler</th><th>Metric</th><th class="dm-center">Baseline</th>
+                        <th class="dm-center">Normal</th><th class="dm-center">Warning</th>
+                        <th class="dm-center">At Load</th><th class="dm-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each sortedBaselines as b (b.boiler_id + b.metric_key)}
+                        {@const nLo = boundText(b, 'min_normal')}
+                        {@const nHi = boundText(b, 'max_normal')}
+                        {@const wLo = boundText(b, 'min_warning')}
+                        {@const wHi = boundText(b, 'max_warning')}
+                        <tr>
+                            <td>{boilerLabel(b.boiler_id)}</td>
+                            <td><strong>{metricLabel(b.metric_key)}</strong></td>
+                            <td class="dm-center">{b.baseline_value ?? '—'}</td>
+                            <td class="dm-center">
+                                <span class:inherited={nLo.inherited}>{nLo.text}</span>
+                                <span class="rng">–</span>
+                                <span class:inherited={nHi.inherited}>{nHi.text}</span>
+                            </td>
+                            <td class="dm-center">
+                                <span class:inherited={wLo.inherited}>{wLo.text}</span>
+                                <span class="rng">–</span>
+                                <span class:inherited={wHi.inherited}>{wHi.text}</span>
+                            </td>
+                            <td class="dm-center">{b.at_load ?? '—'}</td>
+                            <td>
+                                <div class="adm-actions">
+                                    <button class="adm-link" onclick={() => startEdit('baseline', b)}>Edit</button>
+                                    <button class="adm-link danger" onclick={() => (deleting = { kind: 'baseline', row: b, label: `${boilerLabel(b.boiler_id)} / ${metricLabel(b.metric_key)}` })}>Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+            <p class="dm-hint mt-sm">Values shown in grey are inherited from the metric's fleet-wide setting, not overridden for this boiler.</p>
+        {/if}
     {/if}
 </div>
 
 {#if editing}
-    <Modal title={`${editing.row ? 'Edit' : 'Add'} ${editing.kind === 'metric' ? 'Metric' : editing.kind === 'rul' ? 'RUL Card' : editing.kind === 'motor' ? 'Motor' : editing.kind === 'cell' ? 'Cell' : 'Group'}`} onclose={cancel}>
+    <Modal title={`${editing.row ? 'Edit' : 'Add'} ${editing.kind === 'metric' ? 'Metric' : editing.kind === 'rul' ? 'RUL Card' : editing.kind === 'motor' ? 'Motor' : editing.kind === 'cell' ? 'Cell' : editing.kind === 'baseline' ? 'Baseline' : 'Group'}`} onclose={cancel}>
         <div class="adm-form">
             {#if editing.kind === 'metric'}
                 {#if !editing.row}
@@ -598,6 +716,59 @@
                 </label>
                 <label>Sort Order
                     <input type="number" bind:value={form.sort_order} />
+                </label>
+
+            {:else if editing.kind === 'baseline'}
+                {#if !editing.row}
+                    <label>Boiler <span class="required">*</span>
+                        <select bind:value={form.boiler_id} class:invalid={fieldErr.boiler_id}>
+                            {#each boilers as b (b.id)}<option value={b.id}>{b.code}</option>{/each}
+                        </select>
+                        {#if fieldErr.boiler_id}<span class="field-err">{fieldErr.boiler_id}</span>{/if}
+                    </label>
+                    <label>Metric <span class="required">*</span>
+                        <select bind:value={form.metric_key} class:invalid={fieldErr.metric_key}>
+                            {#each sortedMetrics as m (m.metric_key)}<option value={m.metric_key}>{m.label}</option>{/each}
+                        </select>
+                        {#if fieldErr.metric_key}<span class="field-err">{fieldErr.metric_key}</span>{/if}
+                    </label>
+                {/if}
+
+                <p class="full dm-hint">
+                    Leave a threshold blank to inherit the fleet-wide value.
+                    {#if metricFor(form.metric_key)}
+                        Currently inherits normal
+                        {metricFor(form.metric_key).min_normal}–{metricFor(form.metric_key).max_normal},
+                        warning {metricFor(form.metric_key).min_warning}–{metricFor(form.metric_key).max_warning}
+                        {metricFor(form.metric_key).unit}.
+                    {/if}
+                </p>
+
+                <label>Baseline Value
+                    <input type="number" step="any" bind:value={form.baseline_value} placeholder="Reference reading when clean" />
+                </label>
+                <label>At Load
+                    <input type="number" step="any" bind:value={form.at_load} placeholder="Steam output when measured" />
+                </label>
+
+                <label>Normal Minimum
+                    <input type="number" step="any" bind:value={form.min_normal} />
+                </label>
+                <label>Normal Maximum
+                    <input type="number" step="any" bind:value={form.max_normal} class:invalid={fieldErr.max_normal} />
+                    {#if fieldErr.max_normal}<span class="field-err">{fieldErr.max_normal}</span>{/if}
+                </label>
+
+                <label>Warning Minimum
+                    <input type="number" step="any" bind:value={form.min_warning} />
+                </label>
+                <label>Warning Maximum
+                    <input type="number" step="any" bind:value={form.max_warning} class:invalid={fieldErr.max_warning} />
+                    {#if fieldErr.max_warning}<span class="field-err">{fieldErr.max_warning}</span>{/if}
+                </label>
+
+                <label class="full">Note
+                    <input bind:value={form.note} placeholder="e.g. established during Phase 1 audit, Mar 2026" />
                 </label>
 
             {:else}
@@ -722,6 +893,10 @@
     }
  
     .dm-hint { margin: 0; font-size: 12.5px; color: var(--bme-muted); }
+    .dm-hint.mt-sm { margin-top: 10px; }
+
+    .inherited { color: var(--bme-muted); opacity: 0.75; }
+    .rng { color: var(--bme-muted); margin: 0 3px; }
 
     .dm-center {
         text-align: center;
