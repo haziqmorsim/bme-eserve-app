@@ -43,6 +43,8 @@
                         metricGroups={data.metricGroups}
                         motorCells={data.motorCells}
                         baselines={data.baselines}
+                        indicators={data.indicators}
+                        indicatorStatus={data.indicatorStatus}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
                         activeProjectId={data.activeProjectId} />

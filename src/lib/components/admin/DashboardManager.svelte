@@ -12,6 +12,7 @@
         rul = [],
         boilers = [],
         baselines = [],
+        indicators = [],
         supabase
     } = $props<{
         metrics?: any[];
@@ -21,13 +22,14 @@
         rul?: any[];
         boilers?: any[];
         baselines?: any[];
+        indicators?: any[];
         supabase: SupabaseClient;
     }>();
 
-    type Section = 'overview' | 'trends' | 'motors' | 'analytics' | 'baselines';
+    type Section = 'overview' | 'trends' | 'motors' | 'analytics' | 'baselines' | 'indicators';
     let section = $state<Section>('overview');
 
-    type EditKind = 'metric' | 'rul' | 'motor' | 'cell' | 'group' | 'baseline';
+    type EditKind = 'metric' | 'rul' | 'motor' | 'cell' | 'group' | 'baseline' | 'indicator';
 
     let editing = $state<{ kind: EditKind; row: any } | null>(null);
     let deleting = $state<{ kind: EditKind; row: any; label: string } | null>(null);
@@ -56,6 +58,18 @@
 
     const metricFor = (key: string) => (metrics as any[]).find((m) => m.metric_key === key);
 
+    const sortedIndicators = $derived(
+        [...indicators].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    );
+
+    const FORMULA_LABELS: Record<string, string> = {
+        delta_vs_baseline: 'Difference from baseline',
+        differential: 'Difference between two metrics',
+        ratio: 'Ratio of two metrics',
+        excursion_count: 'Days outside limit this month',
+        unavailable: 'No data source yet'
+    };
+
     const sortedBaselines = $derived(
         [...baselines].sort(
             (a, b) =>
@@ -64,6 +78,7 @@
         )
     );
 
+    /** Shows an overridden bound, or the inherited catalogue value in muted text. */
     function boundText(row: any, field: string) {
         const v = row[field];
         if (v !== null && v !== undefined) return { text: String(v), inherited: false };
@@ -93,6 +108,13 @@
                   }
                 : kind === 'cell'
                 ? { label: '', unit: '', source_field: 'vibration', rating_field: 'vibration_limit', is_visible: true, sort_order: motorCells.length + 1 }
+                : kind === 'indicator'
+                ? {
+                    indicator_key: '', label: '', early_warning: '', suggested_action: '',
+                    formula: 'delta_vs_baseline', metric_key: '', metric_key_b: null,
+                    unit: '', trigger_op: 'above', trigger_value: null, trigger_days: 7,
+                    is_visible: true, sort_order: indicators.length + 1
+                  }
                 : kind === 'baseline'
                 ? {
                     boiler_id: boilers[0]?.id ?? '',
@@ -140,8 +162,11 @@
         addToast(`${m.label} removed from the group.`);
     }
 
+    // Confirmation modal state for "Remove" - replaces the old hover title,
+    // which explained the action but never asked before taking it.
     let removingSeries = $state<any | null>(null);
 
+    // "+ Add Metric" quick-add modal, scoped to one group at a time.
     let addingTo = $state<string | null>(null);
     let toAdd = $state<string[]>([]);
 
@@ -184,7 +209,8 @@
         motor: 'boiler_motors',
         cell: 'boiler_motor_cells',
         group: 'boiler_metric_groups',
-        baseline: 'boiler_metric_baselines'
+        baseline: 'boiler_metric_baselines',
+        indicator: 'boiler_indicators'
     };
 
     function validate(kind: EditKind) {
@@ -217,6 +243,23 @@
         } else if (kind === 'cell') {
             req('label', 'Label is required.');
             req('source_field', 'Data source is required.');
+        } else if (kind === 'indicator') {
+            req('label', 'Label is required.');
+            req('early_warning', 'Early warning description is required.');
+            req('suggested_action', 'Suggested action is required.');
+            if (!editing?.row) {
+                req('indicator_key', 'Key is required.');
+                if (form.indicator_key && !/^[a-z0-9_]+$/.test(form.indicator_key)) {
+                    e.indicator_key = 'Use lowercase letters, digits and underscores only.';
+                }
+                if ((indicators as any[]).some((i) => i.indicator_key === form.indicator_key)) {
+                    e.indicator_key = 'That key is already in use.';
+                }
+            }
+            // The two-metric formulas are meaningless without the second metric.
+            if ((form.formula === 'differential' || form.formula === 'ratio') && !form.metric_key_b) {
+                e.metric_key_b = 'This formula compares two metrics, so a second metric is required.';
+            }
         } else if (kind === 'baseline') {
             req('boiler_id', 'Boiler is required.');
             req('metric_key', 'Metric is required.');
@@ -230,6 +273,8 @@
                 e.metric_key = 'This boiler already has a baseline for that metric.';
             }
 
+            // Caught here as well as by the database check constraint, so staff
+            // get a field-level message instead of a raw Postgres error.
             const pair = (lo: string, hi: string, label: string) => {
                 const a = form[lo];
                 const b = form[hi];
@@ -261,6 +306,7 @@
         if (kind === 'metric') return { metric_key: row.metric_key };
         if (kind === 'group') return { group_key: row.group_key };
         if (kind === 'baseline') return { boiler_id: row.boiler_id, metric_key: row.metric_key };
+        if (kind === 'indicator') return { indicator_key: row.indicator_key };
         return { id: row.id };
     }
 
@@ -275,6 +321,24 @@
         const payload = { ...form };
         const selectedSeries: string[] | null = kind === 'group' ? (form.series ?? []) : null;
         delete payload.series;
+
+        // A blank threshold input means "inherit the fleet-wide value", which is
+        // NULL - not 0 and not ''. Writing 0 would silently redefine the band
+        // (an empty min_normal becoming 0 marks every negative draft reading as
+        // an alert), and '' fails numeric insertion outright.
+        if (kind === 'indicator') {
+            // Blank trigger means "described but not enforced" - null, not 0.
+            payload.trigger_value =
+                payload.trigger_value === '' || payload.trigger_value === undefined || payload.trigger_value === null
+                    ? null
+                    : Number(payload.trigger_value);
+            payload.trigger_days = Number(payload.trigger_days) || 1;
+            // A single-metric formula must not keep a stale second metric.
+            if (payload.formula !== 'differential' && payload.formula !== 'ratio') {
+                payload.metric_key_b = null;
+            }
+            if (!payload.metric_key) payload.metric_key = null;
+        }
 
         if (kind === 'baseline') {
             for (const k of ['baseline_value', 'at_load', 'min_normal', 'max_normal', 'min_warning', 'max_warning']) {
@@ -295,6 +359,7 @@
                 delete payload.boiler_id;
                 delete payload.metric_key;
             }
+            if (kind === 'indicator') delete payload.indicator_key;
             delete payload.id;
         }
 
@@ -375,6 +440,7 @@
             <option value="motors">Motors</option>
             <option value="analytics">Analytics</option>
             <option value="baselines">Baselines</option>
+            <option value="indicators">Indicators</option>
         </select>
     </label>
 
@@ -581,7 +647,7 @@
             {/each}
         {/if}
 
-    {:else}
+    {:else if section === 'baselines'}
         <div class="adm-bar">
             <p class="dm-hint">Per-boiler thresholds from the Tier 2 baseline audit. Anything left blank inherits the fleet-wide value from the metric.</p>
             <button class="btn-primary" onclick={() => startNew('baseline')}>+ Add Baseline</button>
@@ -630,11 +696,60 @@
             </table>
             <p class="dm-hint mt-sm">Values shown in grey are inherited from the metric's fleet-wide setting, not overridden for this boiler.</p>
         {/if}
+
+    {:else}
+        <div class="adm-bar">
+            <p class="dm-hint">Tier 2 early-warning indicators. Thresholds are expected to be reset at the annual programme review, so they are editable here.</p>
+            <button class="btn-primary" onclick={() => startNew('indicator')}>+ Add Indicator</button>
+        </div>
+        {#if sortedIndicators.length === 0}
+            <div class="adm-empty">No indicators configured.</div>
+        {:else}
+            <table class="adm-table">
+                <thead>
+                    <tr>
+                        <th>Indicator</th><th>Formula</th><th class="dm-center">Trigger</th>
+                        <th class="dm-center">Visible</th><th class="dm-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each sortedIndicators as i (i.indicator_key)}
+                        <tr>
+                            <td>
+                                <strong>{i.label}</strong>
+                                <span class="ind-sub">{i.early_warning}</span>
+                            </td>
+                            <td>
+                                {FORMULA_LABELS[i.formula] ?? i.formula}
+                                {#if i.formula === 'unavailable'}<span class="ind-sub">No data source yet</span>{/if}
+                            </td>
+                            <td class="dm-center">
+                                {#if i.trigger_value === null || i.trigger_value === undefined}
+                                    —
+                                {:else}
+                                    {i.trigger_op === 'above' ? '>' : '<'} {i.trigger_value}{i.unit ? ` ${i.unit}` : ''}
+                                    {#if i.trigger_days > 1}<span class="ind-sub">for {i.trigger_days} days</span>{/if}
+                                {/if}
+                            </td>
+                            <td class="dm-center">
+                                <span class="dm-seg sm" role="group"><button class="seg" class:active={i.is_visible} onclick={() => setVisible('indicator', i, 'is_visible', true)} aria-pressed={i.is_visible}>Shown</button><button class="seg off" class:active={!i.is_visible} onclick={() => setVisible('indicator', i, 'is_visible', false)} aria-pressed={!i.is_visible}>Hidden</button></span>
+                            </td>
+                            <td>
+                                <div class="adm-actions">
+                                    <button class="adm-link" onclick={() => startEdit('indicator', i)}>Edit</button>
+                                    <button class="adm-link danger" onclick={() => (deleting = { kind: 'indicator', row: i, label: i.label })}>Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        {/if}
     {/if}
 </div>
 
 {#if editing}
-    <Modal title={`${editing.row ? 'Edit' : 'Add'} ${editing.kind === 'metric' ? 'Metric' : editing.kind === 'rul' ? 'RUL Card' : editing.kind === 'motor' ? 'Motor' : editing.kind === 'cell' ? 'Cell' : editing.kind === 'baseline' ? 'Baseline' : 'Group'}`} onclose={cancel}>
+    <Modal title={`${editing.row ? 'Edit' : 'Add'} ${editing.kind === 'metric' ? 'Metric' : editing.kind === 'rul' ? 'RUL Card' : editing.kind === 'motor' ? 'Motor' : editing.kind === 'cell' ? 'Cell' : editing.kind === 'baseline' ? 'Baseline' : editing.kind === 'indicator' ? 'Indicator' : 'Group'}`} onclose={cancel}>
         <div class="adm-form">
             {#if editing.kind === 'metric'}
                 {#if !editing.row}
@@ -713,6 +828,67 @@
                     <select bind:value={form.source_field} onchange={() => (form.rating_field = SOURCE_FIELDS.find((s) => s.value === form.source_field)?.rating ?? null)}>
                         {#each SOURCE_FIELDS as s (s.value)}<option value={s.value}>{s.label}</option>{/each}
                     </select>
+                </label>
+                <label>Sort Order
+                    <input type="number" bind:value={form.sort_order} />
+                </label>
+
+            {:else if editing.kind === 'indicator'}
+                {#if !editing.row}
+                    <label>Key <span class="required">*</span>
+                        <input bind:value={form.indicator_key} placeholder="exhaust_rise" class:invalid={fieldErr.indicator_key} />
+                        {#if fieldErr.indicator_key}<span class="field-err">{fieldErr.indicator_key}</span>{/if}
+                    </label>
+                {/if}
+                <label>Label <span class="required">*</span>
+                    <input bind:value={form.label} placeholder="Exhaust Gas Temperature Rise" class:invalid={fieldErr.label} />
+                    {#if fieldErr.label}<span class="field-err">{fieldErr.label}</span>{/if}
+                </label>
+                <label class="full">Early Warning Of <span class="required">*</span>
+                    <input bind:value={form.early_warning} placeholder="Internal scale or external tube fouling" class:invalid={fieldErr.early_warning} />
+                    {#if fieldErr.early_warning}<span class="field-err">{fieldErr.early_warning}</span>{/if}
+                </label>
+                <label class="full">Suggested Action <span class="required">*</span>
+                    <input bind:value={form.suggested_action} placeholder="Sustained rise for 7 days - inspect and clean" class:invalid={fieldErr.suggested_action} />
+                    {#if fieldErr.suggested_action}<span class="field-err">{fieldErr.suggested_action}</span>{/if}
+                </label>
+
+                <label>Formula
+                    <select bind:value={form.formula}>
+                        {#each Object.entries(FORMULA_LABELS) as [k, v] (k)}<option value={k}>{v}</option>{/each}
+                    </select>
+                </label>
+                <label>Unit
+                    <input bind:value={form.unit} placeholder="°C" />
+                </label>
+
+                <label>Metric
+                    <select bind:value={form.metric_key}>
+                        <option value="">None</option>
+                        {#each sortedMetrics as m (m.metric_key)}<option value={m.metric_key}>{m.label}</option>{/each}
+                    </select>
+                </label>
+                {#if form.formula === 'differential' || form.formula === 'ratio'}
+                    <label>Second Metric <span class="required">*</span>
+                        <select bind:value={form.metric_key_b} class:invalid={fieldErr.metric_key_b}>
+                            <option value={null}>None</option>
+                            {#each sortedMetrics as m (m.metric_key)}<option value={m.metric_key}>{m.label}</option>{/each}
+                        </select>
+                        {#if fieldErr.metric_key_b}<span class="field-err">{fieldErr.metric_key_b}</span>{/if}
+                    </label>
+                {/if}
+
+                <label>Trigger When
+                    <select bind:value={form.trigger_op}>
+                        <option value="above">Above</option>
+                        <option value="below">Below</option>
+                    </select>
+                </label>
+                <label>Trigger Value
+                    <input type="number" step="any" bind:value={form.trigger_value} placeholder="Blank = described but not enforced" />
+                </label>
+                <label>Sustained For (days)
+                    <input type="number" bind:value={form.trigger_days} />
                 </label>
                 <label>Sort Order
                     <input type="number" bind:value={form.sort_order} />
@@ -897,6 +1073,8 @@
 
     .inherited { color: var(--bme-muted); opacity: 0.75; }
     .rng { color: var(--bme-muted); margin: 0 3px; }
+
+    .ind-sub { display: block; margin-top: 3px; font-size: 11.5px; color: var(--bme-muted); }
 
     .dm-center {
         text-align: center;

@@ -25,6 +25,8 @@
 		metricGroups = [],
 		motorCells = [],
 		baselines = [],
+		indicators = [],
+		indicatorStatus = [],
 		projects = [],
 		boilerProjects = [],
 		activeProjectId = null
@@ -39,6 +41,8 @@
 		metricGroups?: any[];
 		motorCells?: any[];
 		baselines?: any[];
+		indicators?: any[];
+		indicatorStatus?: any[];
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
@@ -62,8 +66,8 @@
 		return [...matches].sort((a, b) => a.project_no.localeCompare(b.project_no))[0];
 	});
 
-	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'maintenance';
-	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'maintenance'];
+	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'indicators' | 'maintenance';
+	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'indicators', 'maintenance'];
 
 	const urlSub = $page.url.searchParams.get('sub') as SubTab | null;
 	let sub = $state<SubTab>(urlSub && SUB_TABS.includes(urlSub) ? urlSub : 'overview');
@@ -248,6 +252,35 @@
 
 	const rulLevel = (p: number) => (p < 25 ? 'attention' : p < 50 ? 'warning' : 'normal');
 
+	const indicatorRows = $derived.by(() => {
+		const byKey = new Map((indicatorStatus as any[]).map((s) => [s.indicator_key, s]));
+		return (indicators as any[])
+			.filter((i) => i.is_visible !== false)
+			.map((i) => {
+				const s = byKey.get(i.indicator_key);
+				return {
+					...i,
+					value: s?.value ?? null,
+					level: (s?.level ?? 'none') as 'normal' | 'warning' | 'attention' | 'none',
+					breachDays: s?.breach_days ?? 0,
+					day: s?.day ?? null,
+					unavailable: i.formula === 'unavailable'
+				};
+			})
+			.sort((a, b) => {
+				const rank = { attention: 0, warning: 1, normal: 2, none: 3 } as Record<string, number>;
+				return rank[a.level] - rank[b.level] || (a.sort_order ?? 0) - (b.sort_order ?? 0);
+			});
+	});
+
+	const indicatorAlerts = $derived(indicatorRows.filter((r) => r.level === 'attention').length);
+
+	const triggerText = (i: any) =>
+		i.trigger_value === null || i.trigger_value === undefined
+			? '—'
+			: `${i.trigger_op === 'above' ? '>' : '<'} ${i.trigger_value}${i.unit ? ' ' + i.unit : ''}` +
+			  (i.trigger_days > 1 ? ` for ${i.trigger_days}d` : '');
+
 	const DEFAULT_CELLS = [
 		{ id: 'vib', label: 'VIB', unit: 'mm/s', source_field: 'vibration', rating_field: 'vibration_limit' },
 		{ id: 'amp', label: 'AMP', unit: '', source_field: 'current_a', rating_field: 'current_rating_a' },
@@ -343,6 +376,9 @@
 			Alerts{#if alerts.length}<span class="pill">{alerts.length}</span>{/if}
 		</button>
 		<button class="stab" class:active={sub === 'analytics'} onclick={() => (sub = 'analytics')}>Analytics</button>
+		<button class="stab" class:active={sub === 'indicators'} onclick={() => (sub = 'indicators')}>
+			Indicators{#if indicatorAlerts}<span class="pill">{indicatorAlerts}</span>{/if}
+		</button>
 		<button class="stab" class:active={sub === 'maintenance'} onclick={() => (sub = 'maintenance')}>
 			Maintenance{#if maintenance.length}<span class="pill">{maintenance.length}</span>{/if}
 		</button>
@@ -441,6 +477,48 @@
 					{/each}
 				</div>
 			{/if}
+
+	{:else if sub === 'indicators'}
+		{#if indicatorRows.length === 0}
+			<div class="card empty">No early-warning indicators are configured.</div>
+		{:else}
+			<div class="toolbar">
+				<p class="lead">
+				Derived from readings already collected. Each is compared against this boiler's own baseline and trended - a trigger fires only once a breach is sustained.
+			</p>
+			</div>
+			<div class="ind-list">
+				{#each indicatorRows as i (i.indicator_key)}
+					<div class="card ind {i.level}">
+						<div class="ind-head">
+							<span class="ind-name">{i.label}</span>
+							{#if i.unavailable}
+								<span class="ind-tag none">No data source</span>
+							{:else if i.level === 'none'}
+								<span class="ind-tag none">Awaiting data</span>
+							{:else}
+								<span class="ind-val {i.level}">{i.value}{i.unit ? ` ${i.unit}` : ''}</span>
+								<span class="ind-tag {i.level}">{i.level}</span>
+							{/if}
+						</div>
+
+						<p class="ind-warn">{i.early_warning}</p>
+
+						<div class="ind-meta">
+							<span><span class="ind-k">Trigger</span> {triggerText(i)}</span>
+							{#if i.breachDays > 0}
+								<span><span class="ind-k">Breached</span> {i.breachDays} day{i.breachDays === 1 ? '' : 's'} running</span>
+							{/if}
+							{#if i.day}<span><span class="ind-k">As of</span> {i.day}</span>{/if}
+						</div>
+
+						{#if i.level === 'attention' || i.level === 'warning'}
+							<p class="ind-action">{i.suggested_action}</p>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
 
 	{:else if sub === 'maintenance'}
 		{#if maintenance.length === 0}
@@ -543,7 +621,7 @@
 
 	.ivl { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 	.ivl span { font-size: 12.5px; font-weight: 600; color: var(--bme-muted); white-space: nowrap; }
-	.ivl select { width: auto; min-width: 130px; padding: 7px 10px; font-size: 13px; }
+	.ivl select { width: auto; min-width: 130px; margin-top: 0; padding: 7px 10px; font-size: 13px; }
 
 	.subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 
@@ -791,6 +869,42 @@
 	}
 	.mt-add:hover:not(:disabled) { background: var(--bme-darker-blue); }
 	.mt-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
+	.ind-list { display: flex; flex-direction: column; gap: 12px; }
+	.ind { padding: 16px 18px; border-left: 3px solid transparent; }
+	.ind.warning { border-left-color: var(--bme-amber); }
+	.ind.attention { border-left-color: var(--bme-red); }
+
+	.ind-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+	.ind-name { flex: 1; font-size: 14px; font-weight: 700; color: var(--bme-ink); }
+	.ind-val { font-size: 16px; font-weight: 700; color: var(--bme-ink); }
+	.ind-val.warning { color: var(--bme-amber); }
+	.ind-val.attention { color: var(--bme-red); }
+
+	.ind-tag {
+		flex: 0 0 auto; font-size: 10.5px; font-weight: 700;
+		text-transform: uppercase; letter-spacing: 0.03em;
+		padding: 3px 8px; border-radius: 4px;
+	}
+	.ind-tag.none { background: var(--bme-surface-2); color: var(--bme-muted); }
+	.ind-tag.normal { background: #e4f3d8; color: #2f5e18; }
+	.ind-tag.warning { background: #fff3d6; color: #97700a; }
+	.ind-tag.attention { background: #fbe3e0; color: #8e261b; }
+
+	:root[data-theme='dark'] .ind-tag.normal { background: #1e3212; color: #9adf6c; }
+	:root[data-theme='dark'] .ind-tag.warning { background: #3a2f0f; color: #ffcc66; }
+	:root[data-theme='dark'] .ind-tag.attention { background: #3a1c18; color: #ff9d8f; }
+
+	.ind-warn { margin: 6px 0 0; font-size: 13px; color: var(--bme-muted); }
+
+	.ind-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--bme-muted); }
+	.ind-k { font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; margin-right: 4px; }
+
+	.ind-action {
+		margin: 10px 0 0; padding: 9px 12px;
+		background: var(--bme-surface-2); border-radius: 8px;
+		font-size: 12.5px; line-height: 1.5; color: var(--bme-ink);
+	}
 
 	.empty { padding: 2rem 1.5rem; text-align: center; color: var(--bme-muted); }
 

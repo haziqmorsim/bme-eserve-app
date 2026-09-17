@@ -65,6 +65,8 @@ export const load: PageLoad = async ({ parent, url }) => {
     let metricGroups: any[] = [];
     let motorCells: any[] = [];
     let baselines: any[] = [];
+    let indicators: any[] = [];
+    let indicatorStatus: any[] = [];
 
     const canViewBoiler = !!boilerId && (!isCustomer || assignedIds!.has(boilerId));
     if (canViewBoiler) {
@@ -91,7 +93,7 @@ export const load: PageLoad = async ({ parent, url }) => {
             parts = p ?? [];
         }
 
-        const [{ data: r }, { data: m }, { data: t }, { data: ru }, { data: mo }, { data: mt }, { data: mg }, { data: mc }, { data: bl }] = await Promise.all([
+        const [{ data: r }, { data: m }, { data: t }, { data: ru }, { data: mo }, { data: mt }, { data: mg }, { data: mc }, { data: bl }, { data: ind }, { data: istat }] = await Promise.all([
             supabase
                 .from('boiler_section_readings')
                 .select('id, section_key, state, metrics, sort_order')
@@ -125,7 +127,9 @@ export const load: PageLoad = async ({ parent, url }) => {
                 .order('due_on', { ascending: true }),
             supabase.from('boiler_metric_groups').select('*').order('sort_order', { ascending: true }),
             supabase.from('boiler_motor_cells').select('*').order('sort_order', { ascending: true }),
-            supabase.from('boiler_metric_baselines').select('*').eq('boiler_id', boilerId)
+            supabase.from('boiler_metric_baselines').select('*').eq('boiler_id', boilerId),
+            supabase.from('boiler_indicators').select('*').order('sort_order', { ascending: true }),
+            supabase.from('boiler_indicator_status').select('*').eq('boiler_id', boilerId)
         ]);
 
         sectionReadings = r ?? [];
@@ -136,6 +140,8 @@ export const load: PageLoad = async ({ parent, url }) => {
         metricGroups = mg ?? [];
         motorCells = mc ?? [];
         baselines = bl ?? [];
+        indicators = ind ?? [];
+        indicatorStatus = istat ?? [];
 
         const raw = t ?? [];
         if (raw.length) {
@@ -173,6 +179,8 @@ export const load: PageLoad = async ({ parent, url }) => {
         metricGroups, 
         motorCells, 
         baselines, 
+        indicators, 
+        indicatorStatus, 
         boilerId: canViewBoiler ? boilerId : null, 
         activeProjectId, 
         tab, 
