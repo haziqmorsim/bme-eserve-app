@@ -45,6 +45,7 @@
                         baselines={data.baselines}
                         indicators={data.indicators}
                         indicatorStatus={data.indicatorStatus}
+                        supabase={data.supabase}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
                         activeProjectId={data.activeProjectId} />

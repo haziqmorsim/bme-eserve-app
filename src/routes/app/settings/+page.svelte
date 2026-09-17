@@ -33,6 +33,7 @@
             motorCells={data.dashMotorCells}
             rul={data.dashRul}
             baselines={data.dashBaselines}
+            indicators={data.dashIndicators}
             boilers={data.boilers}
             supabase={data.supabase} />
     </section>

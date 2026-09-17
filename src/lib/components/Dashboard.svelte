@@ -27,6 +27,7 @@
 		baselines = [],
 		indicators = [],
 		indicatorStatus = [],
+		supabase = null,
 		projects = [],
 		boilerProjects = [],
 		activeProjectId = null
@@ -43,6 +44,7 @@
 		baselines?: any[];
 		indicators?: any[];
 		indicatorStatus?: any[];
+		supabase?: any;
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
@@ -275,6 +277,43 @@
 
 	const indicatorAlerts = $derived(indicatorRows.filter((r) => r.level === 'attention').length);
 
+	let reportBusy = $state(false);
+
+	async function downloadReport() {
+		if (!supabase || reportBusy) return;
+		reportBusy = true;
+		try {
+			const { data: resp, error } = await supabase.functions.invoke('condition-report', {
+				body: { boiler_id: boiler.id }
+			});
+
+			if (error || !resp?.ok || !resp?.pdf_base64) {
+				addToast(resp?.error ?? 'Could not generate the condition report. Please try again.');
+				return;
+			}
+
+			const binary = atob(resp.pdf_base64);
+			const bytes = new Uint8Array(binary.length);
+			for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+			const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = resp.filename ?? `condition-report-${boiler.code}.pdf`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+
+			addToast('Condition report downloaded.');
+		} catch (e) {
+			console.error('Condition report download failed:', e);
+			addToast('Could not generate the condition report. Please try again.');
+		} finally {
+			reportBusy = false;
+		}
+	}
+
 	const triggerText = (i: any) =>
 		i.trigger_value === null || i.trigger_value === undefined
 			? '—'
@@ -479,14 +518,19 @@
 			{/if}
 
 	{:else if sub === 'indicators'}
+		<div class="toolbar">
+			<p class="lead">
+				Derived from readings already collected. Each is compared against this boiler's own
+				baseline and trended - a trigger fires only once a breach is sustained.
+			</p>
+			<button class="rep-btn" onclick={downloadReport} disabled={reportBusy || !supabase}>
+				{reportBusy ? 'Preparing...' : 'Monthly report'}
+			</button>
+		</div>
+
 		{#if indicatorRows.length === 0}
 			<div class="card empty">No early-warning indicators are configured.</div>
 		{:else}
-			<div class="toolbar">
-				<p class="lead">
-				Derived from readings already collected. Each is compared against this boiler's own baseline and trended - a trigger fires only once a breach is sustained.
-			</p>
-			</div>
 			<div class="ind-list">
 				{#each indicatorRows as i (i.indicator_key)}
 					<div class="card ind {i.level}">
@@ -869,6 +913,22 @@
 	}
 	.mt-add:hover:not(:disabled) { background: var(--bme-darker-blue); }
 	.mt-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
+	.rep-btn {
+		flex: 0 0 auto;
+		padding: 8px 16px;
+		border: 1px solid var(--bme-dark-blue);
+		border-radius: 8px;
+		background: var(--bme-dark-blue);
+		color: #ffffff;
+		font: inherit;
+		font-size: 13px;
+		font-weight: 700;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.rep-btn:hover:not(:disabled) { background: var(--bme-darker-blue); }
+	.rep-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 	.ind-list { display: flex; flex-direction: column; gap: 12px; }
 	.ind { padding: 16px 18px; border-left: 3px solid transparent; }
