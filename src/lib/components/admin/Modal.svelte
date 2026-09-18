@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { title, onclose, children } = $props<{ title: string; onclose: () => void; children: any }>();
+    let { title, onclose, children, wide = false } = $props<{ title: string; onclose: () => void; children: any; wide?: boolean }>();
 
     function handleKey(e: KeyboardEvent) {
         if (e.key === 'Escape') onclose();
@@ -13,7 +13,7 @@
 <svelte:window onkeydown={handleKey} />
 
 <div class="modal-overlay" role="presentation" onclick={onOverlayClick}>
-    <div class="modal-panel" role="dialog" aria-modal="true" tabindex="-1">
+    <div class="modal-panel" class:wide role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-head">
             <h3>{title}</h3>
             <button class="modal-x" onclick={onclose} aria-label="Close">✕</button>

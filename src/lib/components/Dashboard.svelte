@@ -8,6 +8,10 @@
 	import { live } from '$lib/stores/live.svelte';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
+	import { invalidateAll } from '$app/navigation';
+	import InspectionRecorder from '$lib/components/InspectionRecorder.svelte';
+	import LogSheetForm from '$lib/components/LogSheetForm.svelte';
+	import ActionEditor from '$lib/components/ActionEditor.svelte';
 	import type { SectionReadingRow } from '$lib/boiler-design';
 	import {
 		levelFor, baselineIndex, pointsByMetric, seriesFor, GROUP_LABELS,
@@ -27,10 +31,19 @@
 		baselines = [],
 		indicators = [],
 		indicatorStatus = [],
-		supabase = null,
+		inspection = null,
+		inspectionItems = [],
+		findings = [],
+		tubeReadings = [],
+		dailyLogs = [],
+		programme = null,
+		actions = [],
+		kpis = null,
 		projects = [],
 		boilerProjects = [],
-		activeProjectId = null
+		activeProjectId = null,
+		supabase = null,
+		profile = null
 	} = $props<{
 		boiler: Boiler;
 		readings?: SectionReadingRow[];
@@ -44,10 +57,19 @@
 		baselines?: any[];
 		indicators?: any[];
 		indicatorStatus?: any[];
-		supabase?: any;
+		inspection?: any;
+		inspectionItems?: any[];
+		findings?: any[];
+		tubeReadings?: any[];
+		dailyLogs?: any[];
+		programme?: any;
+		actions?: any[];
+		kpis?: any;
 		projects?: any[];
 		boilerProjects?: any[];
 		activeProjectId?: string | null;
+		supabase?: any;
+		profile?: any;
 	}>();
 
 	const resolvedProject = $derived.by(() => {
@@ -68,8 +90,8 @@
 		return [...matches].sort((a, b) => a.project_no.localeCompare(b.project_no))[0];
 	});
 
-	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'indicators' | 'maintenance';
-	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'indicators', 'maintenance'];
+	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'indicators' | 'inspection' | 'logsheet' | 'programme' | 'maintenance';
+	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'indicators', 'inspection', 'logsheet', 'programme', 'maintenance'];
 
 	const urlSub = $page.url.searchParams.get('sub') as SubTab | null;
 	let sub = $state<SubTab>(urlSub && SUB_TABS.includes(urlSub) ? urlSub : 'overview');
@@ -277,6 +299,73 @@
 
 	const indicatorAlerts = $derived(indicatorRows.filter((r) => r.level === 'attention').length);
 
+	const findingByItem = $derived(
+		new Map((findings as any[]).map((f) => [f.item_id, f]))
+	);
+
+	const inspectionGroups = $derived.by(() => {
+		const out: { key: string; category: string; code: string; label: string; items: any[] }[] = [];
+		for (const it of inspectionItems as any[]) {
+			const key = `${it.category}:${it.group_code}`;
+			let g = out.find((x) => x.key === key);
+			if (!g) {
+				g = { key, category: it.category, code: it.group_code, label: it.group_label, items: [] };
+				out.push(g);
+			}
+			g.items.push({ ...it, finding: findingByItem.get(it.id) ?? null });
+		}
+		return out;
+	});
+
+	const inspectionTotals = $derived.by(() => {
+		let ok = 0, attention = 0, na = 0, pending = 0;
+		for (const it of inspectionItems as any[]) {
+			const r = findingByItem.get(it.id)?.result ?? 'pending';
+			if (r === 'ok') ok++;
+			else if (r === 'attention') attention++;
+			else if (r === 'na') na++;
+			else pending++;
+		}
+		const assessed = ok + attention;
+		return { ok, attention, na, pending, assessed, percent: assessed ? Math.round((ok / assessed) * 100) : null };
+	});
+
+	const resultLabel = (r: string) =>
+		r === 'ok' ? 'OK' : r === 'attention' ? 'Attention' : r === 'na' ? 'N/A' : 'Pending';
+
+	const logRows = $derived(
+		[...(dailyLogs as any[])].sort(
+			(a, b) => b.log_date.localeCompare(a.log_date) || a.shift.localeCompare(b.shift)
+		)
+	);
+
+	const metricLabel = (key: string) =>
+		(metrics as any[]).find((m) => m.metric_key === key)?.label ?? key;
+
+	const PHASE_LABELS: Record<string, string> = {
+		baseline: 'Phase 1 — Baseline audit',
+		setup: 'Phase 2 — System set-up',
+		managed: 'Phase 3 — Managed assessment'
+	};
+
+	const openActions = $derived(
+		(actions as any[]).filter((a) => a.status === 'open' || a.status === 'in_progress')
+	);
+	const closedActions = $derived(
+		(actions as any[]).filter((a) => a.status === 'done' || a.status === 'cancelled')
+	);
+	const isOverdue = (a: any) =>
+		a.due_date && (a.status === 'open' || a.status === 'in_progress') && a.due_date < new Date().toISOString().slice(0, 10);
+
+	const onTimeRate = $derived(
+		kpis && kpis.assessments_due > 0
+			? Math.round((kpis.assessments_on_time / kpis.assessments_due) * 100)
+			: null
+	);
+
+	const STAFF_ROLES = new Set(['admin', 'manager', 'coo', 'developer']);
+	const isStaff = $derived(STAFF_ROLES.has(profile?.role));
+
 	let reportBusy = $state(false);
 
 	async function downloadReport() {
@@ -313,6 +402,10 @@
 			reportBusy = false;
 		}
 	}
+
+	let recording = $state(false);
+	let showLogForm = $state(false);
+	let editingAction = $state<{ row: any | null } | null>(null);
 
 	const triggerText = (i: any) =>
 		i.trigger_value === null || i.trigger_value === undefined
@@ -418,6 +511,11 @@
 		<button class="stab" class:active={sub === 'indicators'} onclick={() => (sub = 'indicators')}>
 			Indicators{#if indicatorAlerts}<span class="pill">{indicatorAlerts}</span>{/if}
 		</button>
+		<button class="stab" class:active={sub === 'inspection'} onclick={() => (sub = 'inspection')}>Inspection</button>
+		<button class="stab" class:active={sub === 'logsheet'} onclick={() => (sub = 'logsheet')}>Log Sheet</button>
+		<button class="stab" class:active={sub === 'programme'} onclick={() => (sub = 'programme')}>
+			Programme{#if kpis?.actions_overdue}<span class="pill">{kpis.actions_overdue}</span>{/if}
+		</button>
 		<button class="stab" class:active={sub === 'maintenance'} onclick={() => (sub = 'maintenance')}>
 			Maintenance{#if maintenance.length}<span class="pill">{maintenance.length}</span>{/if}
 		</button>
@@ -520,8 +618,7 @@
 	{:else if sub === 'indicators'}
 		<div class="toolbar">
 			<p class="lead">
-				Derived from readings already collected. Each is compared against this boiler's own
-				baseline and trended - a trigger fires only once a breach is sustained.
+				Derived from readings already collected. Each is compared against this boiler's own baseline and trended - a trigger fires only once a breach is sustained.
 			</p>
 			<button class="rep-btn" onclick={downloadReport} disabled={reportBusy || !supabase}>
 				{reportBusy ? 'Preparing...' : 'Monthly report'}
@@ -558,6 +655,192 @@
 
 						{#if i.level === 'attention' || i.level === 'warning'}
 							<p class="ind-action">{i.suggested_action}</p>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+	{:else if sub === 'inspection'}
+		{#if recording && isStaff}
+			<InspectionRecorder
+				boilerId={boiler.id}
+				inspection={inspection?.status === 'complete' ? null : inspection}
+				{inspectionItems}
+				findings={inspection?.status === 'complete' ? [] : findings}
+				tubeReadings={inspection?.status === 'complete' ? [] : tubeReadings}
+				{supabase}
+				onclose={() => (recording = false)} />
+		{:else}
+			<div class="toolbar">
+				<p class="lead">Annual condition assessment against the checklist. Photos and tube readings attach to the current inspection.</p>
+				{#if isStaff}
+					<button class="rep-btn" onclick={() => (recording = true)}>
+						{!inspection ? '+ Start Inspection' : inspection.status === 'complete' ? '+ New Inspection' : 'Continue Inspection'}
+					</button>
+				{/if}
+			</div>
+
+			{#if !inspection}
+				<div class="card empty">
+					No annual inspection has been recorded for this boiler yet.
+					The checklist has {inspectionItems.length} items across {inspectionGroups.length} sections.
+				</div>
+			{:else}
+				<div class="card insp-head">
+					<div>
+						<span class="insp-date">Inspected {inspection.inspected_on}</span>
+						{#if inspection.inspector}<span class="insp-by">by {inspection.inspector}</span>{/if}
+						<span class="insp-status {inspection.status}">{inspection.status === 'complete' ? 'Complete' : 'Draft'}</span>
+					</div>
+					<div class="insp-score">
+						{#if inspectionTotals.percent !== null}
+							<span class="insp-pct">{inspectionTotals.percent}%</span>
+							<span class="insp-sub">{inspectionTotals.ok} of {inspectionTotals.assessed} checks passed</span>
+						{:else}
+							<span class="insp-sub">Nothing assessed yet</span>
+						{/if}
+					</div>
+				</div>
+
+				{#if inspection.summary}
+					<div class="card insp-summary">{inspection.summary}</div>
+				{/if}
+
+				{#each inspectionGroups as g (g.key)}
+					<div class="card insp-grp">
+						<div class="insp-grp-head">
+							<span class="insp-code">{g.code}</span>
+							<span class="insp-grp-name">{g.label}</span>
+							<span class="insp-cat">{g.category === 'mechanical' ? 'Mechanical' : 'Instrumentation'}</span>
+						</div>
+						<ul class="insp-items">
+							{#each g.items as it (it.id)}
+								{@const res = it.finding?.result ?? 'pending'}
+								<li>
+									<span class="insp-dot {res}"></span>
+									<span class="insp-label">{it.label}</span>
+									<span class="insp-res {res}">{resultLabel(res)}</span>
+									{#if it.finding?.note}<span class="insp-note">{it.finding.note}</span>{/if}
+									{#if it.finding?.photo_url}
+										<a class="insp-photo" href={it.finding.photo_url} target="_blank" rel="noopener noreferrer">Photo</a>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/each}
+
+				{#if tubeReadings.length > 0}
+					<h3 class="sect">Tube Thickness Readings</h3>
+					<div class="card pad">
+						{#each tubeReadings as t (t.id)}
+							{@const thin = t.minimum_mm !== null && Number(t.reading_mm) < Number(t.minimum_mm)}
+							<div class="tt-row">
+								<span class="tt-loc">{t.location}</span>
+								<span class="tt-val {thin ? 'attention' : ''}">{t.reading_mm} mm</span>
+								<span class="tt-min">{t.minimum_mm ? `min ${t.minimum_mm} mm` : ''}</span>
+								{#if t.note}<span class="tt-note">{t.note}</span>{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+			{/if}
+		{/if}
+
+	{:else if sub === 'logsheet'}
+		<div class="toolbar">
+			<p class="lead">Daily operator record. Covers what no sensor reports — blowdown, grab-sample results and shift observations.</p>
+			{#if isStaff}
+				<button class="rep-btn" onclick={() => (showLogForm = true)}>+ New Log Sheet</button>
+			{/if}
+		</div>
+
+		{#if logRows.length === 0}
+			<div class="card empty">No operator log sheets have been recorded for this boiler yet.</div>
+		{:else}
+			<div class="log-list">
+				{#each logRows as l (l.id)}
+					<div class="card log">
+						<div class="log-head">
+							<span class="log-date">{l.log_date}</span>
+							<span class="log-shift">{l.shift === 'night' ? 'Night' : 'Day'} shift</span>
+							{#if l.operator}<span class="log-op">{l.operator}</span>{/if}
+							<span class="log-bd {l.blowdown_done ? 'done' : 'missed'}">
+								{l.blowdown_done
+									? `Blowdown${l.blowdown_minutes ? ` ${l.blowdown_minutes} min` : ''}`
+									: 'No blowdown'}
+							</span>
+						</div>
+						{#if l.boiler_daily_log_readings?.length}
+							<div class="log-readings">
+								{#each l.boiler_daily_log_readings as r (r.metric_key)}
+									<span class="log-r"><span class="log-rk">{metricLabel(r.metric_key)}</span> {r.value}</span>
+								{/each}
+							</div>
+						{/if}
+						{#if l.notes}<p class="log-notes">{l.notes}</p>{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+	{:else if sub === 'programme'}
+		<div class="card prog-head">
+			<div>
+				<span class="prog-phase">{PHASE_LABELS[programme?.phase ?? 'baseline']}</span>
+				{#if programme?.phase_started_on}
+					<span class="prog-sub">Since {programme.phase_started_on}</span>
+				{/if}
+			</div>
+			{#if programme?.next_review_on}
+				<div class="prog-review">
+					<span class="prog-k">Next review</span>
+					<span>{programme.next_review_on}</span>
+				</div>
+			{/if}
+		</div>
+
+		<div class="grid kpi-grid">
+			<div class="card spec">
+				<span class="k">Assessments on time</span>
+				<span class="v">{onTimeRate === null ? '—' : `${onTimeRate}%`}</span>
+				<span class="kpi-sub">{kpis?.assessments_on_time ?? 0} of {kpis?.assessments_due ?? 0} in 12 months</span>
+			</div>
+			<div class="card spec">
+				<span class="k">Open actions</span>
+				<span class="v">{kpis?.actions_open ?? 0}</span>
+				<span class="kpi-sub">{kpis?.actions_overdue ?? 0} overdue</span>
+			</div>
+			<div class="card spec">
+				<span class="k">Escalations</span>
+				<span class="v">{kpis?.escalations_12m ?? 0}</span>
+				<span class="kpi-sub">Raised in 12 months</span>
+			</div>
+		</div>
+
+		<div class="toolbar">
+			<h3 class="sect nm">Action Register</h3>
+			{#if isStaff}
+				<button class="rep-btn" onclick={() => (editingAction = { row: null })}>+ Raise Action</button>
+			{/if}
+		</div>
+		{#if openActions.length === 0 && closedActions.length === 0}
+			<div class="card empty">No actions have been raised for this boiler.</div>
+		{:else}
+			<div class="act-list">
+				{#each [...openActions, ...closedActions] as a (a.id)}
+					<div class="card act" class:overdue={isOverdue(a)} class:closed={a.status === 'done' || a.status === 'cancelled'}>
+						<div class="act-main">
+							<span class="act-title">{a.title}</span>
+							{#if a.detail}<span class="act-detail">{a.detail}</span>{/if}
+						</div>
+						<span class="act-src">{a.source}</span>
+						{#if a.owner}<span class="act-owner">{a.owner}</span>{:else}<span class="act-owner">—</span>{/if}
+						<span class="act-due" class:overdue={isOverdue(a)}>{a.due_date ?? '—'}</span>
+						<span class="act-status {a.status}">{a.status.replace('_', ' ')}</span>
+						{#if isStaff}
+							<button class="adm-link act-edit" onclick={() => (editingAction = { row: a })}>Edit</button>
 						{/if}
 					</div>
 				{/each}
@@ -648,11 +931,43 @@
 	{/if}
 </div>
 
+{#if showLogForm && isStaff}
+	<LogSheetForm
+		boilerId={boiler.id}
+		{metrics}
+		{supabase}
+		onclose={() => (showLogForm = false)} />
+{/if}
+
+{#if editingAction && isStaff}
+	<ActionEditor
+		boilerId={boiler.id}
+		action={editingAction.row}
+		{supabase}
+		onclose={() => (editingAction = null)} />
+{/if}
+
 <style>
 	.title { margin: 0 0 6px; font-size: 22px; }
 	.title-project { font-weight: 400; color: var(--bme-muted); }
 	.desc { color: var(--bme-muted); margin: 0 0 16px; max-width: 60ch; }
 	.lead { color: var(--bme-muted); font-size: 13px; margin: 0; }
+
+	.rep-btn {
+		flex: 0 0 auto;
+		padding: 8px 16px;
+		border: 1px solid var(--bme-dark-blue);
+		border-radius: 8px;
+		background: var(--bme-dark-blue);
+		color: #ffffff;
+		font: inherit;
+		font-size: 13px;
+		font-weight: 700;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.rep-btn:hover:not(:disabled) { background: var(--bme-darker-blue); }
+	.rep-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 	.toolbar {
 		display: flex;
@@ -675,7 +990,7 @@
 		display: inline-flex; align-items: center; gap: 7px;
 		padding: 8px 18px; border: 1px solid var(--bme-border); border-radius: 8px;
 		background: var(--bme-surface); color: var(--bme-muted);
-		font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+		font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
 		transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 	}
 
@@ -751,6 +1066,7 @@
 	.dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 
 	.sect { font-size: 15px; margin: 26px 0 12px; color: var(--bme-dark-blue); }
+	.sect.nm { margin: 0; }
 	.pad { padding: 6px 18px 14px; }
 
 	.rul { padding: 12px 0; border-bottom: 1px solid var(--bme-border); }
@@ -914,22 +1230,6 @@
 	.mt-add:hover:not(:disabled) { background: var(--bme-darker-blue); }
 	.mt-add:disabled { opacity: 0.5; cursor: not-allowed; }
 
-	.rep-btn {
-		flex: 0 0 auto;
-		padding: 8px 16px;
-		border: 1px solid var(--bme-dark-blue);
-		border-radius: 8px;
-		background: var(--bme-dark-blue);
-		color: #ffffff;
-		font: inherit;
-		font-size: 13px;
-		font-weight: 700;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.rep-btn:hover:not(:disabled) { background: var(--bme-darker-blue); }
-	.rep-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
 	.ind-list { display: flex; flex-direction: column; gap: 12px; }
 	.ind { padding: 16px 18px; border-left: 3px solid transparent; }
 	.ind.warning { border-left-color: var(--bme-amber); }
@@ -964,6 +1264,88 @@
 		margin: 10px 0 0; padding: 9px 12px;
 		background: var(--bme-surface-2); border-radius: 8px;
 		font-size: 12.5px; line-height: 1.5; color: var(--bme-ink);
+	}
+
+	.insp-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; margin-bottom: 14px; flex-wrap: wrap; }
+	.insp-date { font-size: 14px; font-weight: 700; color: var(--bme-ink); }
+	.insp-by { margin-left: 8px; font-size: 12.5px; color: var(--bme-muted); }
+	.insp-status { margin-left: 10px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--bme-surface-2); color: var(--bme-muted); }
+	.insp-status.complete { background: #e4f3d8; color: #2f5e18; }
+	:root[data-theme='dark'] .insp-status.complete { background: #1e3212; color: #9adf6c; }
+	.insp-score { text-align: right; }
+	.insp-pct { display: block; font-size: 22px; font-weight: 700; color: var(--bme-dark-blue); }
+	.insp-sub { font-size: 11.5px; color: var(--bme-muted); }
+	.insp-summary { padding: 14px 18px; margin-bottom: 14px; font-size: 13px; color: var(--bme-ink); }
+
+	.insp-grp { padding: 0; margin-bottom: 12px; overflow: hidden; }
+	.insp-grp-head { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: var(--bme-surface-2); border-bottom: 1px solid var(--bme-border); }
+	.insp-code { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: var(--bme-dark-blue); color: #fff; font-size: 11.5px; font-weight: 700; }
+	.insp-grp-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--bme-ink); }
+	.insp-cat { font-size: 11px; color: var(--bme-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+
+	.insp-items { list-style: none; margin: 0; padding: 0; }
+	.insp-items li { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--bme-border); flex-wrap: wrap; }
+	.insp-items li:last-child { border-bottom: none; }
+	.insp-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--bme-border); }
+	.insp-dot.ok { background: var(--bme-green); }
+	.insp-dot.attention { background: var(--bme-red); }
+	.insp-dot.na { background: var(--bme-muted); }
+	.insp-label { flex: 1; min-width: 200px; font-size: 13px; color: var(--bme-ink); }
+	.insp-res { font-size: 11.5px; font-weight: 700; color: var(--bme-muted); }
+	.insp-res.ok { color: var(--bme-green); }
+	.insp-res.attention { color: var(--bme-red); }
+	.insp-note { flex-basis: 100%; font-size: 12px; color: var(--bme-muted); padding-left: 19px; }
+	.insp-photo { font-size: 12px; color: var(--bme-dark-blue); }
+
+	.tt-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--bme-border); flex-wrap: wrap; }
+	.tt-row:last-child { border-bottom: none; }
+	.tt-loc { flex: 1; min-width: 160px; font-size: 13px; color: var(--bme-ink); }
+	.tt-val { font-size: 13.5px; font-weight: 700; color: var(--bme-ink); }
+	.tt-val.attention { color: var(--bme-red); }
+	.tt-min, .tt-note { font-size: 11.5px; color: var(--bme-muted); }
+
+	.log-list { display: flex; flex-direction: column; gap: 10px; }
+	.log { padding: 13px 16px; }
+	.log-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+	.log-date { font-size: 13.5px; font-weight: 700; color: var(--bme-ink); }
+	.log-shift, .log-op { font-size: 12.5px; color: var(--bme-muted); }
+	.log-bd { margin-left: auto; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+	.log-bd.done { background: #e4f3d8; color: #2f5e18; }
+	.log-bd.missed { background: var(--bme-surface-2); color: var(--bme-muted); }
+	:root[data-theme='dark'] .log-bd.done { background: #1e3212; color: #9adf6c; }
+	.log-readings { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 9px; }
+	.log-r { font-size: 12.5px; color: var(--bme-ink); }
+	.log-rk { color: var(--bme-muted); margin-right: 4px; }
+	.log-notes { margin: 9px 0 0; font-size: 12.5px; color: var(--bme-muted); }
+
+	.prog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 18px; margin-bottom: 14px; flex-wrap: wrap; }
+	.prog-phase { display: block; font-size: 15px; font-weight: 700; color: var(--bme-dark-blue); }
+	.prog-sub { font-size: 12px; color: var(--bme-muted); }
+	.prog-review { text-align: right; font-size: 13px; color: var(--bme-ink); }
+	.prog-k { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--bme-muted); }
+	.kpi-grid { margin-bottom: 8px; grid-template-columns: 1fr 1fr 1fr; }
+	.kpi-sub { font-size: 11px; color: var(--bme-muted); }
+
+	.act-list { display: flex; flex-direction: column; gap: 8px; }
+	.act { display: grid; grid-template-columns: 1fr 90px 90px 92px 96px auto; align-items: center; gap: 12px; padding: 12px 16px; border-left: 3px solid transparent; }
+	.act.overdue { border-left-color: var(--bme-red); }
+	.act.closed { opacity: 0.6; }
+	.act-title { display: block; font-size: 13.5px; font-weight: 700; color: var(--bme-ink); }
+	.act-detail { display: block; margin-top: 3px; font-size: 12px; color: var(--bme-muted); }
+	.act-src, .act-owner { font-size: 11.5px; color: var(--bme-muted); text-align: center; text-transform: capitalize; }
+	.act-due { font-size: 12.5px; color: var(--bme-muted); text-align: right; font-variant-numeric: tabular-nums; }
+	.act-due.overdue { color: var(--bme-red); font-weight: 700; }
+	.act-status { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 3px 8px; border-radius: 4px; text-align: center; background: var(--bme-surface-2); color: var(--bme-muted); }
+	.act-edit { flex: 0 0 auto; white-space: nowrap; }
+	.act-status.in_progress { background: #fff3d6; color: #97700a; }
+	.act-status.done { background: #e4f3d8; color: #2f5e18; }
+	:root[data-theme='dark'] .act-status.in_progress { background: #3a2f0f; color: #ffcc66; }
+	:root[data-theme='dark'] .act-status.done { background: #1e3212; color: #9adf6c; }
+
+	@media (max-width: 860px) {
+		.act { grid-template-columns: 1fr auto; row-gap: 6px; }
+		.act-main { grid-column: 1 / -1; }
+		.act-src, .act-owner, .act-due, .act-status, .act-edit { grid-column: auto; }
 	}
 
 	.empty { padding: 2rem 1.5rem; text-align: center; color: var(--bme-muted); }

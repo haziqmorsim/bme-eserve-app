@@ -45,10 +45,19 @@
                         baselines={data.baselines}
                         indicators={data.indicators}
                         indicatorStatus={data.indicatorStatus}
-                        supabase={data.supabase}
+                        inspection={data.inspection}
+                        inspectionItems={data.inspectionItems}
+                        findings={data.findings}
+                        tubeReadings={data.tubeReadings}
+                        dailyLogs={data.dailyLogs}
+                        programme={data.programme}
+                        actions={data.actions}
+                        kpis={data.kpis}
                         projects={data.projects}
                         boilerProjects={data.boilerProjects}
-                        activeProjectId={data.activeProjectId} />
+                        activeProjectId={data.activeProjectId}
+                        supabase={data.supabase}
+                        profile={data.profile} />
                 {/if}
             </div>
         {/if}

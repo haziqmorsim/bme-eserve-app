@@ -408,6 +408,10 @@ select {
 	overflow: hidden;
 }
 
+.modal-panel.wide {
+	max-width: 860px;
+}
+
 .modal-head {
 	display: flex;
 	align-items: center;
