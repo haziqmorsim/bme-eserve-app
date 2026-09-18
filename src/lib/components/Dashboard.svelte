@@ -192,13 +192,13 @@
 				colour: m.colour
 			};
 		});
-		cards.push({
-			key: 'fuel_type',
-			label: 'Fuel Type',
-			value: boiler.fuel_type ?? '—',
-			level: 'normal' as const,
-			colour: 'var(--bme-muted)'
-		});
+		// cards.push({
+		// 	key: 'fuel_type',
+		// 	label: 'Fuel Type',
+		// 	value: boiler.fuel_type ?? '—',
+		// 	level: 'normal' as const,
+		// 	colour: 'var(--bme-muted)'
+		// });
 		return cards;
 	});
 
@@ -982,7 +982,7 @@
 	.ivl span { font-size: 12.5px; font-weight: 600; color: var(--bme-muted); white-space: nowrap; }
 	.ivl select { width: auto; min-width: 130px; margin-top: 0; padding: 7px 10px; font-size: 13px; }
 
-	.subtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+	.subtabs { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 
 	.stab {
 		position: relative;
