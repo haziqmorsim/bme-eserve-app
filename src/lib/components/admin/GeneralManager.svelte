@@ -198,7 +198,7 @@
         <h2>Quotations</h2>
         <p class="gen-hint">The reference format applies to newly created requests only, existing reference numbers are never rewritten.</p>
         <div class="adm-form">
-            <label>Reference Prefix
+            <label>Prefix
                 <input class="w-50" bind:value={form.quote_ref_prefix} placeholder="BME" class:invalid={fieldErr.quote_ref_prefix} />
                 {#if fieldErr.quote_ref_prefix}<span class="field-err">{fieldErr.quote_ref_prefix}</span>{/if}
             </label>

@@ -50,7 +50,7 @@ export const load: PageLoad = async ({ parent, url }) => {
     const customerNoBoilers = isCustomer && (assignedIds?.size ?? 0) === 0;
 
     const boilerId = url.searchParams.get('boiler');
-    const tab = (url.searchParams.get('tab') ?? 'dashboard') as 'dashboard' | 'parts';
+    const tab = (url.searchParams.get('tab') ?? 'parts') as 'dashboard' | 'parts'; // change to dashboard when iot is up
     const activeProjectId = url.searchParams.get('project');
 
     let boiler: Boiler | null = null;

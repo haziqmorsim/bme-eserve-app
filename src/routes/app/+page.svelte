@@ -25,7 +25,7 @@
             </div>
         {:else}
             <div class="tabbar">
-                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
+                <!-- <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a> -->
                 <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
             </div>
             <div class="panel">

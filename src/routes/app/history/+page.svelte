@@ -210,7 +210,7 @@
         <button class="tab" class:active={tab === 'reviews'} onclick={() => { tab = 'reviews'; }}>Reviews</button>
     {/if}
     <button class="tab" class:active={tab === 'requests'} onclick={() => { tab = 'requests'; }}>Requests</button>
-    <button class="tab" class:active={tab === 'chats'} onclick={() => { tab = 'chats'; }}>Chats</button>
+    <!-- <button class="tab" class:active={tab === 'chats'} onclick={() => { tab = 'chats'; }}>Chats</button> -->
 </div>
 
 {#if data.isStaff && tab === 'reviews'}

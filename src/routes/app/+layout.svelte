@@ -6,7 +6,7 @@
     import AppSkeleton from "$lib/components/AppSkeleton.svelte";
     import WhatsNewModal from "$lib/components/WhatsNewModal.svelte";
     import { navigating } from "$app/stores";
-    import { afterNavigate, invalidateAll } from "$app/navigation";
+    import { afterNavigate } from "$app/navigation";
     import { live } from "$lib/stores/live.svelte";
     import { untrack } from "svelte";
     import { logActivity } from "$lib/activity";
@@ -22,31 +22,33 @@
         live.seed(data.fleetMetrics ?? [], data.fleetLatest ?? [], data.fleet ?? [], data.fleetBaselines ?? []);
     });
 
-    $effect(() => {
-        live.start((e) => {
-            const reading = `${Math.abs(e.value) >= 100 ? e.value.toFixed(0) : e.value.toFixed(1)} ${e.unit}`.trim();
-            untrack(() => data.supabase)
-                ?.rpc('notify_boiler_alert', {
-                    p_boiler_code: e.boilerCode,
-                    p_metric_label: e.metricLabel,
-                    p_reading: reading,
-                    p_section: e.sectionKey,
-                    p_boiler_id: e.boilerId,
-                    p_project_no: e.projectNo,
-                    p_metric_key: e.metricKey
-                })
-                ?.then?.((res: { data: string | null; error: unknown }) => {
-                    if (res?.error) {
-                        console.error('notify_boiler_alert failed:', res.error);
-                        return;
-                    }
-                    if (res?.data) invalidateAll();
-                }, (err: unknown) => {
-                    console.error('notify_boiler_alert request failed:', err);
-                });
-        });
-        return () => live.stop();
-    });
+    // Live telemetry simulation disabled until IoT is live (also stops the
+    // simulated attention-level notify_boiler_alert notifications below).
+    // $effect(() => {
+    //     live.start((e) => {
+    //         const reading = `${Math.abs(e.value) >= 100 ? e.value.toFixed(0) : e.value.toFixed(1)} ${e.unit}`.trim();
+    //         untrack(() => data.supabase)
+    //             ?.rpc('notify_boiler_alert', {
+    //                 p_boiler_code: e.boilerCode,
+    //                 p_metric_label: e.metricLabel,
+    //                 p_reading: reading,
+    //                 p_section: e.sectionKey,
+    //                 p_boiler_id: e.boilerId,
+    //                 p_project_no: e.projectNo,
+    //                 p_metric_key: e.metricKey
+    //             })
+    //             ?.then?.((res: { data: string | null; error: unknown }) => {
+    //                 if (res?.error) {
+    //                     console.error('notify_boiler_alert failed:', res.error);
+    //                     return;
+    //                 }
+    //                 if (res?.data) invalidateAll();
+    //             }, (err: unknown) => {
+    //                 console.error('notify_boiler_alert request failed:', err);
+    //             });
+    //     });
+    //     return () => live.stop();
+    // });
 
     const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
     let settingsMap = $derived(toMap(data.settings));
