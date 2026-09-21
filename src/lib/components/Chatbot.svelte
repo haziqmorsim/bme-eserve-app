@@ -433,13 +433,13 @@
 		</div>
 	{/if}
 
-	<button
+	<!-- <button
 		class="chat-launcher"
 		onclick={() => (open = !open)}
 		aria-label={open ? 'Close assistant' : 'Open assistant'}
 	>
 		{#if open}×{:else}<Headset size={24} />{/if}
-	</button>
+	</button> -->
 </div>
 {/if}
 

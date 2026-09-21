@@ -248,7 +248,7 @@
             <label class="full">Maintenance Message
                 <textarea rows="3" bind:value={form.maintenance_message}></textarea>
             </label>
-            <label>Chatbot
+            <!-- <label>Chatbot
                 <select class="w-25" bind:value={form.chatbot_enabled}>
                     <option value="on">Enabled</option>
                     <option value="off">Disabled</option>
@@ -257,7 +257,7 @@
             <label>Chatbot Daily Limit (per user)
                 <input class="w-25" bind:value={form.chatbot_daily_limit} placeholder="50" class:invalid={fieldErr.chatbot_daily_limit} />
                 {#if fieldErr.chatbot_daily_limit}<span class="field-err">{fieldErr.chatbot_daily_limit}</span>{/if}
-            </label>
+            </label> -->
 			<label>Support E-mail
                 <input type="email" class="w-50" bind:value={form.support_email} placeholder="support@boilermech.com" class:invalid={fieldErr.support_email} />
                 {#if fieldErr.support_email}<span class="field-err">{fieldErr.support_email}</span>{/if}

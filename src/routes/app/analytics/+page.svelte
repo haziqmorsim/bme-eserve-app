@@ -19,7 +19,6 @@
 		return total > 0 ? Math.round((n / total) * 100) : 0;
 	}
 
-	let maxHandle = $derived(Math.max(1, ...data.handlingPerLevel.map((l: any) => l.avgMs ?? 0)));
 	let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
 	let maxProject = $derived(Math.max(1, ...data.volumeByProject.map((p: any) => p.count)));
 	let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
@@ -53,10 +52,10 @@
 <div class="head">
 	<h1>Analytics</h1>
 	<div class="head-actions">
-		<a href="/app/analytics/training-data" class="actions-tab"><button class="tab">Training Data</button></a>
-		<a href="/app/analytics/service-records" class="actions-tab"><button class="tab">Service Records</button></a>
+		<!-- <a href="/app/analytics/training-data" class="actions-tab"><button class="tab">Training Data</button></a>
 		<a href="/app/analytics/suggestions" class="actions-tab"><button class="tab">Suggestion Reviews</button></a>
-		<a href="/app/analytics/forecasts" class="actions-tab"><button class="tab">Demand Forecasts</button></a>
+		<a href="/app/analytics/forecasts" class="actions-tab"><button class="tab">Demand Forecasts</button></a> -->
+		<a href="/app/analytics/service-records" class="actions-tab"><button class="tab">Service Records</button></a>
 		<a href="/app/analytics/email-log" class="actions-tab"><button class="tab">E-mail Deliveries</button></a>
 	</div>
 </div>
@@ -130,30 +129,11 @@
 				{#each data.agingList as a (a.id)}
 					<li class="ag-row">
 						<span class="ag-ref">{a.reference} &middot; {a.boiler}</span>
-						<span class="ag-meta">{a.levelLabel}</span>
 						<span class="ag-sla"><SlaBadge since={a.since} weekdays /></span>
 					</li>
 				{/each}
 			</ol>
 		{/if}
-	</div>
-
-	<div class="card section">
-		<h2>Average handling time per level</h2>
-		<div class="bars">
-			{#each data.handlingPerLevel as l (l.level)}
-				<div class="bar-row">
-					<span class="bar-e">{l.label}</span>
-					<div class="bar-track">
-						<div
-							class="bar-fill blue"
-							style="width: {Math.round(((l.avgMs ?? 0) / maxHandle) * 100)}%"
-						></div>
-					</div>
-					<span class="bar-val">{fmtDur(l.avgMs)}</span>
-				</div>
-			{/each}
-		</div>
 	</div>
 
 	<div class="grid2">
@@ -228,7 +208,7 @@
 			</div>
 		</div>
 
-		<h3 class="ua-sub">Chat activity</h3>
+		<!-- <h3 class="ua-sub">Chat activity</h3>
 		<div class="chat-stats">
 			<div class="chat-tile">
 				<span class="chat-n">{data.chatSummary.sessions}</span><span class="chat-l"
@@ -248,7 +228,7 @@
 					>Avg. messages / session</span
 				>
 			</div>
-		</div>
+		</div> -->
 
 		<h3 class="ua-sub">Daily activity</h3>
 		<div class="spark" role="img" aria-label="Daily activity for the last 14 days">
@@ -511,11 +491,6 @@
 		gap: 12px;
 	}
 
-	.bar-e {
-		font-size: 14px;
-		font-weight: 600;
-	}
-
 	.bar-key {
 		font-size: 14px;
 		font-weight: 600;
@@ -645,7 +620,7 @@
 
 	.ag-row {
 		display: grid;
-		grid-template-columns: auto 1fr auto auto;
+		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 12px;
 		padding: 10px 0;
@@ -667,11 +642,6 @@
 
 	.ag-sla {
 		display: inline-flex;
-	}
-
-	.ag-meta {
-		font-size: 13px;
-		color: var(--bme-muted);
 	}
 
 	.ua-stats {
@@ -927,11 +897,6 @@
 
 		.ag-ref {
 			grid-column: 2 / -1;
-		}
-
-		.ag-meta {
-			grid-column: 2;
-			align-self: center;
 		}
 
 		.ag-sla {

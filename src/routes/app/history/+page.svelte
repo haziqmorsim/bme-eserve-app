@@ -2,7 +2,6 @@
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import { addItem } from "$lib/stores/quote";
-    import Stepper from "$lib/components/Stepper.svelte";
     import { Search, X } from "@lucide/svelte";
     import Pagination from "$lib/components/admin/Pagination.svelte";
     import { untrack } from "svelte";
@@ -15,10 +14,84 @@
         return [];
     }
 
-    const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
-    let myLevel = $derived(ROLE_LEVEL[data.profile?.role] ?? 0);
+    const ACTOR_ROLES = new Set(['admin', 'manager', 'coo']);
+    let canAct = $derived(ACTOR_ROLES.has(data.profile?.role));
     let working = $state<string | null>(null);
     let copied = $state<string | null>(null);
+
+    let addingFor = $state<string | null>(null);
+    let newAction = $state('');
+    let addError = $state<string | null>(null);
+    let downloading = $state<string | null>(null);
+
+    function openAdd(quoteId: string) {
+        addingFor = quoteId;
+        newAction = '';
+        addError = null;
+    }
+
+    function cancelAdd() {
+        addingFor = null;
+        newAction = '';
+        addError = null;
+    }
+
+    async function saveAction(q: any) {
+        const text = newAction.trim();
+        if (!text) {
+            addError = 'Action Taken is required.';
+            return;
+        }
+
+        working = q.id;
+        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
+            body: { quote_id: q.id, action: 'add_action', action_taken: text }
+        });
+        working = null;
+
+        if (error || resp?.error) {
+            addToast(resp?.error ?? error?.message ?? 'Could not save this action.');
+            return;
+        }
+
+        cancelAdd();
+        await invalidateAll();
+        addToast('Action recorded.');
+    }
+
+    async function downloadPdf(q: any) {
+        downloading = q.id;
+        try {
+            const { data: resp, error } = await data.supabase.functions.invoke('quote-pdf', {
+                body: { quote_id: q.id }
+            });
+
+            if (error || !resp?.ok || !resp?.pdf_base64) {
+                addToast(resp?.error ?? 'Could not generate the quotation PDF. Please try again.');
+                return;
+            }
+
+            const binary = atob(resp.pdf_base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+            const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${resp.reference ?? q.reference ?? 'quotation'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+            addToast('Quotation PDF downloaded.');
+        } catch (e) {
+            console.error('Quotation PDF download failed:', e);
+            addToast('Could not generate the quotation PDF. Please try again.');
+        } finally {
+            downloading = null;
+        }
+    }
 
     async function copyCode(code: string) {
         try { await navigator.clipboard.writeText(code); } catch { /* ignore */ }
@@ -160,32 +233,13 @@
     let requestCur = $derived(Math.min(requestPage, requestPages));
     let pagedQuotes = $derived(filteredQuotes.slice((requestCur - 1) * PAGE_SIZE, requestCur * PAGE_SIZE));
 
-    function levelLabel(l: number): string {
-        return l === 1 ? 'Admin' : l === 2 ? 'Manager' : l === 3 ? 'COO' : `Level ${l}`;
-    }
     function when(ts: string): string {
         return new Date(ts).toLocaleString();
     }
 
-    function canReopen(q: any): boolean {
-        if (myLevel === 2) return q.current_level > 2 || q.status === 'closed';
-        if (myLevel === 3) return q.status === 'closed';
-        return false;
-    }
-
-    async function reopen(q: any) {
-        working = q.id;
-        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
-            body: { quote_id: q.id, action: 'reopen' }
-        });
-        working = null;
-
-        if (error || resp?.error) {
-            addToast(resp?.error ?? error?.message ?? 'Could not reopen this request.');
-        } else {
-            addToast(`${q.reference} reopened — sent back to ${resp.target_label}.`);
-        }
-        await invalidateAll();
+    function staffLabel(a: any): string {
+        if (a.staff_name) return a.staff_name;
+        return a.role === 'admin' ? 'Admin' : a.role === 'manager' ? 'Manager' : a.role === 'coo' ? 'COO' : (a.role ?? 'Staff');
     }
 </script>
 
@@ -257,27 +311,53 @@
                         {#each g.actions ?? [] as a (a.id)}
                             <div class="tl-row">
                                 <p class="tl-head">
-                                    <strong>{levelLabel(a.level)}</strong>
-                                    <span class="status {a.action === 'reopened' ? 'reopened' : 'closed'}">{a.action}</span>
+                                    <strong>{staffLabel(a)}</strong>
                                     <span class="tl-when">{when(a.created_at)}</span>
                                 </p>
                                 <p class="tl-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
                             </div>
                         {/each}
-                    </div>
 
-                    <div class="meta">
-                        <Stepper status={g.quote.status} level={g.quote.current_level} />
-
-                        {#if canReopen(g.quote)}
-                            <div class="meta-row">
-                                <span class="reviewed">Reopening sends this request back to {levelLabel(myLevel - 1)}.</span>
-                                <button class="btn-ghost" disabled={working === g.quote.id} onclick={() => reopen(g.quote)}>
-                                    {working === g.quote.id ? 'Reopening...' : 'Reopen'}
-                                </button>
+                        {#if addingFor === g.quote.id}
+                            <div class="add-form">
+                                <label class="add-label" for={`add-action-${g.quote.id}`}>
+                                    Action Taken <span class="req">*</span>
+                                </label>
+                                <textarea
+                                    id={`add-action-${g.quote.id}`}
+                                    rows="3"
+                                    placeholder="Describe the action you have taken..."
+                                    bind:value={newAction}></textarea>
+                                {#if addError}<p class="add-err">{addError}</p>{/if}
+                                <div class="add-actions">
+                                    <button class="btn-ghost" disabled={working === g.quote.id} onclick={cancelAdd}>
+                                        Cancel
+                                    </button>
+                                    <button class="btn-primary" disabled={working === g.quote.id} onclick={() => saveAction(g.quote)}>
+                                        {working === g.quote.id ? 'Saving...' : 'Save'}
+                                    </button>
+                                </div>
                             </div>
+                        {:else if canAct}
+                            <button class="add-btn" onclick={() => openAdd(g.quote.id)}>Add action</button>
                         {/if}
                     </div>
+
+                    {#if g.quote.status === 'closed'}
+                        <p class="closed-note">
+                            {#if g.closedAction}
+                                This request was closed by <b>{staffLabel(g.closedAction)}</b>{g.closedAt ? ` on ${when(g.closedAt)}` : ''}.
+                            {:else}
+                                This request was closed{g.closedAt ? ` on ${when(g.closedAt)}` : ''}.
+                            {/if}
+                        </p>
+
+                        <div class="qfoot">
+                            <button class="pdf-btn" onclick={() => downloadPdf(g.quote)} disabled={downloading === g.quote.id}>
+                                {downloading === g.quote.id ? 'Preparing...' : 'Download Quotation PDF'}
+                            </button>
+                        </div>
+                    {/if}
                 </div>
             {/each}
         {/if}
@@ -379,12 +459,6 @@
                             </ul>
                         </div>
                     {/if}
-
-                    <div class="meta">
-                        {#if data.isStaff}
-                            <Stepper status={q.status} level={q.current_level} />
-                        {/if}
-                    </div>
 
                     <div class="qfoot">
                         <button
@@ -493,7 +567,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 14px;
+        padding: 0 10px;
         margin-bottom: 16px;
         background: var(--bme-surface);
         border: 1px solid var(--bme-border);
@@ -648,7 +722,8 @@
     .timeline {
         margin-top: 16px;
         padding: 12px 14px;
-        background-color: #eaeff3;
+        background-color: var(--bme-surface-2);
+        border: 1px solid var(--bme-border);
         border-radius: 8px;
     }
 
@@ -718,25 +793,99 @@
         margin: 2px 0;
     }
 
-    .meta {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        margin-top: 18px;
-        padding-top: 16px;
+    .closed-note {
+        margin: 14px 0 0;
+        padding: 10px 14px;
+        background: var(--bme-surface-2);
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        font-size: 13.5px;
+        color: var(--bme-muted);
+    }
+
+    .closed-note b {
+        color: var(--bme-ink);
+    }
+
+    .pdf-btn {
+        padding: 9px 18px;
+        border: 1px solid var(--bme-dark-blue);
+        border-radius: 8px;
+        background: var(--bme-dark-blue);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: background var(--t-fast) var(--ease);
+    }
+
+    .pdf-btn:hover:not(:disabled) {
+        background: var(--bme-darker-blue);
+    }
+
+    .pdf-btn:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    .add-btn {
+        margin-top: 4px;
+        padding: 7px 14px;
+        border: 1px dashed var(--bme-border);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--bme-dark-blue);
+        font: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+
+    .add-btn:hover {
+        background: var(--bme-hover);
+        border-color: var(--bme-dark-blue);
+    }
+
+    .add-form {
+        margin-top: 10px;
+        padding-top: 12px;
         border-top: 1px solid var(--bme-border);
     }
 
-    .meta-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+    .add-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--bme-ink);
     }
 
-    .reviewed {
+    .add-form textarea {
+        width: 100%;
+    }
+
+    .req {
+        color: var(--bme-red);
+    }
+
+    .add-err {
+        margin: 8px 0 0;
         font-size: 13px;
-        color: var(--bme-muted);
+        color: var(--bme-red);
+    }
+
+    .add-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .add-actions button:disabled {
+        opacity: 0.6;
+        cursor: default;
     }
 
     .status.open {
@@ -747,16 +896,6 @@
     .status.closed {
         background-color: #e4f3d8;
         color: #2f5e18;
-    }
-
-    .status.reopened {
-        background-color: #fff3d6;
-        color: #97700a;
-    }
-
-    :root[data-theme='dark'] .status.reopened {
-        background-color: #3a2f0f;
-        color: #ffcc66;
     }
 
     .loyalty {

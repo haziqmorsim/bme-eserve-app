@@ -2,6 +2,7 @@
 	import { Search, Undo2, Plus } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast';
+	import Modal from '$lib/components/admin/Modal.svelte';
 
 	let { data } = $props();
 
@@ -51,6 +52,15 @@
 		notes = '';
 	}
 
+	function openModal() {
+		adding = true;
+	}
+
+	function closeModal() {
+		adding = false;
+		resetForm();
+	}
+
 	async function save() {
 		if (!canSave || isDeveloper) return;
 		saving = true;
@@ -73,8 +83,7 @@
 			addToast(`Could not save record: ${error.message}`);
 			return;
 		}
-		adding = false;
-		resetForm();
+		closeModal();
 		await invalidateAll();
 		addToast('Service record saved successfully.');
 	}
@@ -83,12 +92,6 @@
 <div class="head">
 	<h1>Service Records</h1>
 	<div class="head-actions">
-		{#if !isDeveloper}
-			<button class="btn-primary" onclick={() => (adding = !adding)}>
-				<Plus size={16} />
-				{adding ? 'Cancel' : 'Add record'}
-			</button>
-		{/if}
 		<a href="/app/analytics">
 			<button class="btn-primary"><Undo2 size={16} /> Analytics</button>
 		</a>
@@ -96,13 +99,68 @@
 </div>
 
 <p class="intro">
-	What was actually fitted, and when. Replacement prediction prefer these measured intervals over
-	gaps inferred from ordering history.
+	Keep track of parts that were actually replaced, repaired, or inspected on a customer's boiler.
+	Adding a record here helps the system predict when a part will need replacing next.
 </p>
 
-{#if adding}
-	<div class="card form">
-		<div class="grid">
+
+<div class="searchbar card">
+	<span class="search-ic"><Search size={16} /></span>
+	<input
+		type="search"
+		placeholder="Search by project, boiler, part, or notes..."
+		bind:value={search}
+	/>
+</div>
+
+<button class="btn-primary add-btn" onclick={openModal} disabled={isDeveloper}>
+	<Plus size={16} />
+	Add Record
+</button>
+
+
+{#if data.records.length === 0}
+	<div class="card empty">
+		No service records yet. Add the first one to start measuring true part life.
+	</div>
+{:else if filtered.length === 0}
+	<div class="card empty">No records matched your search.</div>
+{:else}
+	<div class="card table-wrap">
+		<table>
+			<thead>
+				<tr>
+					<th>Date</th><th>Project</th><th>Boiler</th><th>Part</th><th>Action</th><th class="num"
+						>Qty</th
+					><th>Reason</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each filtered as r (r.id)}
+					<tr class:premature={r.premature}>
+						<td>{when(r.serviced_on)}</td>
+						<td class="mono">{r.project_label}</td>
+						<td class="mono">{r.boiler_label}</td>
+						<td>
+							<span class="pn">{r.part_label}</span>
+							<span class="nm">{r.part_name}</span>
+						</td>
+						<td><span class="act {r.action}">{r.action}</span></td>
+						<td class="num">{r.quantity}</td>
+						<td class="muted">
+							{(r.failure_reason ?? '—').replace('_', ' ')}
+							{#if r.premature}<span class="prem">premature</span>{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/if}
+
+{#if adding && !isDeveloper}
+	<Modal title="Add service record" onclose={closeModal}>
+		<div class="adm-form">
 			<label>
 				<span>Project</span>
 				<select bind:value={projectId}>
@@ -123,7 +181,7 @@
 				</select>
 			</label>
 
-			<label class="wide">
+			<label class="full">
 				<span>Part</span>
 				<select bind:value={partId}>
 					<option value="">Select a part...</option>
@@ -167,13 +225,13 @@
 				</select>
 			</label>
 
-			<label class="wide">
+			<label class="full">
 				<span>Notes</span>
 				<input type="text" bind:value={notes} placeholder="Optional" />
 			</label>
 
-			<label class="check wide">
-				<input type="checkbox" bind:value={premature} />
+			<label class="chk full">
+				<input type="checkbox" bind:checked={premature} />
 				<span>
 					Premature failure
 					<small
@@ -181,62 +239,15 @@
 					>
 				</span>
 			</label>
+
+			<div class="adm-form-actions">
+				<button class="btn-ghost" onclick={closeModal}>Cancel</button>
+				<button class="btn-primary" disabled={!canSave} onclick={save}>
+					{saving ? 'Saving...' : 'Save record'}
+				</button>
+			</div>
 		</div>
-
-		<div class="form-actions">
-			<button class="btn-primary" disabled={!canSave} onclick={save}>
-				{saving ? 'Saving...' : 'Save record'}
-			</button>
-		</div>
-	</div>
-{/if}
-
-<div class="searchbar card">
-	<span class="search-ic"><Search size={16} /></span>
-	<input
-		type="search"
-		placeholder="Search by project, boiler, part, or notes..."
-		bind:value={search}
-	/>
-</div>
-
-{#if data.records.length === 0}
-	<div class="card empty">
-		No service records yet. Add the first one to start measuring true part life.
-	</div>
-{:else if filtered.length === 0}
-	<div class="card empty">No records matched your search.</div>
-{:else}
-	<div class="card table-wrap">
-		<table>
-			<thead>
-				<tr>
-					<th>Date</th><th>Project</th><th>Boiler</th><th>Part</th><th>Action</th><th class="num"
-						>Qty</th
-					><th>Reason</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filtered as r (r.id)}
-					<tr class:premature={r.premature}>
-						<td>{when(r.serviced_on)}</td>
-						<td class="mono">{r.project_label}</td>
-						<td class="mono">{r.boiler_label}</td>
-						<td>
-							<span class="pn">{r.part_label}</span>
-							<span class="nm">{r.part_name}</span>
-						</td>
-						<td><span class="act {r.action}">{r.action}</span></td>
-						<td class="num">{r.quantity}</td>
-						<td class="muted">
-							{(r.failure_reason ?? '\u2014').replace('_', ' ')}
-							{#if r.premature}<span class="prem">premature</span>{/if}
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+	</Modal>
 {/if}
 
 <style>
@@ -271,62 +282,39 @@
 		margin: 0 0 1rem;
 	}
 
-	.form {
-		margin-bottom: 1rem;
-	}
-
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 0.75rem;
-	}
-
-	.grid label {
+	.add-btn {
 		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		font-size: 0.82rem;
-	}
-	.grid label.wide {
-		grid-column: 1 / -1;
-	}
-	.grid label > span {
-		color: var(--bme-muted, #6b7280);
+		justify-self: end;
+		margin: 10px 0;
 	}
 
-	.grid select,
-	.grid input[type='date'],
-	.grid input[type='number'],
-	.grid input[type='text'] {
-		padding: 0.4rem 0.55rem;
-		border: 1px solid var(--bme-border, #d1d5db);
-		border-radius: 6px;
-		font-size: 0.85rem;
-		background: #fff;
+	.add-btn:disabled {
+		background-color: var(--bme-dark-blue);
+		opacity: 0.55;
+		cursor: default;
 	}
 
-	.check {
+	.adm-form .chk {
+		display: flex;
 		flex-direction: row !important;
 		align-items: flex-start;
 		gap: 0.5rem !important;
 	}
-	.check span {
-		color: #374151;
+	.adm-form .chk input {
+		display: inline-block;
+		width: auto;
+		margin-top: 5px;
 	}
-	.check small {
+	.adm-form .chk small {
 		display: block;
 		color: var(--bme-muted, #6b7280);
 		font-size: 0.75rem;
 	}
 
-	.form-actions {
-		margin-top: 0.9rem;
-	}
-
 	.searchbar {
 		position: relative;
 		padding: 0;
-		margin-bottom: 18px;
+		border-radius: 10px;
 	}
 
 	.search-ic {
@@ -341,6 +329,7 @@
 
 	.searchbar input {
 		width: 100%;
+		height: 100%;
 		padding: 11px 14px 11px 36px;
 		border: none;
 		background: transparent;
@@ -425,5 +414,11 @@
 		text-align: center;
 		color: var(--bme-muted, #6b7280);
 		padding: 1.75rem;
+	}
+
+	@media (max-width: 560px) {
+		.add-btn {
+			justify-content: center;
+		}
 	}
 </style>

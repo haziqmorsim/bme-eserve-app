@@ -46,16 +46,14 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         content: whatsNewContent
     };
 
-    const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
-    const myLevel = profile ? ROLE_LEVEL[profile.role] : undefined;
+    const ACTOR_ROLES = new Set(['admin', 'manager', 'coo']); // exclude developer (read-only)
 
     let pendingCount = 0;
-    if (myLevel) {
+    if (profile && ACTOR_ROLES.has(profile.role)) {
         const { count } = await supabase
             .from('quotes')
             .select('id', { count: 'exact', head: true })
-            .eq('status', 'open')
-            .eq('current_level', myLevel);
+            .eq('status', 'open');
         pendingCount = count ?? 0;
     }
 

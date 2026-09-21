@@ -9,13 +9,13 @@
     import DashboardManager from "$lib/components/admin/DashboardManager.svelte";
 
     let { data } = $props();
-    let tab = $state<'dashboard' | 'general' | 'projects' | 'boilers' | 'parts' | 'users' | 'faq'>('dashboard');
+    let tab = $state<'dashboard' | 'general' | 'projects' | 'boilers' | 'parts' | 'users' | 'faq'>('projects');
 </script>
 
 <h1>Settings</h1>
 
 <div class="tabbar">
-    <button class="tab" class:active={tab === 'dashboard'} onclick={() => (tab = 'dashboard')}>Dashboard</button>
+    <!-- <button class="tab" class:active={tab === 'dashboard'} onclick={() => (tab = 'dashboard')}>Dashboard</button> -->
     <button class="tab" class:active={tab === 'projects'} onclick={() => (tab = 'projects')}>Projects</button>
     <button class="tab" class:active={tab === 'boilers'} onclick={() => (tab = 'boilers')}>Boilers</button>
     <button class="tab" class:active={tab === 'parts'} onclick={() => (tab = 'parts')}>Parts</button>
@@ -74,7 +74,6 @@
 <style>
     .bd-section {
         margin-top: 34px;
-        border-top: 1px solid var(--bme-border);
     }
 
     h1 {

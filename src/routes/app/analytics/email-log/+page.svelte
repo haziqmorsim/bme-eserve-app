@@ -206,7 +206,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 10px 14px;
+		padding: 0 10px;
 		margin-bottom: 16px;
 		background: var(--bme-surface);
 		border: 1px solid var(--bme-border);

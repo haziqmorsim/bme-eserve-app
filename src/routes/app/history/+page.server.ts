@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
 
     const { data: quoteRows } = await supabase
         .from('quotes')
-        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, pdf_url, current_level, quote_items(*)')
+        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, pdf_url, quote_items(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -20,15 +20,14 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
 
     let reviewGroups: any[] = [];
     if (isStaff) {
-        const { data: mine } = await supabase
-            .from('quote_approvals')
-            .select('quote_id, quotes(id, reference, status, current_level, created_at, user_id, quote_items(*))')
-            .eq('reviewer_id', user.id);
+        const { data: closedRows } = await supabase
+            .from('quotes')
+            .select('id, reference, status, created_at, reviewed_at, user_id, quote_items(*)')
+            .eq('status', 'closed')
+            .order('reviewed_at', { ascending: false, nullsFirst: false });
 
-        const mineList = mine ?? [];
         const quoteById: Record<string, any> = {};
-        for (const r of mineList) {
-            const q = (r as any).quotes;
+        for (const q of closedRows ?? []) {
             if (q && !quoteById[q.id]) quoteById[q.id] = q;
         }
         const quoteIds = Object.keys(quoteById);
@@ -36,21 +35,26 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
         if (quoteIds.length) {
             const { data: allActions } = await supabase
                 .from('quote_approvals')
-                .select('id, quote_id, level, role, action, action_taken, created_at, reviewer_id')
+                .select('id, quote_id, role, action, action_taken, created_at, reviewer_id')
                 .in('quote_id', quoteIds)
                 .order('created_at', { ascending: true });
 
-            const actionsByQuote: Record<string, any[]> = {};
-            for (const a of allActions ?? []) (actionsByQuote[a.quote_id] ??= []).push(a);
+            const actionRows = allActions ?? [];
 
+            const reviewerIds = [...new Set(actionRows.map((a: any) => a.reviewer_id).filter(Boolean))];
             const ownerIds = [...new Set(Object.values(quoteById).map((q: any) => q.user_id).filter(Boolean))];
+
+            const nameById: Record<string, string | null> = {};
             const custMap: Record<string, { full_name: string | null; company: string | null }> = {};
-            if (ownerIds.length) {
+
+            const lookupIds = [...new Set([...reviewerIds, ...ownerIds])];
+            if (lookupIds.length) {
                 const { data: profs } = await supabase
                     .from('profiles')
                     .select('id, full_name, company')
-                    .in('id', ownerIds);
+                    .in('id', lookupIds);
                 for (const p of profs ?? []) {
+                    nameById[p.id] = p.full_name;
                     custMap[p.id] = {
                         full_name: p.full_name,
                         company: p.company
@@ -58,15 +62,29 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
                 }
             }
 
+            const actionsByQuote: Record<string, any[]> = {};
+            for (const a of actionRows) {
+                (actionsByQuote[a.quote_id] ??= []).push({
+                    ...a,
+                    mine: a.reviewer_id === user.id,
+                    staff_name: (a.reviewer_id ? nameById[a.reviewer_id] : null) ?? null
+                });
+            }
+
             reviewGroups = quoteIds.map((qid) => {
                 const q = quoteById[qid];
-                const actions = (actionsByQuote[qid] ?? []).map((a) => ({ ...a, mine: a.reviewer_id === user.id }));
+                const actions = actionsByQuote[qid] ?? [];
                 const lastActivity = actions.length ? actions[actions.length - 1].created_at : q?.created_at;
+
+                const closingAction = [...actions].reverse().find((a: any) => a.action === 'closed') ?? null;
+
                 return {
                     quote: q,
                     customer: custMap[q?.user_id] ?? { full_name: null, company: null },
                     actions,
-                    lastActivity
+                    lastActivity,
+                    closedAction: closingAction,
+                    closedAt: q?.reviewed_at ?? closingAction?.created_at ?? null
                 };
             }).sort((a, b) => (a.lastActivity < b.lastActivity ? 1 : a.lastActivity > b.lastActivity ? -1 : 0));
         }

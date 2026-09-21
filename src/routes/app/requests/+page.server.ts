@@ -1,44 +1,29 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-const ROLE_LEVEL: Record<string, number> = { admin: 1, manager: 2, coo: 3 };
-const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO' };
+const CLOSER_ROLES = new Set(['admin', 'manager', 'coo']);
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
     const role = profile?.role;
     const isDeveloper = role === 'developer';
-    const myLevel = role ? ROLE_LEVEL[role] : undefined;
+    const canClose = !!role && CLOSER_ROLES.has(role);
 
-    if (!myLevel && !isDeveloper) throw error(403, 'Only reviewers (Admin, Manager, COO) have access.');
+    if (!canClose && !isDeveloper) throw error(403, 'Only staff have access.');
 
     const COLUMNS =
-        'id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, current_level, user_id, quote_items(*)';
+        'id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, user_id, quote_items(*)';
 
-    let openQuery = supabase
+    const { data: openRows } = await supabase
         .from('quotes')
         .select(COLUMNS)
-        .eq('status', 'open');
+        .eq('status', 'open')
+        .order('created_at', { ascending: false });
 
-    if (!isDeveloper) openQuery = openQuery.eq('current_level', myLevel as number);
+    const openList = openRows ?? [];
 
-    const closedQuery = supabase
-        .from('quotes')
-        .select(COLUMNS)
-        .eq('status', 'closed')
-        .order('reviewed_at', { ascending: false, nullsFirst: false });
-
-    const [openRes, closedRes] = await Promise.all([
-        openQuery.order('created_at', { ascending: false }), 
-        closedQuery
-    ]);
-
-    const openList = openRes.data ?? [];
-    const closedList = closedRes.data ?? [];
-    const list = [...openList, ...closedList];
-
-    const quoteIds = list.map((q) => q.id);
-    const userIds = [...new Set(list.map((q) => q.user_id).filter(Boolean))];
+    const quoteIds = openList.map((q) => q.id);
+    const userIds = [...new Set(openList.map((q) => q.user_id).filter(Boolean))];
 
     const profileMap: Record<string, { full_name: string | null; company: string | null; region: string | null }> = {};
     if (userIds.length) {
@@ -59,28 +44,42 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (quoteIds.length) {
         const { data: approvals } = await supabase
             .from('quote_approvals')
-            .select('quote_id, level, role, action, action_taken, created_at')
+            .select('quote_id, role, action, action_taken, created_at, reviewer_id')
             .in('quote_id', quoteIds)
             .order('created_at', { ascending: true });
-        for (const a of approvals ?? []) {
-            (approvalsMap[a.quote_id] ??= []).push(a);
+
+        const rows = approvals ?? [];
+
+        const reviewerIds = [...new Set(rows.map((a: any) => a.reviewer_id).filter(Boolean))];
+        const staffNames: Record<string, string | null> = {};
+        if (reviewerIds.length) {
+            const { data: staff } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', reviewerIds);
+            for (const s of staff ?? []) staffNames[s.id] = s.full_name;
+        }
+
+        for (const a of rows) {
+            (approvalsMap[a.quote_id] ??= []).push({
+                ...a,
+                staff_name: (a.reviewer_id ? staffNames[a.reviewer_id] : null) ?? null
+            });
         }
     }
 
     const { data: regions } = await supabase.from('regions').select('id, name').order('name');
 
-    const withMeta = (rows: any[]) => rows.map((q) => ({
+    const openQuotes = openList.map((q) => ({
         ...q,
         customer: profileMap[q.user_id] ?? { full_name: null, company: null, region: null },
         approvals: approvalsMap[q.id] ?? []
     }));
 
     return {
-        openQuotes: withMeta(openList), 
-        closedQuotes: withMeta(closedList), 
+        openQuotes,
         regions: regions ?? [],
-        level: myLevel ?? null,
-        levelLabel: isDeveloper ? 'Developer' : LEVEL_LABEL[myLevel as number],
+        canClose,
         isDeveloper,
         title: "Requests"
     };

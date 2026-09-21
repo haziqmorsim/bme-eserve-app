@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const [enquiryRes, partsRes] = await Promise.all([
         supabase
             .from('enquiries')
-            .select('id, name, email, company, message, created_at, replied_at, resolution, resolved_part_id, resolved_at')
+            .select('id, name, email, company, message, created_at, replied_at, replied_by, resolution, resolved_part_id, resolved_at')
             .order('created_at', { ascending: false }),
         supabase
             .from('parts')
@@ -22,12 +22,25 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const parts: PartRef[] = partsRes.data ?? [];
     const partById = new Map<string, PartRef>(parts.map((p) => [p.id, p]));
 
-    const enquiries = (enquiryRes.data ?? []).map((e: any) => {
+    const rows = enquiryRes.data ?? [];
+
+    const replierIds = [...new Set(rows.map((e: any) => e.replied_by).filter(Boolean))];
+    const replierNames: Record<string, string | null> = {};
+    if (replierIds.length) {
+        const { data: repliers } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', replierIds);
+        for (const r of repliers ?? []) replierNames[r.id] = r.full_name;
+    }
+
+    const enquiries = rows.map((e: any) => {
         const part = e.resolved_part_id ? partById.get(e.resolved_part_id) : null;
         return {
             ...e,
             resolved_part_number: part?.part_number ?? null,
-            resolved_part_name: part?.name ?? null
+            resolved_part_name: part?.name ?? null,
+            replied_by_name: (e.replied_by ? replierNames[e.replied_by] : null) ?? null
         };
     });
 

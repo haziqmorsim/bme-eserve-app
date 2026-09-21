@@ -4,30 +4,9 @@ import { slaStateWeekday, DEFAULT_SLA } from "$lib/sla";
 import { toMap, num } from "$lib/settings";
 
 const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
-const LEVEL_LABEL: Record<number, string> = { 1: 'Admin', 2: 'Manager', 3: 'COO'};
 
 const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function weekdayMs(startUtcMs: number, endUtcMs: number): number {
-    if (!(endUtcMs > startUtcMs)) return 0;
-    const s = startUtcMs + MYT_OFFSET_MS;
-    const e = endUtcMs + MYT_OFFSET_MS;
-
-    const first = new Date(s);
-    first.setUTCHours(0, 0, 0, 0);
-    let dayMs = first.getTime();
-
-    let total = 0;
-    for (; dayMs < e; dayMs += DAY_MS) {
-        const dow = new Date(dayMs).getUTCDay();
-        if (dow === 0 || dow === 6) continue;
-        const from = Math.max(s, dayMs);
-        const to = Math.min(e, dayMs + DAY_MS);
-        if (to > from) total += to - from;
-    }
-    return total;
-}
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
@@ -35,8 +14,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
     const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }, { data: chatSessionRows }, { data: chatMessageRows }] = await Promise.all([
-        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, current_level, user_id, quote_items(boiler_code)'), 
-        supabase.from('quote_approvals').select('quote_id, level, action, created_at, reviewer_id'), 
+        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, user_id, quote_items(boiler_code)'), 
+        supabase.from('quote_approvals').select('quote_id, action, created_at, reviewer_id'), 
         supabase.from('enquiries').select('id, name, created_at'), 
         supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000), 
         supabase.from('chat_sessions').select('id, user_id, started_at, ended_at, end_reason').gte('started_at', activitySince), 
@@ -89,37 +68,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     for (const q of quotes) {
         if (new Date(q.created_at).getTime() >= weekStartUtcMs) newThisWeek++;
     }
-
-    const createdAt: Record<string, string> = {};
-    for (const q of quotes) createdAt[q.id] = q.created_at;
-
-    const byQuote: Record<string, { level: number; action: string; created_at: string; }[]> = {};
-    for (const a of approvals) (byQuote[a.quote_id] ??= []).push(a);
-
-    const levelSum: Record<number, number> = { 1: 0, 2: 0, 3: 0};
-    const levelN: Record<number, number> = {1: 0, 2: 0, 3: 0};
-
-    for (const [qid, list] of Object.entries(byQuote)) {
-        list.sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
-        let arrival = createdAt[qid] ?? list[0].created_at;
-        for (const a of list) {
-            if (a.action === 'closed' && (a.level === 1 || a.level === 2 || a.level === 3)) {
-                const dur = weekdayMs(new Date(arrival).getTime(), new Date(a.created_at).getTime());
-                if (dur >= 0) {
-                    levelSum[a.level] += dur;
-                    levelN[a.level]++;
-                }
-            }
-            arrival = a.created_at;
-        }
-    }
-
-    const handlingPerLevel = [1, 2, 3].map((l) => ({
-        level: l, 
-        label: LEVEL_LABEL[l], 
-        avgMs: levelN[l] ? Math.round(levelSum[l] / levelN[l]) : null, 
-        count: levelN[l]
-    }));
 
     const [{ data: boilerRows }, { data: projectRows }, { data: boilerProjectRows }] = await Promise.all([
         supabase.from('boilers').select('id, code').order('code', { ascending: true }),
@@ -197,7 +145,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         agingList.push({
             id: q.id,
             reference: (q as any).reference,
-            levelLabel: LEVEL_LABEL[(q as any).current_level] ?? `Level ${(q as any).current_level}`,
             boiler: boilers.join(', ') || '—',
             since,
             created_at: q.created_at,
@@ -212,6 +159,11 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         '/app/requests': 'Requests',
         '/app/history': 'History',
         '/app/analytics': 'Analytics',
+        '/app/analytics/email-log': 'E-mail Deliveries',
+        '/app/analytics/forecasts': 'Forecasts',
+        '/app/analytics/service-records': 'Service Records',
+        '/app/analytics/suggestions': 'Suggestion Reviews',
+        '/app/analytics/training-data': 'Training Data',
         '/app/enquiries': 'Enquiries',
         '/app/settings': 'Settings',
         '/app/faq': 'FAQ', 
@@ -344,7 +296,6 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         open, 
         closed, 
         avgResolutionMs, 
-        handlingPerLevel, 
         volumeByBoiler, 
         volumeByProject, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 

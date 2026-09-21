@@ -71,7 +71,10 @@
 
         const { error } = await data.supabase
             .from('enquiries')
-            .update({ replied_at: new Date().toISOString() })
+            .update({
+                replied_at: new Date().toISOString(),
+                replied_by: data.profile?.id ?? null
+            })
             .eq('id', e.id);
 
         const next = new Set(busy);
@@ -101,7 +104,7 @@
         <button class="tab" class:active={tab === 'unreplied'} onclick={() => (tab = 'unreplied')}>Unreplied ({unreplied.length})</button>
         <button class="tab" class:active={tab === 'replied'} onclick={() => (tab = 'replied')}>Replied ({replied.length})</button>
     </div>
-    {#if filtered.length === 0}
+    {#if list.length === 0}
         <div class="card empty">
             {#if search.trim()}
                 No enquiries matched your search.
@@ -121,7 +124,13 @@
                     </div>
                     <div class="emeta">
                         <small>{when(e.created_at)}</small>
-                        {#if e.replied_at}<small class="replied-on">Marked as replied on {when(e.replied_at)}</small>{/if}
+                        {#if e.replied_at}
+                            <small class="replied-on">
+                                {e.replied_by_name
+                                    ? `Marked as replied by ${e.replied_by_name} on ${when(e.replied_at)}`
+                                    : `Marked as replied on ${when(e.replied_at)}`}
+                            </small>
+                        {/if}
                     </div>
                 </div>
                 <p class="email"><Mail size={14} /> {e.email}</p>
@@ -208,6 +217,7 @@
         position: relative;
         padding: 0;
         margin-bottom: 18px;
+        border-radius: 10px;
     }
  
     .search-ic {
