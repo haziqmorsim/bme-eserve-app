@@ -911,6 +911,7 @@
 		position: absolute;
 		top: 22px;
 		right: 28px;
+		padding-bottom: 5px;
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;

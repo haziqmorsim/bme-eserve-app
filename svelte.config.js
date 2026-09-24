@@ -20,7 +20,9 @@ const config = {
 			directives: {
 				'default-src': ['self'],
 
-				'script-src': dev ? ['self', 'unsafe-inline', 'unsafe-eval'] : ['self'],
+				'script-src': dev
+					? ['self', 'unsafe-inline', 'unsafe-eval', 'wasm-unsafe-eval']
+					: ['self', 'wasm-unsafe-eval'],
 
 				'style-src': ['self', 'unsafe-inline', 'https://cdn.jsdelivr.net'],
 				'font-src': ['self', 'data:', 'https://cdn.jsdelivr.net'],

@@ -56,6 +56,9 @@
             {#if isStaff}
                 <a class="btn-ghost" class:active={$page.url.pathname === '/app/analytics'} href="/app/analytics">Analytics</a>
             {/if}
+            {#if isStaff}
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/others')} href="/app/others">Others</a>
+            {/if}
         </div>
     </div>
 
@@ -121,6 +124,9 @@
             {/if}
             {#if isStaff}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
+            {/if}
+            {#if isStaff}
+                <a href="/app/others" class="side-link" class:active={$page.url.pathname.startsWith('/app/others')} onclick={close}>Others</a>
             {/if}
         </nav>
 

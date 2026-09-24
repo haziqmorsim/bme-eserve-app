@@ -8,6 +8,7 @@ node_modules
 /.svelte-kit
 /build
 /dist
+static/tesseract/
 
 # OS
 .DS_Store
