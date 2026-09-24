@@ -6,12 +6,14 @@
     let {
         canRun = true,
         label = 'document',
+        runningNote = 'This runs in your browser, so the PDFs stay on this device. Keep this tab open until it is finished.',
         extract,
         buildWorkbook,
         results
     } = $props<{
         canRun?: boolean;
         label?: string;
+        runningNote?: string;
         extract: (
             file: File,
             onProgress: (done: number, total: number, note: string) => void
@@ -178,7 +180,7 @@
         cancelled = true;
     });
 
-    const mb = (n: number) => (n / 1024 / 1204).toFixed(1);
+    const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
 </script>
 
 {#if stage === 'idle'}
@@ -236,9 +238,7 @@
         <h2 class="pane-title">Processing...</h2>
         <div class="progress"><div class="progress-bar" style="width:{pct}%"></div></div>
         <p class="muted">{progressText}</p>
-        <p class="muted small">
-            This runs in your browser, so the PDFs stay on this device. Keep this tab open until it is finished.
-        </p>
+        <p class="muted small">{runningNote}</p>
     </div>
 {/if}
 
@@ -272,7 +272,6 @@
 <style>
     .pane {
         padding: 24px;
-        max-width: 980px;
         margin: 0 auto 20px;
     }
  
@@ -457,12 +456,7 @@
  
     @media (max-width: 640px) {
         .pane {
-            height: 500px;
             padding: 16px;
-        }
-
-        .dropzone {
-            margin-top: 40%;
         }
  
         .result-head {

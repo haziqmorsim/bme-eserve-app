@@ -46,11 +46,11 @@ const INVOICE_HEADERS = [
     'Transport Charges (RM)', 'Reimbursement (RM)', 'Total (RM)'
 ];
 
-export async function buildInvoiceWorkbook(rows:InvoiceRow[]): Promise<Blob> {
+export async function buildInvoiceWorkbook(rows: InvoiceRow[]): Promise<Blob> {
     const wb = new ExcelJS.Workbook();
     wb.created = new Date();
 
-    const detailed = wb.addWorksheet('Detailed', { views: [{ state: 'frozen', ySplit:1 }] });
+    const detailed = wb.addWorksheet('Detailed', { views: [{ state: 'frozen', ySplit: 1 }] });
     detailed.addRow(INVOICE_HEADERS);
     for (const r of rows) {
         detailed.addRow([
@@ -133,10 +133,7 @@ const PACKAGE_HEADERS = [
     'Item No', 'Quantity', 'Package Type', 'Dimensions',
     'Volume (m3)', 'Weight (kg)', 'Contents', 'Source File', 'Page'
 ];
-
-const CONTENT_HEADERS = [
-    'Item No', 'Package Type', 'Level', 'Qty', 'Description', 'Source File', 'Page'
-];
+const CONTENT_HEADERS = ['Item No', 'Package Type', 'Level', 'Qty', 'Description', 'Source File', 'Page'];
 
 export async function buildPackingWorkbook(docs: PackingList[]): Promise<Blob> {
     const wb = new ExcelJS.Workbook();
@@ -148,7 +145,7 @@ export async function buildPackingWorkbook(docs: PackingList[]): Promise<Blob> {
     summary.getCell('A1').font = { bold: true, size: 12, color: { argb: 'FF1F4E78' } };
 
     const joined = (pick: (d: PackingList) => string) =>
-    [...new Set(docs.map(pick).map((v) => v.trim()).filter(Boolean))].join(' / ');
+        [...new Set(docs.map(pick).map((v) => v.trim()).filter(Boolean))].join(' / ');
 
     let row = 3;
     const details: Array<[string, string]> = [
@@ -247,7 +244,8 @@ export async function buildPackingWorkbook(docs: PackingList[]): Promise<Blob> {
     sheet.addRow(PACKAGE_HEADERS);
     for (const pkg of packages) {
         sheet.addRow([
-            pkg.itemNo, pkg.quantity, pkg.packageType, pkg.dimension, pkg.volume, pkg.weight, pkg.contents.length, pkg.sourceFile, pkg.sourcePage
+            pkg.itemNo, pkg.quantity, pkg.packageType, pkg.dimension,
+            pkg.volume, pkg.weight, pkg.contents.length, pkg.sourceFile, pkg.sourcePage
         ]);
     }
     const lastPackage = sheet.rowCount;
@@ -289,7 +287,8 @@ export async function buildPackingWorkbook(docs: PackingList[]): Promise<Blob> {
     for (const pkg of packages) {
         for (const item of pkg.contents) {
             contents.addRow([
-                pkg.itemNo, pkg.packageType, item.subItem ? 2 : 1, item.quantity, item.description, pkg.sourceFile, pkg.sourcePage
+                pkg.itemNo, pkg.packageType, item.subItem ? 2 : 1,
+                item.quantity, item.description, pkg.sourceFile, item.sourcePage
             ]);
             if (item.subItem) subRows.push(contents.rowCount);
         }

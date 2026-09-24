@@ -1,6 +1,15 @@
-import { PSM, readLines } from "./ocr";
-import { findGrid, openPdf, renderPage, textLayerLines } from "./render";
-import type { ExtractResult, Package, PackingContent, PackingList, ProgressFn, RenderedPage, TextLine, TextWord } from "./types";
+import { PSM, readLines } from './ocr';
+import { findGrid, openPdf, renderPage, textLayerLines } from './render';
+import type {
+    ExtractResult,
+    Package,
+    PackingContent,
+    PackingList,
+    ProgressFn,
+    RenderedPage,
+    TextLine,
+    TextWord
+} from './types';
 
 const REFERENCE_PAGE_HEIGHT = 1755;
 const ROW_TOL = 14;
@@ -22,17 +31,18 @@ const PACKAGE_TYPES = [
     'loose'
 ];
 
-const CONTENT_QTY = /^[^0-9A-Za-z]*(\d[\d.,/]*)\s*(nos?|sets?|units?|lots?|[il]{0,2}[gl]ths?|lengths?|rolls?|bales?|kgs?|pcs?|pairs?|boxes?|bags?|coils?|drums?|pkts?|mtrs?|m)\b\.?\s*/i;
+const CONTENT_QTY =
+    /^[^0-9A-Za-z]*(\d[\d.,/]*)\s*(nos?|sets?|units?|lots?|[il]{0,2}[gl]ths?|lengths?|rolls?|bales?|kgs?|pcs?|pairs?|boxes?|bags?|coils?|drums?|pkts?|mtrs?|m)\b\.?\s*/i;
 const NUMBER = /-?\d[\d,]*\.?\d*/;
 const LABELLED = /^\s*[[\]|(){}<>\-–.,;:*]*\s*([A-Za-z][A-Za-z]+)\s*[:;.]\s*(.*)$/;
 const DIMS = /(\d[\d.,]*)\s*(?:mm)?\s*[xX*×]\s*(\d[\d.,]*)\s*(?:mm)?\s*[xX*×]\s*(\d[\d.,]*)/;
+
 
 const alpha = (text: string) => text.toLowerCase().replace(/[^a-z]/g, '');
 
 function similar(a: string, b: string): number {
     if (!a.length && !b.length) return 1;
     if (!a.length || !b.length) return 0;
-
     const previous = new Array<number>(b.length + 1).fill(0);
     let best = 0;
     for (let i = 1; i <= a.length; i += 1) {
@@ -74,7 +84,7 @@ const commonPrefix = (a: string, b: string) => {
     let n = 0;
     while (n < a.length && n < b.length && a[n] === b[n]) n += 1;
     return n;
-}
+};
 
 function matchPackageType(text: string): string {
     const words = text.split(/\s+/);
@@ -84,9 +94,9 @@ function matchPackageType(text: string): string {
         if (!candidate) continue;
         for (const name of PACKAGE_TYPES) {
             const target = alpha(name);
-            const close = 
-                similar(candidate, target) >= FUZZ || 
-                (commonPrefix(candidate, target) >=4 && candidate.length <= target.length + 2);
+            const close =
+                similar(candidate, target) >= FUZZ ||
+                (commonPrefix(candidate, target) >= 4 && candidate.length <= target.length + 2);
             if (close) return name.replace(/\b\w/g, (c) => c.toUpperCase());
         }
     }
@@ -129,14 +139,14 @@ type PageTable = {
     descX1: number;
 };
 
-const within = (lines: TextLine[], y: number, tol: number) =>   
+const within = (lines: TextLine[], y: number, tol: number) =>
     lines.find((l) => Math.abs(l.y - y) <= tol) ?? null;
 
 function sliceLine(line: TextLine, words: TextWord[]): TextLine {
     const left = Math.min(...words.map((w) => w.x));
     const right = Math.max(...words.map((w) => w.x + w.width));
     return {
-        text: words.map((w) => w.text).join(' ').replace(/\s+/g, '').trim(),
+        text: words.map((w) => w.text).join(' ').replace(/\s+/g, ' ').trim(),
         x: left,
         y: line.y,
         width: right - left,
@@ -197,7 +207,8 @@ async function readTable(
     for (const line of left) {
         const itemWords = line.words.filter((w) => w.x + w.width / 2 < itemC[1]);
         const qtyWords = line.words.filter((w) => w.x + w.width / 2 >= itemC[1]);
-        if (itemWords.length) table.quantities.push(sliceLine(line, qtyWords));
+        if (itemWords.length) table.items.push(sliceLine(line, itemWords));
+        if (qtyWords.length) table.quantities.push(sliceLine(line, qtyWords));
     }
 
     table.descriptions = await readLines(page.canvas, {
@@ -225,7 +236,7 @@ async function readTable(
 }
 
 function headerFields(lines: TextLine[]) {
-    const out: Record<string, string> = { project: '', client: '', date: ''};
+    const out: Record<string, string> = { project: '', client: '', date: '' };
     for (const line of lines) {
         for (const key of Object.keys(out)) {
             if (out[key]) continue;
@@ -272,12 +283,15 @@ function assemble(tables: PageTable[], sourceFile: string) {
         doc.date ||= found.date;
     }
 
-    const indents = tables.flatMap((t) => t.descriptions.filter((d) => CONTENT_QTY.test(d.text)).map((d) => d.x));
+    const indents = tables.flatMap((t) =>
+        t.descriptions.filter((d) => CONTENT_QTY.test(d.text)).map((d) => d.x)
+    );
     const width = tables.length ? tables[0].descX1 - tables[0].descX0 : 0;
     const subCut = indents.length ? Math.min(...indents) + width * INDENT_STEP : Infinity;
 
     let current: Package | null = null;
     let orphaned = false;
+
     for (const table of tables) {
         const unit = Math.max(1, table.height / REFERENCE_PAGE_HEIGHT);
         const rowTol = ROW_TOL * unit;
@@ -289,7 +303,7 @@ function assemble(tables: PageTable[], sourceFile: string) {
 
         for (const anchor of anchors) {
             const numbered = table.items.find(
-                (it) => /^\d+%/.test(it.text.trim()) && Math.abs(it.y - anchor.y) <= rowTol
+                (it) => /^\d+$/.test(it.text.trim()) && Math.abs(it.y - anchor.y) <= rowTol
             );
             const previous = doc.packages.length
                 ? Number(doc.packages[doc.packages.length - 1].itemNo)
@@ -334,7 +348,9 @@ function assemble(tables: PageTable[], sourceFile: string) {
                     if (table.index === 1) doc.product = `${doc.product} ${text}`.trim();
                     else if (!orphaned) {
                         orphaned = true;
-                        warnings.push(`${sourceFile} p${table.index}: lines before the first item number on this page could not be assigned to a package.`);
+                        warnings.push(
+                            `${sourceFile} p${table.index}: lines before the first item number on this page could not be assigned to a package.`
+                        );
                     }
                     continue;
                 }

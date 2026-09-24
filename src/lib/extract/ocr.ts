@@ -1,8 +1,8 @@
-import { createWorker, PSM, type Worker } from "tesseract.js";
+import { createWorker, PSM, type Worker } from 'tesseract.js';
 import workerUrl from 'tesseract.js/dist/worker.min.js?url';
 import coreSimdUrl from 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url';
 import corePlainUrl from 'tesseract.js-core/tesseract-core-lstm.wasm.js?url';
-import type { Rect, TextLine } from "./types";
+import type { Rect, TextLine } from './types';
 
 const LANG_PATH = '/tesseract';
 const LANG = 'eng';
@@ -84,6 +84,7 @@ export async function readLines(
     let rectangle: Rect | undefined = rect;
     let offsetX = 0;
     let offsetY = 0;
+
     if (rect && scale > 1) {
         const inset = 2;
         const sx = rect.left + inset;
@@ -115,7 +116,7 @@ export async function readLines(
     for (const block of data.blocks ?? []) {
         for (const paragraph of block.paragraphs ?? []) {
             for (const line of paragraph.lines ?? []) {
-                const text = (line.text ?? '').replace(/\s+/g, '').trim();
+                const text = (line.text ?? '').replace(/\s+/g, ' ').trim();
                 if (!text) continue;
                 const box = line.bbox;
                 lines.push({

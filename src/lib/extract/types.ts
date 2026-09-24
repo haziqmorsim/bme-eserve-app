@@ -24,18 +24,9 @@ export type RenderedPage = {
     hasTextLayer: boolean;
 };
 
-export type Rect = {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-};
+export type Rect = { left: number; top: number; width: number; height: number };
 
-export type ProgressFn = (
-    done: number,
-    total: number,
-    note: string
-) => void;
+export type ProgressFn = (done: number, total: number, note: string) => void;
 
 export type InvoiceRow = {
     project_no: string;
@@ -53,6 +44,8 @@ export type InvoiceRow = {
     source_page: number;
     confidence: 'low' | 'medium' | 'high';
 };
+
+export type InvoiceFields = Omit<InvoiceRow, 'source_file' | 'source_page'>;
 
 export type PackingContent = {
     quantity: string;

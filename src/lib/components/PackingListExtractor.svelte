@@ -77,9 +77,6 @@
                     </tfoot>
                 </table>
             </div>
-            <p class="muted">
-                Each package's full "Consisting of" list is on the Contents sheet of the Excel file.
-            </p>
         {/if}
     {/snippet}
 </PdfExtractor>

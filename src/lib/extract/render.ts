@@ -4,7 +4,7 @@ import type { RenderedPage, TextLine } from './types';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-const SCALE = 150 / 72;
+const DEFAULT_DPI = 150;
 
 const TEXT_LAYER_MIN_ITEMS = 12;
 
@@ -19,10 +19,11 @@ export async function openPdf(data: ArrayBuffer): Promise<{
 
 export async function renderPage(
     doc: pdfjs.PDFDocumentProxy,
-    index: number
+    index: number,
+    dpi = DEFAULT_DPI
 ): Promise<RenderedPage> {
     const page = await doc.getPage(index);
-    const viewport = page.getViewport({ scale: SCALE });
+    const viewport = page.getViewport({ scale: dpi / 72 });
 
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewport.width);
@@ -42,9 +43,10 @@ export async function renderPage(
 
     let hasTextLayer = false;
     try {
-        const context = await page.getTextContent();
-        hasTextLayer = 
-            context.items.filter((i) => 'str' in i && i.str.trim().length > 0).length >= TEXT_LAYER_MIN_ITEMS;
+        const content = await page.getTextContent();
+        hasTextLayer =
+            content.items.filter((i) => 'str' in i && i.str.trim().length > 0).length >=
+            TEXT_LAYER_MIN_ITEMS;
     } catch {
         hasTextLayer = false;
     }
@@ -55,15 +57,16 @@ export async function renderPage(
 
 export async function textLayerLines(
     doc: pdfjs.PDFDocumentProxy,
-    index: number
+    index: number,
+    dpi = DEFAULT_DPI
 ): Promise<TextLine[]> {
     const page = await doc.getPage(index);
-    const viewport = page.getViewport({ scale: SCALE });
-    const context = await page.getTextContent();
+    const viewport = page.getViewport({ scale: dpi / 72 });
+    const content = await page.getTextContent();
 
     type Item = { text: string; x: number; y: number; w: number; h: number };
     const items: Item[] = [];
-    for (const item of context.items) {
+    for (const item of content.items) {
         if (!('str' in item) || !item.str.trim()) continue;
         const [, , , , e, f] = item.transform;
         const [x, yBottom] = viewport.convertToViewportPoint(e, f);
@@ -76,7 +79,7 @@ export async function textLayerLines(
             h: height || 1
         });
     }
-    page.cleanup;
+    page.cleanup();
 
     items.sort((a, b) => a.y - b.y || a.x - b.x);
     const lines: TextLine[] = [];
@@ -109,17 +112,17 @@ export async function textLayerLines(
         const reference = bucket[bucket.length - 1];
         if (Math.abs(item.y - reference.y) <= Math.max(2, reference.h * 0.5)) bucket.push(item);
         else {
-            flush;
+            flush();
             bucket.push(item);
         }
     }
-    flush;
+    flush();
     return lines.filter((l) => l.text).sort((a, b) => a.y - b.y);
 }
 
 const INK_THRESHOLD = 160;
 const RULE_OF_DARKEST_ROW = 0.55;
-const RULE_OF_DARKEST_COL = 0.33;
+const RULE_OF_DARKEST_COL = 0.3;
 const RULE_FLOOR = 0.25;
 
 export function profile(
@@ -142,7 +145,7 @@ export function profile(
         return out;
     }
 
-    const out = Array<number>(width).fill(0);
+    const out = new Array<number>(width).fill(0);
     const rows = Math.max(1, bottom - top);
     for (let y = top; y < bottom; y += 1) {
         const row = y * width;
@@ -152,7 +155,7 @@ export function profile(
     return out;
 }
 
-export function rulePositins(values: number[], ratio: number, keep = 0): number[] {
+export function rulePositions(values: number[], ratio: number, keep = 0): number[] {
     const peak = values.length ? Math.max(...values) : 0;
     const threshold = Math.max(255 * RULE_FLOOR, peak * ratio);
 
@@ -160,7 +163,7 @@ export function rulePositins(values: number[], ratio: number, keep = 0): number[
     for (let i = 0; i < values.length; i += 1) {
         if (values[i] <= threshold) continue;
         const last = groups[groups.length - 1];
-        if (last && i - last[last.length - i] <= 3) last.push(i);
+        if (last && i - last[last.length - 1] <= 3) last.push(i);
         else groups.push([i]);
     }
 
@@ -184,12 +187,12 @@ export type Grid = {
 
 export function findGrid(page: RenderedPage, columnRules = 6): Grid | null {
     const rows = profile(page, 'row');
-    const hlines = rulePositins(rows, RULE_OF_DARKEST_ROW);
-    if (hlines.length < 1) return null;
+    const hlines = rulePositions(rows, RULE_OF_DARKEST_ROW);
+    if (hlines.length < 2) return null;
     if (hlines[hlines.length - 1] - hlines[0] < page.height * 0.1) return null;
 
     const cols = profile(page, 'col', { top: hlines[0], bottom: hlines[hlines.length - 1] });
-    const vlines = rulePositins(cols, RULE_OF_DARKEST_COL, columnRules);
+    const vlines = rulePositions(cols, RULE_OF_DARKEST_COL, columnRules);
     if (vlines.length < columnRules) return null;
 
     return {
