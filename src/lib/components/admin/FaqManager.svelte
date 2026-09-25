@@ -108,7 +108,7 @@
             .update({ is_published: !f.is_published })
             .eq('id', f.id);
         moving = null;
-        if (error) { addToast(`Could not update: ${error.message}`); return; }
+        if (error) { addToast(`Could not update: ${error.message}`, 'error'); return; }
         addToast(f.is_published ? 'Question unpublished' : 'Question published');
         await invalidateAll();
     }
@@ -130,7 +130,7 @@
         ]);
         moving = null;
         if (r1.error || r2.error) {
-            addToast(`Could not reorder: ${(r1.error ?? r2.error)?.message}`);
+            addToast(`Could not reorder: ${(r1.error ?? r2.error)?.message}`, 'error');
             return;
         }
         await invalidateAll();
@@ -169,8 +169,7 @@
                                     <button class="ord-btn" title="Move down" aria-label="Move down" onclick={() => move(f, 1)} disabled={!!moving || (curPage === pages && i === paged.length - 1)}>
                                         <ChevronDown size={14} />
                                     </button>
-                                </div>
-                                <span class="ord-n">{f.sort_order ?? 0}</span>                                
+                                </div>                                
                             </div>
                         </td>
                         <td style="vertical-align: middle;"><strong>{f.question}</strong></td>
@@ -226,7 +225,7 @@
 {#if deleting}
     <Modal title="Delete Question" onclose={() => (deleting = null)}>
         <div class="modal-confirm">
-            <p>Are you sure you want to delete "<strong>{deleting.question}</strong>"? This cannot be undone.</p>
+            <p>Are you sure you want to delete question "<strong>{deleting.question}</strong>"? This cannot be undone.</p>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="modal-actions">
                 <button class="btn-ghost" onclick={() => (deleting = null)} disabled={busy}>Cancel</button>
@@ -275,6 +274,7 @@
     .btns {
         display: flex;
         flex-direction: column;
+        gap: 10px;
     }
 
     .ord-btn {
@@ -298,13 +298,6 @@
     .ord-btn:disabled { 
         opacity: 0.35; 
         cursor: default; 
-    }
-
-    .ord-n {
-        min-width: 18px;
-        font-size: 12.5px;
-        font-weight: 700;
-        color: var(--bme-muted);
     }
 
     .adm-table {

@@ -5,16 +5,11 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
+    import { ROLE_OPTIONS, isCustomerRole } from "$lib/roles";
 
     let { users, supabase, projects = [], customerProjects = [] } = $props<{ users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] }>();
 
-    const ROLES = [
-        { value: 'customer', label: 'Customer' },
-        { value: 'admin', label: 'Admin' },
-        { value: 'manager', label: 'Manager' },
-        { value: 'coo', label: 'Chief Operating Officer (COO)' },
-        { value: 'developer', label: 'Developer' }
-    ];
+    const ROLES = ROLE_OPTIONS;
     function roleLabel(r: string): string {
         return ROLES.find((x) => x.value === r)?.label ?? r ?? '—';
     }
@@ -96,7 +91,7 @@
         if (editing === 'new' && !form.password) e.password = 'Temporary password is required.';
         if (!form.company?.toString().trim()) e.company = 'Company is required.';
         if (!form.role) e.role = 'Role is required.';
-        if ((form.role || 'customer') === 'customer' && (form.project_ids ?? []).length === 0) {
+        if (isCustomerRole(form.role || 'customer') && (form.project_ids ?? []).length === 0) {
             e.project_ids = 'At least one project is required.';
         }
         fieldErr = e;
@@ -113,7 +108,7 @@
             company: form.company || null, phone: form.phone || null,
             role: form.role || 'customer'
         };
-        const isCustomer = (form.role || 'customer') === 'customer';
+        const isCustomer = isCustomerRole(form.role || 'customer');
         body.project_ids = isCustomer ? (form.project_ids ?? []) : [];
         if (action === 'create') body.password = form.password;
         else body.id = editing;
@@ -206,7 +201,7 @@
             </label>
         </div>
         <div class="project-actions">
-            {#if (form.role || 'customer') === 'customer'}
+            {#if isCustomerRole(form.role || 'customer')}
                 <div class="project-field">
                     <span class="pf-label">Project(s) <span class="required">*</span></span>
                     <div class="project-picker" class:invalid={fieldErr.project_ids}>

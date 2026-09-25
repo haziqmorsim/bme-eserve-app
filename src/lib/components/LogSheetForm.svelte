@@ -38,7 +38,7 @@
     async function save() {
         if (busy) return;
         if (!form.operator.trim()) {
-            addToast('Operator name is required.');
+            addToast('Operator name is required.', 'error');
             return;
         }
 
@@ -63,7 +63,7 @@
             addToast(
                 logErr.code === '23505'
                     ? `A ${form.shift} shift log already exists for ${form.log_date}. Edit that one instead of creating another.`
-                    : `Could not save the log sheet: ${logErr.message}`
+                    : `Could not save the log sheet: ${logErr.message}`, 'error'
             );
             return;
         }
@@ -77,7 +77,7 @@
                 .from('boiler_daily_log_readings')
                 .insert(readingRows);
             if (readErr) {
-                addToast(`Log sheet saved, but some readings could not be saved: ${readErr.message}`);
+                addToast(`Log sheet saved, but some readings could not be saved: ${readErr.message}`, 'error');
                 busy = false;
                 await invalidateAll();
                 onclose();

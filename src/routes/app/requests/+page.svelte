@@ -54,7 +54,7 @@
         working = null;
 
         if (error || resp?.error) {
-            addToast(resp?.error ?? error?.message ?? 'Action could not be completed.');
+            addToast(resp?.error ?? error?.message ?? 'Action could not be completed.', 'error');
         } else if (resp?.status === 'closed') {
             addToast(`${q.reference} closed.`);
         } else {

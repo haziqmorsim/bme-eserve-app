@@ -80,7 +80,7 @@
             .eq('id', n.id);
         busy = false;
         if (error) {
-            addToast('Sorry, we could not record your response. Please try again.');
+            addToast('Sorry, we could not record your response. Please try again.', 'error');
             return false;
         }
         await invalidateAll();

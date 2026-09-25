@@ -61,11 +61,11 @@
         busy = false;
 
         if (res.error) {
-            addToast(`Could not save the action: ${res.error.message}`);
+            addToast(`Could not save the action: ${res.error.message}`, 'error');
             return;
         }
         if (!res.data || res.data.length === 0) {
-            addToast('The change was not saved. You may not have permission to edit this.');
+            addToast('The change was not saved. You may not have permission to edit this.', 'error');
             return;
         }
 

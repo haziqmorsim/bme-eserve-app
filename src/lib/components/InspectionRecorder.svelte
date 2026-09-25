@@ -76,7 +76,7 @@
 			.select()
 			.single();
 		if (error) {
-			addToast(`Could not start the inspection: ${error.message}`);
+			addToast(`Could not start the inspection: ${error.message}`, 'error');
 			return null;
 		}
 		insp = data;
@@ -102,7 +102,7 @@
 
 		if (error) {
 			findingByItem = { ...findingByItem, [item.id]: prior ?? null };
-			addToast(`Could not save that item: ${error.message}`);
+			addToast(`Could not save that item: ${error.message}`, 'error');
 			return;
 		}
 		findingByItem = { ...findingByItem, [item.id]: data };
@@ -123,7 +123,7 @@
 			.single();
 
 		if (error) {
-			addToast(`Could not save the note: ${error.message}`);
+			addToast(`Could not save the note: ${error.message}`, 'error');
 			return;
 		}
 		findingByItem = { ...findingByItem, [item.id]: data };
@@ -134,11 +134,11 @@
 		const file = input.files?.[0];
 		if (!file) return;
 		if (!file.type.startsWith('image/')) {
-			addToast('Please select an image file.');
+			addToast('Please select an image file.', 'error');
 			return;
 		}
 		if (file.size > 5 * 1024 * 1024) {
-			addToast('Image must be 5 MB or smaller.');
+			addToast('Image must be 5 MB or smaller.', 'error');
 			return;
 		}
 
@@ -155,7 +155,7 @@
 		});
 		if (upErr) {
 			uploadingFor = null;
-			addToast(`Could not upload the photo: ${upErr.message}`);
+			addToast(`Could not upload the photo: ${upErr.message}`, 'error');
 			return;
 		}
 		const { data: pub } = supabase.storage.from('inspection-photos').getPublicUrl(path);
@@ -174,7 +174,7 @@
 		input.value = '';
 
 		if (error) {
-			addToast(`Photo uploaded, but could not attach it: ${error.message}`);
+			addToast(`Photo uploaded, but could not attach it: ${error.message}`, 'error');
 			return;
 		}
 		findingByItem = { ...findingByItem, [item.id]: data };
@@ -182,7 +182,7 @@
 
 	async function addTube() {
 		if (!newTube.location.trim() || newTube.reading_mm === '') {
-			addToast('Location and reading are required.');
+			addToast('Location and reading are required.', 'error');
 			return;
 		}
 		const inspectionId = await ensureInspection();
@@ -201,7 +201,7 @@
 			.single();
 
 		if (error) {
-			addToast(`Could not add that reading: ${error.message}`);
+			addToast(`Could not add that reading: ${error.message}`, 'error');
 			return;
 		}
 		tubes = [...tubes, data];
@@ -211,7 +211,7 @@
 	async function removeTube(id: string) {
 		const { error } = await supabase.from('boiler_tube_thickness').delete().eq('id', id);
 		if (error) {
-			addToast(`Could not remove that reading: ${error.message}`);
+			addToast(`Could not remove that reading: ${error.message}`, 'error');
 			return;
 		}
 		tubes = tubes.filter((t) => t.id !== id);
@@ -224,7 +224,7 @@
 			.from('boiler_inspections')
 			.update({ inspector: insp.inspector.trim() || null, summary: insp.summary.trim() || null })
 			.eq('id', inspectionId);
-		if (error) addToast(`Could not save: ${error.message}`);
+		if (error) addToast(`Could not save: ${error.message}`, 'error');
 	}
 
 	async function complete() {
@@ -237,7 +237,7 @@
 			.eq('id', inspectionId);
 		busy = false;
 		if (error) {
-			addToast(`Could not complete the inspection: ${error.message}`);
+			addToast(`Could not complete the inspection: ${error.message}`, 'error');
 			return;
 		}
 		await invalidateAll();

@@ -3,18 +3,11 @@
     import { addToast } from "$lib/stores/toast";
     import { UserRound, Pencil, KeyRound } from "@lucide/svelte";
     import ChangePasswordModal from "$lib/components/ChangePasswordModal.svelte";
+    import { ROLE_LABEL } from "$lib/roles";
 
     let { data } = $props();
 
     let me: any = $derived(data.me);
-
-    const ROLE_LABEL: Record<string, string> = {
-        customer: 'Customer', 
-        admin: 'Admin', 
-        manager: 'Manager', 
-        coo: 'COO', 
-        developer: 'Developer'
-    };
 
     let editing = $state(false);
     let busy = $state(false);
@@ -173,7 +166,7 @@
                     <input bind:value={form.phone} placeholder="+60..." />
                 </label>
                 <label><span>Role</span>
-                    <input bind:value={ROLE_LABEL[me.role]} disabled />
+                    <input value={ROLE_LABEL[me.role] ?? me.role} disabled />
                 </label>
             </div>
         </div>

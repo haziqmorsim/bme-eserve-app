@@ -377,7 +377,7 @@
 			});
 
 			if (error || !resp?.ok || !resp?.pdf_base64) {
-				addToast(resp?.error ?? 'Could not generate the condition report. Please try again.');
+				addToast(resp?.error ?? 'Could not generate the condition report. Please try again.', 'error');
 				return;
 			}
 
@@ -397,7 +397,7 @@
 			addToast('Condition report downloaded.');
 		} catch (e) {
 			console.error('Condition report download failed:', e);
-			addToast('Could not generate the condition report. Please try again.');
+			addToast('Could not generate the condition report. Please try again.', 'error');
 		} finally {
 			reportBusy = false;
 		}
@@ -474,7 +474,7 @@
 	function addMaintenancePart(row: any) {
 		const p = row.parts;
 		if (!p) {
-			addToast('This item is not linked to a catalogue part yet. Please contact us to order it.');
+			addToast('This item is not linked to a catalogue part yet. Please contact us to order it.', 'error');
 			return;
 		}
 		adding = row.id;

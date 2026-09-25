@@ -1,3 +1,5 @@
+import type { Role } from './roles';
+
 export interface Region {
     id: string;
     name: string;
@@ -60,7 +62,7 @@ export interface Profile {
     id: string;
     full_name: string | null;
     company: string | null;
-    role: 'customer' | 'admin';
+    role: Role;
     region_id: string | null;
     email: string | null;
     phone: string | null;

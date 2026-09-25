@@ -63,8 +63,8 @@
         }
 
         if (form.whats_new_enabled === 'on') {
-            if (!(form.whats_new_version ?? '').trim()) e.whats_new_version = 'Required when What\'s New is on.';
-            if (!(form.whats_new_content ?? '').trim()) e.whats_new_content = 'Required when What\'s New is on.';
+            if (!(form.whats_new_version ?? '').trim()) e.whats_new_version = 'Required when Announcement is on.';
+            if (!(form.whats_new_content ?? '').trim()) e.whats_new_content = 'Required when Announcement is on.';
         }
 
         if (!(form.privacy_policy ?? '').trim()) e.privacy_policy = 'Privacy policy cannot be empty.';
@@ -82,7 +82,7 @@
         const changed = settings.filter((s:any) => (form[s.key] ?? '') !== (s.value ?? ''));
         if (changed.length === 0) {
             busy = false;
-            addToast('No changes to save');
+            addToast('No changes to save', 'error');
             return;
         }
 

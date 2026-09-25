@@ -58,7 +58,7 @@
         pickQuery = '';
 
         if (error) {
-            addToast(`Could not save resolution: ${error.message}`);
+            addToast(`Could not save resolution: ${error.message}`, 'error');
             return;
         }
         await invalidateAll();
@@ -82,7 +82,7 @@
         busy = next;
 
         if (error) {
-            addToast(`Could not mark as replied: ${error.message}`);
+            addToast(`Could not mark as replied: ${error.message}`, 'error');
             return;
         }
         await invalidateAll();

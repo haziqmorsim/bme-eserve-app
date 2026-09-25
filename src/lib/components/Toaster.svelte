@@ -1,13 +1,21 @@
 <script lang="ts">
     import { toasts, removeToast } from "$lib/stores/toast";
-    import { CircleCheck, X } from "@lucide/svelte";
+    import { CircleCheck, CircleX, X } from "@lucide/svelte";
     import { fly } from "svelte/transition";
 </script>
 
 <div class="toaster">
     {#each $toasts as toast (toast.id)}
-        <div class="toast" transition:fly={{ y: 16, duration: 200 }}>
-            <span class="toast-icon"><CircleCheck size={20} /></span>
+        <div
+            class="toast"
+            class:success={toast.type !== 'error'}
+            class:error={toast.type === 'error'}
+            role={toast.type === 'error' ? 'alert' : 'status'}
+            transition:fly={{ y: 16, duration: 200 }}
+        >
+            <span class="toast-icon">
+                {#if toast.type === 'error'}<CircleX size={20} />{:else}<CircleCheck size={20} />{/if}
+            </span>
             <span class="toast-msg">{toast.message}</span>
             <button class="toast-close" onclick={() => removeToast(toast.id)} aria-label="Close"><X size={16} /></button>
         </div>
@@ -42,9 +50,24 @@
     }
 
     .toast-icon {
-        color: var(--bme-dark-blue);
         display: inline-flex;
         flex-shrink: 0;
+    }
+
+    .toast.success {
+        border-left-color: var(--bme-darker-green);
+    }
+
+    .toast.success .toast-icon {
+        color: var(--bme-darker-green);
+    }
+
+    .toast.error {
+        border-left-color: var(--bme-red);
+    }
+
+    .toast.error .toast-icon {
+        color: var(--bme-red);
     }
 
     .toast-msg {

@@ -1,9 +1,10 @@
 import type { PageLoad } from "./$types";
 import type { Boiler, Component, Part } from "$lib/types";
+import { isCustomerRole } from "$lib/roles";
 
 export const load: PageLoad = async ({ parent, url }) => {
     const { supabase, profile } = await parent();
-    const isCustomer = profile?.role === 'customer';
+    const isCustomer = !!profile && isCustomerRole(profile.role);
 
     let assignedIds: Set<string> | null = null;
     let assignedProjectIds: Set<string> | null = null;

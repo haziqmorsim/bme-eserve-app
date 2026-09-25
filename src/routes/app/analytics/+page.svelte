@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SlaBadge from '$lib/components/SlaBadge.svelte';
+	import { ROLE_LABEL } from '$lib/roles';
 
 	let { data } = $props();
 
@@ -25,13 +26,6 @@
 	let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
 	let maxPage = $derived(Math.max(1, ...data.topPages.map((p: any) => p.count)));
 
-	const ROLE_LABEL: Record<string, string> = {
-		admin: 'Admin',
-		manager: 'Manager',
-		coo: 'COO',
-		developer: 'Developer',
-		customer: 'Customer'
-	};
 	function roleLabel(r: string | null): string {
 		return r ? (ROLE_LABEL[r] ?? r) : '';
 	}
@@ -829,7 +823,7 @@
 			justify-content: center;
 		}
 		.actions-tab {
-			width: 30%;
+			width: 48%;
 			text-align: center;
 			justify-content: center;
 		}

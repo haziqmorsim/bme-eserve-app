@@ -50,7 +50,7 @@
             const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
             if (!isPdf) continue;
             if (f.size > MAX_BYTES) {
-                addToast(`'${f.name}' is larger than 50 MB.`);
+                addToast(`'${f.name}' is larger than 50 MB.`, 'error');
                 continue;
             }
             if (next.some((x) => x.name === f.name && x.size === f.size)) continue;
@@ -154,7 +154,7 @@
             addToast(
                 (err as Error)?.message
                     ? `Could not read the PDF: ${(err as Error).message}`
-                    : 'Could not read the PDF.'
+                    : 'Could not read the PDF.', 'error'
             );
         }
     }

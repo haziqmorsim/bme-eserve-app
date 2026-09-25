@@ -50,7 +50,7 @@
         working = null;
 
         if (error || resp?.error) {
-            addToast(resp?.error ?? error?.message ?? 'Could not save this action.');
+            addToast(resp?.error ?? error?.message ?? 'Could not save this action.', 'error');
             return;
         }
 
@@ -67,7 +67,7 @@
             });
 
             if (error || !resp?.ok || !resp?.pdf_base64) {
-                addToast(resp?.error ?? 'Could not generate the quotation PDF. Please try again.');
+                addToast(resp?.error ?? 'Could not generate the quotation PDF. Please try again.', 'error');
                 return;
             }
 
@@ -87,7 +87,7 @@
             addToast('Quotation PDF downloaded.');
         } catch (e) {
             console.error('Quotation PDF download failed:', e);
-            addToast('Could not generate the quotation PDF. Please try again.');
+            addToast('Could not generate the quotation PDF. Please try again.', 'error');
         } finally {
             downloading = null;
         }
@@ -104,7 +104,7 @@
     async function requestAgain(q: any) {
         const items = q.quote_items ?? [];
         if (items.length === 0) {
-            addToast('This request has no parts to add.');
+            addToast('This request has no parts to add.', 'error');
             return;
         }
 
@@ -120,7 +120,7 @@
 
             if (error) {
                 readding = null;
-                addToast('Could not add these parts to your quote list. Please try again.');
+                addToast('Could not add these parts to your quote list. Please try again.', 'error');
                 return;
             }
             current = rows ?? [];
@@ -156,7 +156,7 @@
         readding = null;
 
         if (added === 0) {
-            addToast('None of these parts are currently available.');
+            addToast('None of these parts are currently available.', 'error');
         } else if (missing > 0) {
             addToast(`${added} part(s) added to your quote list. ${missing} part(s) are no longer available.`);
         } else {

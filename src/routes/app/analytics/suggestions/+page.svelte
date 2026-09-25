@@ -65,7 +65,7 @@
 		pickQuery = '';
 
 		if (error) {
-			addToast(`Could not save review: ${error.message}`);
+			addToast(`Could not save review: ${error.message}`, 'error');
 			return;
 		}
 		await invalidateAll();

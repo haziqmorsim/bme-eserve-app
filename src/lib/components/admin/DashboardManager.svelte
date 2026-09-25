@@ -78,7 +78,6 @@
         )
     );
 
-    /** Shows an overridden bound, or the inherited catalogue value in muted text. */
     function boundText(row: any, field: string) {
         const v = row[field];
         if (v !== null && v !== undefined) return { text: String(v), inherited: false };
@@ -154,7 +153,7 @@
         busy = false;
 
         if (error) {
-            addToast(`Could not remove: ${error.message}`);
+            addToast(`Could not remove: ${error.message}`, 'error');
             return;
         }
         removingSeries = null;
@@ -162,11 +161,8 @@
         addToast(`${m.label} removed from the group.`);
     }
 
-    // Confirmation modal state for "Remove" - replaces the old hover title,
-    // which explained the action but never asked before taking it.
     let removingSeries = $state<any | null>(null);
 
-    // "+ Add Metric" quick-add modal, scoped to one group at a time.
     let addingTo = $state<string | null>(null);
     let toAdd = $state<string[]>([]);
 
@@ -189,7 +185,7 @@
         busy = false;
 
         if (error) {
-            addToast(`Could not add: ${error.message}`);
+            addToast(`Could not add: ${error.message}`, 'error');
             return;
         }
         addingTo = null;
@@ -256,7 +252,6 @@
                     e.indicator_key = 'That key is already in use.';
                 }
             }
-            // The two-metric formulas are meaningless without the second metric.
             if ((form.formula === 'differential' || form.formula === 'ratio') && !form.metric_key_b) {
                 e.metric_key_b = 'This formula compares two metrics, so a second metric is required.';
             }
@@ -273,8 +268,6 @@
                 e.metric_key = 'This boiler already has a baseline for that metric.';
             }
 
-            // Caught here as well as by the database check constraint, so staff
-            // get a field-level message instead of a raw Postgres error.
             const pair = (lo: string, hi: string, label: string) => {
                 const a = form[lo];
                 const b = form[hi];
@@ -322,18 +315,12 @@
         const selectedSeries: string[] | null = kind === 'group' ? (form.series ?? []) : null;
         delete payload.series;
 
-        // A blank threshold input means "inherit the fleet-wide value", which is
-        // NULL - not 0 and not ''. Writing 0 would silently redefine the band
-        // (an empty min_normal becoming 0 marks every negative draft reading as
-        // an alert), and '' fails numeric insertion outright.
         if (kind === 'indicator') {
-            // Blank trigger means "described but not enforced" - null, not 0.
             payload.trigger_value =
                 payload.trigger_value === '' || payload.trigger_value === undefined || payload.trigger_value === null
                     ? null
                     : Number(payload.trigger_value);
             payload.trigger_days = Number(payload.trigger_days) || 1;
-            // A single-metric formula must not keep a stale second metric.
             if (payload.formula !== 'differential' && payload.formula !== 'ratio') {
                 payload.metric_key_b = null;
             }
@@ -408,7 +395,7 @@
         busy = false;
 
         if (error) {
-            addToast(`Could not delete: ${error.message}`);
+            addToast(`Could not delete: ${error.message}`, 'error');
             return;
         }
         deleting = null;
@@ -425,7 +412,7 @@
             .match(matchFor(kind, row));
 
         if (error) {
-            addToast(`Could not update: ${error.message}`);
+            addToast(`Could not update: ${error.message}`, 'error');
             return;
         }
         await invalidateAll();

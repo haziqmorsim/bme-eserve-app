@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 			await Promise.all([
 				admin.from('boilers').select('id, code, name'),
 				admin.from('customer_boilers').select('user_id, boiler_id'),
-				admin.from('profiles').select('id, full_name, company, email').eq('role', 'customer'),
+				admin.from('profiles').select('id, full_name, company, email').in('role', ['customer', 'shipping']),
 				admin.from('components').select('id, boiler_id, name'),
 				admin
 					.from('parts')

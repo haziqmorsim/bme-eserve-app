@@ -4,6 +4,7 @@
     import { Menu, X, UserRound } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+    import { canUseOthers } from "$lib/roles";
 
     let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
@@ -34,6 +35,7 @@
         profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo' || profile?.role === 'developer'
     );
     let isAdmin = $derived(profile?.role === 'admin' || profile?.role === 'developer');
+    let showOthers = $derived(canUseOthers(profile?.role));
 </script>
 
 <header class="header">
@@ -56,7 +58,7 @@
             {#if isStaff}
                 <a class="btn-ghost" class:active={$page.url.pathname === '/app/analytics'} href="/app/analytics">Analytics</a>
             {/if}
-            {#if isStaff}
+            {#if showOthers}
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/others')} href="/app/others">Others</a>
             {/if}
         </div>
@@ -125,7 +127,7 @@
             {#if isStaff}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
             {/if}
-            {#if isStaff}
+            {#if showOthers}
                 <a href="/app/others" class="side-link" class:active={$page.url.pathname.startsWith('/app/others')} onclick={close}>Others</a>
             {/if}
         </nav>

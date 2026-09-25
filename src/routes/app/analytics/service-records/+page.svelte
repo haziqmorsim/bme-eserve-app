@@ -80,7 +80,7 @@
 
 		saving = false;
 		if (error) {
-			addToast(`Could not save record: ${error.message}`);
+			addToast(`Could not save record: ${error.message}`, 'error');
 			return;
 		}
 		closeModal();

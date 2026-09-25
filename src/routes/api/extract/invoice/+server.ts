@@ -1,11 +1,12 @@
-import { env } from "$env/dynamic/private";
-import { json } from "@sveltejs/kit";
-import { readInvoicePage, UnreadableReply } from "$lib/server/invoice-reader";
-import type { RequestHandler } from "./$types";
+import { env } from '$env/dynamic/private';
+import { json } from '@sveltejs/kit';
+import { readInvoicePage, UnreadableReply } from '$lib/server/invoice-reader';
+import { OTHERS_ROLES } from '$lib/roles';
+import type { RequestHandler } from './$types';
 
 export const config = { maxDuration: 60 };
 
-const CAN_RUN = new Set(['admin', 'manager', 'coo', 'developer']);
+const CAN_RUN = OTHERS_ROLES;
 
 const MAX_IMAGE_BASE64 = 4 * 1024 * 1024;
 const MAX_OCR_CHARS = 20_000;

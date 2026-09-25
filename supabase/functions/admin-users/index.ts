@@ -1,7 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 
-const ALLOWED_ROLES = ['customer', 'admin', 'manager', 'coo', 'developer'];
+const ALLOWED_ROLES = ['customer', 'shipping', 'admin', 'manager', 'coo', 'developer'];
+const CUSTOMER_ROLES = ['customer', 'shipping'];
 function normaliseRole(r: unknown): string {
     return typeof r === 'string' && ALLOWED_ROLES.includes(r) ? r : 'customer';
 }
@@ -12,7 +13,7 @@ async function syncProjectsAndBoilers(admin: any, userId: string, role: string, 
     const { error: dbErr } = await admin.from('customer_boilers').delete().eq('user_id', userId);
     if (dbErr) return dbErr.message;
 
-    if (role !== 'customer') return null;
+    if (!CUSTOMER_ROLES.includes(role)) return null;
 
     const ids = Array.isArray(projectIds)
         ? [...new Set(projectIds.filter((x: unknown) => typeof x === 'string'))]
