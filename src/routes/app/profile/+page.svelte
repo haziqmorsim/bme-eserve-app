@@ -1,7 +1,8 @@
 <script lang="ts">
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
-    import { UserRound, Pencil } from "@lucide/svelte";
+    import { UserRound, Pencil, KeyRound } from "@lucide/svelte";
+    import ChangePasswordModal from "$lib/components/ChangePasswordModal.svelte";
 
     let { data } = $props();
 
@@ -20,6 +21,7 @@
     let err = $state('');
     let fieldErr = $state<Record<string, string>>({});
     let form = $state<any>({});
+    let pwOpen = $state(false);
 
     function startEdit() {
         const m: any = me ?? {};
@@ -155,6 +157,18 @@
                     <input type="email" bind:value={form.email} class:invalid={fieldErr.email} />
                     {#if fieldErr.email}<span class="field-err">{fieldErr.email}</span>{/if}
                 </label>
+                <div class="field">
+                    <span id="pw-label">Password</span>
+                    <button
+                        type="button"
+                        class="btn-ghost pw-btn"
+                        aria-labelledby="pw-label pw-btn-text"
+                        onclick={() => (pwOpen = true)}
+                        disabled={busy}
+                    >
+                        <KeyRound size={16} /> <span id="pw-btn-text">Change Password</span>
+                    </button>
+                </div>
                 <label><span>Phone</span>
                     <input bind:value={form.phone} placeholder="+60..." />
                 </label>
@@ -201,6 +215,7 @@
                 <div class="row"><dt>Full Name</dt><dd>{show(me.full_name)}</dd></div>
                 <div class="row"><dt>Company</dt><dd>{show(me.company)}</dd></div>
                 <div class="row"><dt>E-mail</dt><dd>{show(me.email)}</dd></div>
+                <div class="row"><dt>Password</dt><dd>********</dd></div>
                 <div class="row"><dt>Phone</dt><dd>{show(me.phone)}</dd></div>
                 <div class="row"><dt>Role</dt><dd>{ROLE_LABEL[me.role] ?? show(me.role)}</dd></div>
             </dl>
@@ -219,6 +234,8 @@
         </div>
     {/if}
 {/if}
+
+<ChangePasswordModal bind:open={pwOpen} />
 
 <style>
     .head {
@@ -382,6 +399,29 @@
 
     .grid .wide {
         grid-column: 1 / -1;
+    }
+
+    .grid .field {
+        display: block;
+    }
+
+    .grid .field > span {
+        display: block;
+    }
+
+    .pw-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 11px 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .pw-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
     .actions {

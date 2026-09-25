@@ -291,7 +291,7 @@
         pointer-events: none;
     }
 
-    .pages .btn-ghost.active {
+    .pages .btn-ghost.active, .column .btn-ghost.active {
         background: var(--bme-dark-blue);
         color: #ffffff;
     }
