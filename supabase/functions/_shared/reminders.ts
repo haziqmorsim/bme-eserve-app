@@ -1,7 +1,20 @@
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { appUrl, ctaButton } from './email-ui.ts';
+import { getSettings } from './settings.ts';
 
-export const THRESHOLD_HOURS = 48;
+export const REMINDER_SETTING = {
+    pendingRequests: 'pending_request_reminder_hours',
+    unrepliedEnquiries: 'enquiry_reminder_hours',
+    abandonedCarts: 'cart_reminder_hours'
+} as const;
+
+export const DEFAULT_REMINDER_HOURS = 48;
+
+export async function reminderHours(admin: SupabaseClient, key: string): Promise<number> {
+    const raw = await getSettings(admin, key);
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 1 ? n : DEFAULT_REMINDER_HOURS;
+}
 
 const BRAND = {
     blue: '#004b8d', 
@@ -13,7 +26,7 @@ const BRAND = {
 };
 
 export function serviceClient(): SupabaseClient {
-    return CreateClient(
+    return createClient(
         Deno.env.get('SUPABASE_URL')!, 
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );

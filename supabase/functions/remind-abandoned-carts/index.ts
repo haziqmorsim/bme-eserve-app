@@ -1,7 +1,8 @@
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { sendEmail } from '../_shared/email.ts';
 import {
-	THRESHOLD_HOURS,
+	REMINDER_SETTING,
+	reminderHours,
 	serviceClient,
 	hoursAgoIso,
 	hoursBetween,
@@ -31,11 +32,12 @@ Deno.serve(async (req) => {
 
 	try {
 		const admin = serviceClient();
+		const threshold = await reminderHours(admin, REMINDER_SETTING.abandonedCarts);
 
 		const { data: carts } = await admin
 			.from('cart_state')
 			.select('user_id, items, updated_at, reminder_sent_at')
-			.lte('updated_at', hoursAgoIso(THRESHOLD_HOURS));
+			.lte('updated_at', hoursAgoIso(threshold));
 
 		const overdue = (carts ?? []).filter((c: any) => {
 			const items: CartItem[] = Array.isArray(c.items) ? c.items : [];
@@ -43,7 +45,7 @@ Deno.serve(async (req) => {
 			return !c.reminder_sent_at || new Date(c.reminder_sent_at) < new Date(c.updated_at);
 		});
 
-		if (overdue.length === 0) return json(200, { ok: true, reminded: 0 });
+		if (overdue.length === 0) return json(200, { ok: true, reminded: 0, threshold });
 
 		const userIds = overdue.map((c: any) => c.user_id);
 		const { data: profiles } = await admin
@@ -117,7 +119,7 @@ Deno.serve(async (req) => {
 				overdue.map((c: any) => c.user_id)
 			);
 
-		return json(200, { ok: true, reminded: overdue.length, emailed });
+		return json(200, { ok: true, reminded: overdue.length, threshold, emailed });
 	} catch (e) {
 		console.error('remind-abandoned-carts failed:', e);
 		return json(400, { error: String(e) });

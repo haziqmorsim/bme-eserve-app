@@ -1,7 +1,8 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders, json } from '../_shared/cors.ts';
 import { sendEmail } from '../_shared/email.ts';
 import {
-	THRESHOLD_HOURS,
+	REMINDER_SETTING,
+	reminderHours,
 	serviceClient,
 	hoursAgoIso,
 	hoursBetween,
@@ -25,17 +26,18 @@ Deno.serve(async (req) => {
 
 	try {
 		const admin = serviceClient();
+		const threshold = await reminderHours(admin, REMINDER_SETTING.unrepliedEnquiries);
 
 		const { data: enquiries } = await admin
 			.from('enquiries')
 			.select('id, name, email, company, created_at, replied_at, reminder_sent_at')
 			.is('replied_at', null)
 			.is('reminder_sent_at', null)
-			.lte('created_at', hoursAgoIso(THRESHOLD_HOURS))
+			.lte('created_at', hoursAgoIso(threshold))
 			.order('created_at', { ascending: true });
 
 		const overdue = enquiries ?? [];
-		if (overdue.length === 0) return json(200, { ok: true, reminded: 0 });
+		if (overdue.length === 0) return json(200, { ok: true, reminded: 0, threshold });
 
 		const admins = await recipientsByRole(admin, ['admin']);
 
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
 
 		const html = reminderEmail({
 			heading: 'Enquiry waiting a reply',
-			intro: `The following ${overdue.length} enquiry(ies) have been waiting for a reply for more than ${THRESHOLD_HOURS} hours.`,
+			intro: `The following ${overdue.length} enquiry(ies) have been waiting for a reply for more than ${threshold} hours.`,
 			rowsHtml,
 			ctaLabel: 'Reply Enquiries',
 			ctaPath: '/app/enquiries'
@@ -92,7 +94,7 @@ Deno.serve(async (req) => {
 				overdue.map((e: any) => e.id)
 			);
 
-		return json(200, { ok: true, reminded: overdue.length, admins: admins.length, emailed });
+		return json(200, { ok: true, reminded: overdue.length, threshold, admins: admins.length, emailed });
 	} catch (e) {
 		console.error('remind-unreplied-enquiries failed:', e);
 		return json(400, { error: String(e) });

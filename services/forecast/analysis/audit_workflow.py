@@ -220,8 +220,7 @@ def s6_in_flight(quotes: pd.DataFrame, approvals: pd.DataFrame) -> pd.DataFrame:
         hours = weekday_hours_between(since, now)
         rows.append(
             {
-                "reference": getattr(q, "references", None),
-                "level": getattr(q, "current_level", None),
+                "reference": getattr(q, "reference", None),
                 "region": getattr(q, "region_name", None),
                 "waiting_h": None if hours is None else round(hours, 1),
                 "state": sla_state(hours),
@@ -239,7 +238,7 @@ def s6_in_flight(quotes: pd.DataFrame, approvals: pd.DataFrame) -> pd.DataFrame:
     if not worst.empty:
         print("\n  Longest waiting:")
         for r in worst.itertuples():
-            print(f" {str(r.referrence):<16} level {r.level} {r.waiting_h} [{r.state}]")
+            print(f" {str(r.reference):<16} {r.waiting_h} [{r.state}]")
     return df
 
 
@@ -263,7 +262,7 @@ def main() -> int:
 
     print("Loading workflow data...")
     quotes = fetch_all(
-        sb, "quotes", "id, reference, user_id, status, current_level, created_at"
+        sb, "quotes", "id, reference, user_id, status, created_at"
     )
     approvals = fetch_all(
         sb, "quote_approvals", "quote_id, level, role, action, created_at"
@@ -280,7 +279,7 @@ def main() -> int:
             regions.rename(columns={"id": "region_id", "name": "region_name"}),
             on="region_id",
             how="left",
-        )[["id", "region_name"]].rename(columns={"id", "user_id"})
+        )[["id", "region_name"]].rename(columns={"id": "user_id"})
         quotes = quotes.merge(region_lookup, on="user_id", how="left")
     else:
         quotes["region_name"] = None
