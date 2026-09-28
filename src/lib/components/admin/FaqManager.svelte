@@ -4,7 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { Plus, ChevronUp, ChevronDown } from "@lucide/svelte";
+    import { Plus, Menu } from "@lucide/svelte";
 
     let { faqs, supabase } = $props<{ faqs: any[]; supabase: SupabaseClient }>();
 
@@ -18,7 +18,16 @@
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
     let moving = $state<string | null>(null);
-    let ordered = $derived([...faqs].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+
+    let orderOverride = $state<string[] | null>(null);
+    let baseOrdered = $derived([...faqs].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+    let ordered = $derived.by(() => {
+        if (!orderOverride) return baseOrdered;
+        const byId = new Map(baseOrdered.map((f: any) => [f.id, f]));
+        const out = orderOverride.map((id) => byId.get(id)).filter(Boolean) as any[];
+        for (const f of baseOrdered) if (!orderOverride.includes(f.id)) out.push(f);
+        return out;
+    });
 
     let filtered = $derived(ordered.filter((f: any) => {
         const q = search.trim().toLowerCase();
@@ -113,27 +122,118 @@
         await invalidateAll();
     }
 
-    async function move(f: any, dir: -1 | 1) {
-        if (moving) return;
-        const idx = ordered.findIndex((x: any) => x.id === f.id);
-        const other = ordered[idx + dir];
-        if (!other) return;
+    let reordering = $state(false);
+    let dndEnabled = $derived(!search.trim() && pages === 1 && !reordering);
+    let dndDisabledReason = $derived.by(() => {
+        if (search.trim()) return 'Clear the search box to drag and reorder questions.';
+        if (pages > 1) return 'Reordering is only available when every question fits on one page.';
+        return null;
+    });
 
-        moving = f.id;
-        const a = Number(f.sort_order ?? 0);
-        const b = Number(other.sort_order ?? 0);
-        const [newA, newB] = a === b ? [idx + dir + 1, idx + 1] : [b, a];
+    let dragId = $state<string | null>(null);
+    let dragOverId = $state<string | null>(null);
+    let activePointerId: number | null = null;
+    let dragSourceId: string | null = null;
+    let dragArmed = false;
+    let dragStartY = 0;
 
-        const [r1, r2] = await Promise.all([
-            supabase.from('faqs').update({ sort_order: newA }).eq('id', f.id), 
-            supabase.from('faqs').update({ sort_order: newB }).eq('id', other.id)
-        ]);
-        moving = null;
-        if (r1.error || r2.error) {
-            addToast(`Could not reorder: ${(r1.error ?? r2.error)?.message}`, 'error');
+    function rowIdAt(x: number, y: number): string | null {
+        const row = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest('tr[data-faq-id]') as HTMLElement | null;
+        return row?.dataset.faqId ?? null;
+    }
+
+    function onHandlePointerDown(e: PointerEvent, id: string) {
+        if (!dndEnabled || (e.button ?? 0) !== 0) return;
+        activePointerId = e.pointerId;
+        dragSourceId = id;
+        dragArmed = false;
+        dragStartY = e.clientY;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+    }
+
+    function onPointerMove(e: PointerEvent) {
+        if (e.pointerId !== activePointerId || !dragSourceId) return;
+        if (!dragArmed) {
+            if (Math.abs(e.clientY - dragStartY) < 4) return;
+            dragArmed = true;
+            dragId = dragSourceId;
+        }
+        e.preventDefault();
+        dragOverId = rowIdAt(e.clientX, e.clientY);
+    }
+
+    async function onPointerUp(e: PointerEvent) {
+        if (e.pointerId !== activePointerId) return;
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerCancel);
+        const sourceId = dragSourceId;
+        const targetId = dragArmed ? (dragOverId ?? rowIdAt(e.clientX, e.clientY)) : null;
+        activePointerId = null;
+        dragSourceId = null;
+        dragArmed = false;
+        dragId = null;
+        dragOverId = null;
+        if (sourceId && targetId) await reorder(sourceId, targetId);
+    }
+
+    function onPointerCancel(e: PointerEvent) {
+        if (e.pointerId !== activePointerId) return;
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerCancel);
+        activePointerId = null;
+        dragSourceId = null;
+        dragArmed = false;
+        dragId = null;
+        dragOverId = null;
+    }
+
+    function onHandleKeydown(e: KeyboardEvent, f: any) {
+        if (!dndEnabled) return;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const ids = ordered.map((x: any) => x.id);
+            const idx = ids.indexOf(f.id);
+            const target = ids[idx + (e.key === 'ArrowUp' ? -1 : 1)];
+            if (target) reorder(f.id, target);
+        }
+    }
+
+    async function reorder(sourceId: string, targetId: string) {
+        if (sourceId === targetId) return;
+        const ids = ordered.map((f: any) => f.id);
+        const from = ids.indexOf(sourceId);
+        const to = ids.indexOf(targetId);
+        if (from === -1 || to === -1) return;
+
+        const newIds = ids.slice();
+        const [moved] = newIds.splice(from, 1);
+        newIds.splice(to, 0, moved);
+
+        orderOverride = newIds;
+        reordering = true;
+
+        const byId = new Map(ordered.map((f: any) => [f.id, f]));
+        const updates = newIds
+            .map((id, i) => ({ id, wanted: i + 1, row: byId.get(id) }))
+            .filter(({ wanted, row }) => row && Number(row.sort_order ?? 0) !== wanted)
+            .map(({ id, wanted }) => supabase.from('faqs').update({ sort_order: wanted }).eq('id', id));
+
+        const results = await Promise.all(updates);
+        reordering = false;
+
+        const failed = results.find((r) => r.error);
+        if (failed) {
+            orderOverride = null;
+            addToast(`Could not reorder: ${failed.error.message}`, 'error');
             return;
         }
         await invalidateAll();
+        orderOverride = null;
     }
 
     function short(text: string, n = 90): string {
@@ -149,6 +249,10 @@
     </button>
 </div>
 
+{#if dndDisabledReason}
+    <p class="dnd-note">{dndDisabledReason}</p>
+{/if}
+
 <div class="card" style="padding:14px; overflow:hidden">
     {#if count === 0}
         <div class="adm-empty">No questions found.</div>
@@ -158,19 +262,25 @@
                 <tr><th>Order</th><th>Question</th><th>Answer</th><th>Published</th><th>Actions</th></tr>
             </thead>
             <tbody>
-                {#each paged as f, i (f.id)}
-                    <tr class:unpublished={!f.is_published}>
+                {#each paged as f (f.id)}
+                    <tr
+                        data-faq-id={f.id}
+                        class:unpublished={!f.is_published}
+                        class:dragging={dragId === f.id}
+                        class:drag-over={!!dragId && dragId !== f.id && dragOverId === f.id}
+                    >
                         <td style="text-align: center; vertical-align: middle;">
-                            <div class="ord">
-                                <div class="btns">
-                                    <button class="ord-btn" title="Move up" aria-label="Move up" onclick={() => move(f, -1)} disabled={!!moving || (curPage === 1 && i === 0)}>
-                                        <ChevronUp size={14} />
-                                    </button>
-                                    <button class="ord-btn" title="Move down" aria-label="Move down" onclick={() => move(f, 1)} disabled={!!moving || (curPage === pages && i === paged.length - 1)}>
-                                        <ChevronDown size={14} />
-                                    </button>
-                                </div>                                
-                            </div>
+                            <button
+                                type="button"
+                                class="drag-handle"
+                                title={dndEnabled ? 'Drag to reorder (or focus and use the arrow keys)' : dndDisabledReason}
+                                aria-label={`Reorder "${f.question}" - drag, or use the arrow keys`}
+                                disabled={!dndEnabled}
+                                onpointerdown={(e) => onHandlePointerDown(e, f.id)}
+                                onkeydown={(e) => onHandleKeydown(e, f)}
+                            >
+                                <Menu size={16} />
+                            </button>
                         </td>
                         <td style="vertical-align: middle;"><strong>{f.question}</strong></td>
                         <td style="vertical-align: middle;" class="ans">
@@ -205,9 +315,6 @@
             <label>Answer <span class="required">*</span>
                 <textarea rows="6" bind:value={form.answer} placeholder="Type the answer here..." class:invalid={fieldErr.answer}></textarea>
                 {#if fieldErr.answer}<span class="field-err">{fieldErr.answer}</span>{/if}
-            </label>
-            <label><span>Order</span>
-                <input type="number" min="0" bind:value={form.sort_order} />
             </label>
             <label class="chk">
                 <input type="checkbox" bind:checked={form.is_published} />
@@ -265,39 +372,47 @@
         gap: 8px;
     }
 
-    .ord {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+    .dnd-note {
+        margin: 0 0 10px;
+        font-size: 12.5px;
+        color: var(--bme-muted);
     }
 
-    .btns {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .ord-btn {
+    .drag-handle {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 20px;
-        height: 20px;
+        width: 30px;
+        height: 30px;
         padding: 0;
         border: 1px solid var(--bme-border);
         border-radius: 6px;
         background: var(--bme-surface);
         color: var(--bme-dark-blue);
-        cursor: pointer;
+        cursor: grab;
+        touch-action: none;
     }
 
-    .ord-btn:hover:not(:disabled) { 
-        border-color: var(--bme-dark-blue); 
+    .drag-handle:hover:not(:disabled) {
+        border-color: var(--bme-dark-blue);
     }
 
-    .ord-btn:disabled { 
-        opacity: 0.35; 
-        cursor: default; 
+    .drag-handle:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+
+    tr.dragging {
+        opacity: 0.5;
+    }
+
+    tr.dragging .drag-handle {
+        cursor: grabbing;
+    }
+
+    tr.drag-over td {
+        outline: 2px solid var(--bme-dark-blue);
+        outline-offset: -2px;
     }
 
     .adm-table {

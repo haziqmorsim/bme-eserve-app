@@ -3,11 +3,37 @@
     import { addToast } from "$lib/stores/toast";
     import type { SupabaseClient } from "@supabase/supabase-js";
 
-    let { settings = [], supabase, profile = null } = $props<{
+    let { settings = [], supabase, profile = null, dirty = $bindable(false) } = $props<{
         settings?: any[];
         supabase: SupabaseClient;
         profile?: any;
+        dirty?: boolean;
     }>();
+
+    const REMINDER_FIELDS = [
+        {
+            key: 'pending_request_reminder_hours',
+            label: 'Pending Request E-mail Threshold (hours)',
+            name: 'Pending request e-mail threshold',
+            hint: 'A reminder e-mail is sent to the Admin E-mail when an open request has no staff action for this long.'
+        },
+        {
+            key: 'enquiry_reminder_hours',
+            label: 'Unreplied Enquiry E-mail Threshold (hours)',
+            name: 'Unreplied enquiry e-mail threshold',
+            hint: 'A reminder e-mail is sent to every admin user when a general enquiry has no reply for this long.'
+        },
+        {
+            key: 'cart_reminder_hours',
+            label: 'Abandoned Cart E-mail Threshold (hours)',
+            name: 'Abandoned cart e-mail threshold',
+            hint: 'A reminder e-mail is set to every customer whose cart has not changed for this long.'
+        }
+    ] as const;
+
+    const OPTIONAL_KEYS: Record<string, { is_public: boolean }> = Object.fromEntries(
+        REMINDER_FIELDS.map((f) => [f.key, { is_public: false }])
+    );
 
     function initial() {
         const m: Record<string, string> = {};
@@ -23,6 +49,23 @@
     $effect(() => {
         settings;
         form = initial();
+    });
+
+    function changedRows(): string[] {
+        const out: string[] = [];
+        const known = new Set(settings.map((s: any) => s.key));
+        for (const s of settings) {
+            if ((form[s.key] ?? '') !== (s.value ?? '')) out.push(s.key);
+        }
+        for (const key of Object.keys(OPTIONAL_KEYS)) {
+            if (known.has(key)) continue;
+            if ((form[key] ?? '').trim() !== '') out.push(key);
+        }
+        return out;
+    }
+
+    $effect(() => {
+        dirty = changedRows().length > 0;
     });
 
     let updatedAt = $derived.by(() => {
@@ -44,6 +87,12 @@
         ] as [string, string][]) {
             const v = (form[key] ?? '').trim();
             if (v && (!/^\d+$/.test(v) || Number(v) <0)) e[key] = `${label} must be a whole number.`;
+        }
+
+        for (const f of REMINDER_FIELDS) {
+            const v = (form[f.key] ?? '').trim();
+            if (!v) e[f.key] = `${f.name} is required.`;
+            else if (!/^\d+$/.test(v) || Number(v) < 1) e[f.key] = 'Enter a whole number of hours (1 or more).';
         }
 
         const warn = Number((form.sla_warn_hours ?? '').trim());
@@ -74,32 +123,52 @@
         return Object.keys(e).length === 0;
     }
 
+    async function upsertSetting(key: string, value: string): Promise<string | null> {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .update({ value, updated_by: profile?.id ?? null })
+            .eq('key', key)
+            .select('key');
+        if (error) return error.message;
+        if (data && data.length > 0) return null;
+
+        const isPublic = OPTIONAL_KEYS[key]?.is_public ?? false;
+        const { error: insErr } = await supabase
+            .from('app_settings')
+            .insert({ key, value, is_public: isPublic, updated_by: profile?.id ?? null });
+        if (!insErr) return null;
+
+        if (insErr.code === '23505') {
+            const { data: retryData, error: retryErr } = await supabase
+                .from('app_settings')
+                .update({ value, updated_by: profile?.id ?? null })
+                .eq('key', key)
+                .select('key');
+            if (retryErr) return retryErr.message;
+            if (retryData && retryData.length > 0) return null;
+        }
+
+        return `"${key}" was not saved. Editing settings requires the admin or developer role.`;
+    }
+
     async function save() {
         if (!validate()) return;
         busy = true;
         err = '';
 
-        const changed = settings.filter((s:any) => (form[s.key] ?? '') !== (s.value ?? ''));
+        const changed = changedRows();
         if (changed.length === 0) {
             busy = false;
             addToast('No changes to save', 'error');
             return;
         }
 
-        for (const s of changed) {
-            const { data, error } = await supabase
-                .from('app_settings')
-                .update({ value: (form[s.key] ?? '').trim(), updated_by: profile?.id ?? null })
-                .eq('key', s.key)
-                .select('key');
-            if (error) {
+        for (const key of changed) {
+            const value = (form[key] ?? '').trim();
+            const rowErr = await upsertSetting(key, value);
+            if (rowErr) {
                 busy = false;
-                err = error.message;
-                return;
-            }
-            if (!data || data.length === 0) {
-                busy = false;
-                err = `"${s.key}" was not saved. Editing settings requires the admin or developer role.`;
+                err = rowErr;
                 return;
             }
         }
@@ -170,12 +239,24 @@
 <div class="gen-wrap">
     <section class="card gen-card">
         <h2>Notifications</h2>
-        <p class="gen-hint">Where staff notifications for new quotation requests and general enquiries are sent.</p>
+        <p class="gen-hint">Where staff notifications for new quotation requests and general enquiries are sent, and how long to wait before each reminder e-mail.</p>
         <div class="adm-form">
             <label>Admin E-mail <span class="required">*</span>
                 <input type="email" class="w-50" bind:value={form.admin_email} placeholder="admin@boilermech.com" class:invalid={fieldErr.admin_email} />
                 {#if fieldErr.admin_email}<span class="field-err">{fieldErr.admin_email}</span>{/if}
             </label>
+            {#each REMINDER_FIELDS as f (f.key)}
+                <label>{f.label} <span class="required">*</span>
+                    <input
+                        class="w-25"
+                        inputmode="numeric"
+                        bind:value={form[f.key]}
+                        placeholder="48"
+                        class:invalid={fieldErr[f.key]} />
+                    <span class="field-hint">{f.hint}</span>
+                    {#if fieldErr[f.key]}<span class="field-err">{fieldErr[f.key]}</span>{/if}
+                </label>
+            {/each}
         </div>
     </section>
 
@@ -371,6 +452,14 @@
     .gen-hint {
         margin: 0 0 12px;
         font-size: 12.5px;
+        color: var(--bme-muted);
+    }
+
+    .field-hint {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        font-weight: 400;
         color: var(--bme-muted);
     }
 

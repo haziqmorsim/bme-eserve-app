@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { invalidateAll } from "$app/navigation";
+    import { invalidateAll, beforeNavigate, goto } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import { UserRound, Pencil, KeyRound } from "@lucide/svelte";
     import ChangePasswordModal from "$lib/components/ChangePasswordModal.svelte";
+    import Modal from "$lib/components/admin/Modal.svelte";
     import { ROLE_LABEL } from "$lib/roles";
 
     let { data } = $props();
@@ -16,25 +17,75 @@
     let form = $state<any>({});
     let pwOpen = $state(false);
 
+    let original: Record<string, string> = {};
+
+    let dirty = $derived.by(() => {
+        if (!editing) return false;
+        return Object.keys(original).some((k) => (form[k] ?? '') !== (original[k] ?? ''));
+    });
+
     function startEdit() {
         const m: any = me ?? {};
         form = {
-            full_name: m.full_name ?? '', 
-            company: m.company ?? '', 
-            email: m.email ?? '', 
-            phone: m.phone ?? '', 
-            address_line1: m.address_line1 ?? '', 
-            address_line2: m.address_line2 ?? '', 
-            city: m.city ?? '', 
-            postcode: m.postcode ?? '', 
-            state: m.state ?? '', 
+            full_name: m.full_name ?? '',
+            company: m.company ?? '',
+            email: m.email ?? '',
+            phone: m.phone ?? '',
+            address_line1: m.address_line1 ?? '',
+            address_line2: m.address_line2 ?? '',
+            city: m.city ?? '',
+            postcode: m.postcode ?? '',
+            state: m.state ?? '',
             country: m.country ?? ''
         };
+        original = { ...form };
         err = ''; fieldErr = {}; editing = true;
     }
 
     function cancel() {
         editing = false; err = ''; fieldErr = {};
+    }
+
+    let pendingLeave = $state<null | (() => void | Promise<void>)>(null);
+    let leaving = false;
+
+    beforeNavigate((nav) => {
+        if (leaving || !dirty) return;
+
+        if (nav.to?.url.pathname.startsWith('/login')) return;
+
+        if (nav.type === 'leave') {
+            nav.cancel();
+            return;
+        }
+
+        const target = nav.to?.url;
+        if (!target || nav.type === 'form') return;
+
+        nav.cancel();
+        pendingLeave = async () => {
+            leaving = true;
+            editing = false;
+            if (target.origin === location.origin) {
+                try {
+                    await goto(target);
+                } finally {
+                    leaving = false;
+                }
+            } else {
+                location.href = target.href;
+            }
+        };
+    });
+
+    async function confirmLeave() {
+        const go = pendingLeave;
+        pendingLeave = null;
+        await go?.();
+    }
+
+    function cancelLeave() {
+        pendingLeave = null;
     }
 
     function validate(): boolean {
@@ -229,6 +280,18 @@
 {/if}
 
 <ChangePasswordModal bind:open={pwOpen} />
+
+{#if pendingLeave}
+    <Modal title="Unsaved Changes" onclose={cancelLeave}>
+        <div class="modal-confirm">
+            <p>Are you sure you want to leave this page? Your changes will not be saved.</p>
+            <div class="modal-actions">
+                <button class="btn-ghost" onclick={cancelLeave}>Cancel</button>
+                <button class="btn-primary" onclick={confirmLeave}>Confirm</button>
+            </div>
+        </div>
+    </Modal>
+{/if}
 
 <style>
     .head {
