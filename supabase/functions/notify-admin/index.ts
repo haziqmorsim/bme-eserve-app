@@ -83,8 +83,7 @@ Deno.serve(async (req) => {
                 ${itemsTable}
                 ${quote.notes ? `<p style="margin-top:16px"><em>Your notes:</em> ${quote.notes}</p>` : ''}
                 <p style="margin-top:20px">
-                    Our team will review your request shortly. Once it is approved, you will
-                    receive a confirmation email with the official quotation attached as a PDF.
+                    Our team will review your request and get back to you as soon as possible.
                 </p>
                 ${ctaButton('View History', appUrl('/app/history'), '#004b8d')}
                 <p style="color:#6B7A63;font-size:13px;margin-top:24px">

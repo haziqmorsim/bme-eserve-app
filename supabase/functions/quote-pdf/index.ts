@@ -138,12 +138,16 @@ Deno.serve(async (req) => {
         if (prof?.company && prof?.full_name) rightText(prof.full_name, W - M, y - 28, 9, font, MUTED);
         y -= 52;
 
-        const cPart = M, cName = M + 92, cBoiler = 320;
-        const qtyC = 392;
-        const tableRight = qtyC + 40;
+        const tableLeft = M, tableRight = W - M;
+        const PAD = 8;
+        const qtyW = 60, boilerW = 100;
+        const cPart = tableLeft + PAD;
+        const cName = cPart + 110;
+        const qtyC = tableRight - qtyW / 2;
+        const cBoiler = tableRight - qtyW - boilerW + PAD;
 
         const drawTableHeader = () => {
-            page.drawRectangle({ x: M - 6, y: y - 7, width: tableRight - (M - 6) + 6, height: 22, color: BLUE });
+            page.drawRectangle({ x: tableLeft, y: y - 7, width: tableRight - tableLeft, height: 22, color: BLUE });
             text('Part No.', cPart, y, 9, bold, WHITE);
             text('Part Name', cName, y, 9, bold, WHITE);
             text('Boiler', cBoiler, y, 9, bold, WHITE);
@@ -172,7 +176,7 @@ Deno.serve(async (req) => {
             text(i.boiler_code ?? '', cBoiler, y, 9);
             centerText(String(i.quantity), qtyC, y, 9);
             y -= 16;
-            page.drawLine({ start: { x: M, y: y + 4 }, end: { x: tableRight, y: y + 4 }, thickness: 0.5, color: LINE });
+            page.drawLine({ start: { x: tableLeft, y: y + 4 }, end: { x: tableRight, y: y + 4 }, thickness: 0.5, color: LINE });
             y -= 4;
         }
 

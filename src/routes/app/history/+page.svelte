@@ -352,11 +352,11 @@
                             {/if}
                         </p>
 
-                        <div class="qfoot">
+                        <!-- <div class="qfoot">
                             <button class="pdf-btn" onclick={() => downloadPdf(g.quote)} disabled={downloading === g.quote.id}>
                                 {downloading === g.quote.id ? 'Preparing...' : 'Download Quotation PDF'}
                             </button>
-                        </div>
+                        </div> -->
                     {/if}
                 </div>
             {/each}
@@ -1199,7 +1199,7 @@
     @media (max-width: 640px) {
         .tabbar {
             width: 100%;
-            justify-content: space-between;
+            /* justify-content: space-between; */
         }
 
         .tab {
