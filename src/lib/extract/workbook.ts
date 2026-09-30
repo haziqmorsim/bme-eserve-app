@@ -148,9 +148,11 @@ export async function buildPackingWorkbook(docs: PackingList[]): Promise<Blob> {
         [...new Set(docs.map(pick).map((v) => v.trim()).filter(Boolean))].join(' / ');
 
     let row = 3;
+    const poNo = joined((d) => d.poNo ?? '');
     const details: Array<[string, string]> = [
         ['Project', joined((d) => d.project)],
         ['Client', joined((d) => d.client)],
+        ...(poNo ? [['PO No.', poNo] as [string, string]] : []),
         ['Date', joined((d) => d.date)],
         ['Product', joined((d) => d.product)],
         ['Source file(s)', docs.map((d) => d.sourceFile).filter(Boolean).join(', ')]

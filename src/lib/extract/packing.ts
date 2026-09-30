@@ -139,6 +139,26 @@ type PageTable = {
     descX1: number;
 };
 
+type Column = [number, number];
+
+function columnLayout(columns: Column[]): {
+    itemC: Column;
+    qtyC: Column;
+    descC: Column;
+    volC: Column | null;
+    wtC: Column;
+} | null {
+    if (columns.length < 4) return null;
+    const hasVolume = columns.length >= 5;
+    const picked = columns.slice(hasVolume ? -5 : -4);
+    const [itemC, qtyC, descC] = picked;
+    const wtC = picked[picked.length - 1];
+    const volC = hasVolume ? picked[3] : null;
+    const w = (c: Column) => c[1] - c[0];
+    if (picked.some((c) => c !== descC && w(c) >= w(descC))) return null;
+    return { itemC, qtyC, descC, volC, wtC };
+}
+
 const within = (lines: TextLine[], y: number, tol: number) =>
     lines.find((l) => Math.abs(l.y - y) <= tol) ?? null;
 
@@ -163,9 +183,9 @@ async function readTable(
     const grid = findGrid(page);
     if (!grid) return null;
 
-    const columns = grid.columns.slice(-5);
-    if (columns.length < 5) return null;
-    const [itemC, qtyC, descC, volC, wtC] = columns;
+    const layout = columnLayout(grid.columns);
+    if (!layout) return null;
+    const { itemC, qtyC, descC, volC, wtC } = layout;
     const { bodyTop, bodyBottom } = grid;
 
     const table: PageTable = {
@@ -189,7 +209,7 @@ async function readTable(
         table.items = body.filter((l) => between(l, itemC[0], itemC[1]));
         table.quantities = body.filter((l) => between(l, qtyC[0], qtyC[1]));
         table.descriptions = body.filter((l) => between(l, descC[0], descC[1]));
-        table.volumes = body.filter((l) => between(l, volC[0], volC[1]));
+        table.volumes = volC ? body.filter((l) => between(l, volC[0], volC[1])) : [];
         table.weights = body.filter((l) => between(l, wtC[0], wtC[1]));
         table.headerLines = layerLines.filter((l) => l.y < grid.hlines[0]);
         return table;
@@ -217,10 +237,12 @@ async function readTable(
     });
 
     const numeric = { psm: PSM.SINGLE_COLUMN, whitelist: '0123456789.,mkg ', scale: narrow };
-    table.volumes = await readLines(page.canvas, {
-        rect: { left: volC[0], top: bodyTop, width: volC[1] - volC[0], height },
-        ...numeric
-    });
+    if (volC) {
+        table.volumes = await readLines(page.canvas, {
+            rect: { left: volC[0], top: bodyTop, width: volC[1] - volC[0], height },
+            ...numeric
+        });
+    }
     table.weights = await readLines(page.canvas, {
         rect: { left: wtC[0], top: bodyTop, width: wtC[1] - wtC[0], height },
         ...numeric
@@ -235,20 +257,38 @@ async function readTable(
     return table;
 }
 
+const HEADER_LABELS: Record<'project' | 'client' | 'poNo' | 'date', string[]> = {
+    project: ['project'],
+    client: ['client', 'consignee'],
+    poNo: ['pono', 'ponumber', 'purchaseorder', 'purchaseorderno'],
+    date: ['date']
+};
+const MULTI_LABEL = /^\s*[[\]|(){}<>\-–.,;*]*\s*([A-Za-z][A-Za-z .]{0,24}?)\s*[:;]\s*(.+)$/;
+const DATE = /\b\d{1,2}\s*[/.\-]\s*\d{1,2}\s*[/.\-]\s*\d{2,4}\b/;
+
+function labelValue(text: string, labels: string[]): string | null {
+    const multi = MULTI_LABEL.exec(text);
+    if (multi && labels.some((l) => similar(alpha(multi[1]), l) >= FUZZ)) return multi[2].trim();
+    for (const label of labels) {
+        const value = matchLabel(text, label);
+        if (value !== null) return value;
+        const words = text.trim().split(/\s+/);
+        if (words.length > 1 && similar(alpha(words[0]), label) >= FUZZ) return words.slice(1).join(' ');
+    }
+    return null;
+}
+
 function headerFields(lines: TextLine[]) {
-    const out: Record<string, string> = { project: '', client: '', date: '' };
+    const out: Record<keyof typeof HEADER_LABELS, string> = { project: '', client: '', poNo: '', date: '' };
     for (const line of lines) {
-        for (const key of Object.keys(out)) {
+        for (const key of Object.keys(HEADER_LABELS) as Array<keyof typeof HEADER_LABELS>) {
             if (out[key]) continue;
-            let value = matchLabel(line.text, key);
-            if (value === null) {
-                const words = line.text.trim().split(/\s+/);
-                if (words.length > 1 && similar(alpha(words[0]), key) >= FUZZ) {
-                    value = words.slice(1).join(' ');
-                }
-            }
+            let value = labelValue(line.text, HEADER_LABELS[key]);
+            if (!value) continue;
+            value = value.replace(/^[\s:;.\-–—_]+|[\s:;.\-–—_]+$/g, '');
+            if (key === 'date') value = DATE.exec(value)?.[0].replace(/\s+/g, '') ?? value;
             if (value) {
-                out[key] = value.replace(/^[\s:;.\-–—_]+|[\s:;.\-–—_]+$/g, '');
+                out[key] = value;
                 break;
             }
         }
@@ -267,6 +307,7 @@ function assemble(tables: PageTable[], sourceFile: string) {
     const doc: PackingList = {
         project: '',
         client: '',
+        poNo: '',
         date: '',
         product: '',
         packages: [],
@@ -275,13 +316,17 @@ function assemble(tables: PageTable[], sourceFile: string) {
     };
     const warnings: string[] = [];
 
+    let rawDate = '';
     for (const table of tables) {
         if (!table.headerLines.length) continue;
         const found = headerFields(table.headerLines);
         doc.project ||= found.project;
         doc.client ||= found.client;
-        doc.date ||= found.date;
+        doc.poNo ||= found.poNo;
+        rawDate ||= found.date;
+        if (!doc.date && DATE.test(found.date)) doc.date = found.date;
     }
+    doc.date ||= rawDate;
 
     const indents = tables.flatMap((t) =>
         t.descriptions.filter((d) => CONTENT_QTY.test(d.text)).map((d) => d.x)
@@ -464,6 +509,7 @@ export async function extractPackingList(
                 {
                     project: '',
                     client: '',
+                    poNo: '',
                     date: '',
                     product: '',
                     packages: [],

@@ -70,6 +70,7 @@ export type Package = {
 export type PackingList = {
     project: string;
     client: string;
+    poNo: string;
     date: string;
     product: string;
     packages: Package[];

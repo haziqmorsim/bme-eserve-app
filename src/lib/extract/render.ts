@@ -185,15 +185,50 @@ export type Grid = {
     columns: Array<[number, number]>;
 };
 
-export function findGrid(page: RenderedPage, columnRules = 6): Grid | null {
+const MIN_RULE_RUN = 0.2;
+const RULE_GAP = 6;
+const RULE_HALF_WIDTH = 2;
+
+function longestRun(page: RenderedPage, x: number, top: number, bottom: number): number {
+    const { width, grey, height } = page;
+    const gap = RULE_GAP * Math.max(1, height / 1755);
+    const x0 = Math.max(0, x - RULE_HALF_WIDTH);
+    const x1 = Math.min(width - 1, x + RULE_HALF_WIDTH);
+    let best = 0;
+    let run = 0;
+    let miss = 0;
+    for (let y = top; y < bottom; y += 1) {
+        const offset = y * width;
+        let inked = false;
+        for (let xx = x0; xx <= x1 && !inked; xx += 1) inked = grey[offset + xx] < INK_THRESHOLD;
+        if (inked) {
+            run += run ? 1 + miss : 1;
+            miss = 0;
+        } else if (run) {
+            miss += 1;
+            if (miss > gap) {
+                best = Math.max(best, run);
+                run = 0;
+                miss = 0;
+            }
+        }
+    }
+    return Math.max(best, run) / Math.max(1, bottom - top);
+}
+
+export function findGrid(page: RenderedPage, minRules = 5): Grid | null {
     const rows = profile(page, 'row');
     const hlines = rulePositions(rows, RULE_OF_DARKEST_ROW);
     if (hlines.length < 2) return null;
     if (hlines[hlines.length - 1] - hlines[0] < page.height * 0.1) return null;
 
-    const cols = profile(page, 'col', { top: hlines[0], bottom: hlines[hlines.length - 1] });
-    const vlines = rulePositions(cols, RULE_OF_DARKEST_COL, columnRules);
-    if (vlines.length < columnRules) return null;
+    const top = hlines[0];
+    const bottom = hlines[hlines.length - 1];
+    const cols = profile(page, 'col', { top, bottom });
+    const vlines = rulePositions(cols, RULE_OF_DARKEST_COL).filter(
+        (x) => longestRun(page, x, top, bottom) >= MIN_RULE_RUN
+    );
+    if (vlines.length < minRules) return null;
 
     return {
         hlines,
