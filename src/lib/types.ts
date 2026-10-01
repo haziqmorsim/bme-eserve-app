@@ -50,6 +50,7 @@ export interface Part {
     part_number: string;
     name: string;
     description: string | null;
+    specifications: string | null;
     image_url: string | null;
     in_stock: boolean;
     price: number | null;

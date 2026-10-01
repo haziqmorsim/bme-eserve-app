@@ -136,7 +136,7 @@
                 <tr><th>Part</th><th class="num">Chat</th><th class="num">Enquiries</th><th class="num">Total</th><th>Toward {data.coverage.target}</th></tr>
             </thead>
             <tbody>
-                {#each data.coverage.topParts as p (p.part_number)}
+                {#each data.coverage.topParts as p (p.part_id)}
                     <tr>
                         <td>
                             <span class="pn">{p.part_number}</span>

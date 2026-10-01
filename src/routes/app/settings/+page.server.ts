@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 
     const [boilers, components, parts, users, customerProjects, lastSignIns, faqs, boilerSpecs, boilerReadings, projects, boilerProjects, appSettings, dashMetrics, dashGroups, dashMotors, dashMotorCells, dashRul, dashBaselines, dashIndicators] = await Promise.all([
         supabase.from('boilers').select('*').order('code'),
-        supabase.from('components').select('id, name, boiler_id').order('name'),
+        supabase.from('components').select('id, name, boiler_id, section_key').order('name'),
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
         supabase
             .from('profiles')

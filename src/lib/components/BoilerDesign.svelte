@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { GrateDef, ResolvedSection, SectionReadingRow } from "$lib/boiler-design";
-    import { readingsFor } from "$lib/boiler-design";
+    import { boilerImageSources, readingsFor } from "$lib/boiler-design";
 
     let {
         def, 
@@ -9,6 +9,7 @@
         boilerCode = '', 
         activeKey = null, 
         readings = [], 
+        imageUrl = null, 
         onselect
     } = $props<{
         def: GrateDef;
@@ -17,6 +18,7 @@
         boilerCode?: string;
         activeKey?: string | null;
         readings?: SectionReadingRow[];
+        imageUrl?: string | null;
         onselect?: (key: string, componentIds: string[]) => void;
     }>();
 
@@ -26,6 +28,18 @@
     let tipEl = $state<HTMLDivElement>();
 
     const telemetry = $derived(readingsFor(boilerCode, sections, readings));
+
+    const imageSources = $derived(boilerImageSources(def, imageUrl));
+    let failed = $state<string[]>([]);
+    const imageSrc = $derived(
+        imageSources.find((u: string) => !failed.includes(u)) ?? imageSources[imageSources.length - 1]
+    );
+
+    function onImageError() {
+        if (imageSrc && !failed.includes(imageSrc) && imageSrc !== imageSources[imageSources.length - 1]) {
+            failed = [...failed, imageSrc];
+        }
+    }
 
     function clickable(s: ResolvedSection) {
         return mode === 'parts' && s.componentIds.length > 0;
@@ -139,7 +153,7 @@
 
 <div class="bd" class:wide={mode === 'parts'}>
     <div class="stage" class:parts={mode === 'parts'}>
-        <img src={def.img} alt={`${def.label} boiler schematic`} draggable="false" />
+        <img src={imageSrc} alt={`${def.label} boiler schematic`} draggable="false" onerror={onImageError} />
 
         {#each sections as s (s.key)}
             <button 

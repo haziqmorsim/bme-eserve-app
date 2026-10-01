@@ -4,6 +4,7 @@
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
+	import { hasImage, isPlaceholder, textLines } from '$lib/parts';
 	import { fade, fly } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { Funnel, Search, Check } from '@lucide/svelte';
@@ -115,23 +116,28 @@
 		selected = new Set();
 	}
 
-	const DESC_LINE_LIMIT = 5;
-	let expandedDescriptions = $state<Set<string>>(new Set());
+	const SPEC_LINE_LIMIT = 3;
+	let expandedSpecs = $state<Set<string>>(new Set());
 
-	function descLines(description: string): string[] {
-		return (description ?? '').split('\n');
-	}
-
-	function toggleDescription(id: string) {
-		const next = new Set(expandedDescriptions);
+	function toggleSpecs(id: string) {
+		const next = new Set(expandedSpecs);
 		if (next.has(id)) next.delete(id);
 		else next.add(id);
-		expandedDescriptions = next;
+		expandedSpecs = next;
 	}
+
+	const ordered = $derived(
+		[...parts].sort((a: Part, b: Part) => {
+			const pa = isPlaceholder(a.part_number) ? 1 : 0;
+			const pb = isPlaceholder(b.part_number) ? 1 : 0;
+			if (pa !== pb) return pa - pb;
+			return pa ? (a.name ?? '').localeCompare(b.name ?? '') : 0;
+		})
+	);
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		return parts.filter((p: Part) => {
+		return ordered.filter((p: Part) => {
 			const isUncat = uncategorisedId != null && p.component_id === uncategorisedId;
 
 			if (showUncategorised !== isUncat) return false;
@@ -147,6 +153,7 @@
 				(p.part_number ?? '').toLowerCase().includes(q) ||
 				(p.name ?? '').toLowerCase().includes(q) ||
 				(p.description ?? '').toLowerCase().includes(q) ||
+				(p.specifications ?? '').toLowerCase().includes(q) ||
 				(comp?.name ?? '').toLowerCase().includes(q)
 			);
 		});
@@ -215,6 +222,7 @@
 			{sections}
 			mode="parts"
 			boilerCode={boiler.code}
+			imageUrl={boiler.design_image_url}
 			{activeKey}
 			{readings}
 			onselect={onSectionSelect}
@@ -316,24 +324,31 @@
 						animate:flip={{ duration: 220 }}
 					>
 						<div class="info">
-							<div class="pn">{p.part_number}</div>
-							<div class="pname">{p.name}</div>
-							{#if p.description}
-								{@const lines = descLines(p.description)}
-								{@const isLong = lines.length > DESC_LINE_LIMIT}
-								{@const isExpanded = expandedDescriptions.has(p.id)}
-								<div class="pdesc">
+							<div class="phead">
+								{#if !isPlaceholder(p.part_number)}<span class="pn">{p.part_number}</span
+									><span class="sep">{' — '}</span>{/if}<span class="pname">{p.name}</span>
+							</div>
+							{#if !isPlaceholder(p.description)}
+								<div class="pdesc">{p.description}</div>
+							{/if}
+							{#if textLines(p.specifications).length}
+								{@const specs = textLines(p.specifications)}
+								{@const isLong = specs.length > SPEC_LINE_LIMIT}
+								{@const isExpanded = expandedSpecs.has(p.id)}
+								<div class="pspec" id="spec-{p.id}">
 									{isLong && !isExpanded
-										? lines.slice(0, DESC_LINE_LIMIT).join('\n')
-										: p.description}
+										? specs.slice(0, SPEC_LINE_LIMIT).join('\n')
+										: specs.join('\n')}
 								</div>
 								{#if isLong}
 									<button
 										type="button"
-										class="pdesc-toggle"
-										onclick={() => toggleDescription(p.id)}
+										class="pspec-toggle"
+										aria-expanded={isExpanded}
+										aria-controls="spec-{p.id}"
+										onclick={() => toggleSpecs(p.id)}
 									>
-										{isExpanded ? 'Show less' : 'Show more...'}
+										{isExpanded ? 'Show Less' : 'Show more...'}
 									</button>
 								{/if}
 							{/if}
@@ -342,7 +357,7 @@
 							</div> -->
 						</div>
 						<div class="actions">
-							{#if p.image_url}
+							{#if hasImage(p.image_url)}
 								<button
 									type="button"
 									class="thumb"
@@ -351,6 +366,18 @@
 									aria-label="View image of {p.name}"
 								>
 									<img src={p.image_url} alt={p.name} loading="lazy" />
+								</button>
+							{:else}
+								<!-- Same box as a real thumbnail so every card lines up; disabled
+								     because there is nothing to open. -->
+								<button
+									type="button"
+									class="thumb no-image"
+									disabled
+									title="No image available"
+									aria-label="No image available for {p.name}"
+								>
+									No image
 								</button>
 							{/if}
 							<input
@@ -378,7 +405,8 @@
 		<div class="lightbox-inner" onclick={(e) => e.stopPropagation()} role="presentation">
 			<img src={lightbox.image_url} alt={lightbox.name} />
 			<div class="lightbox-cap">
-				<strong>{lightbox.part_number}</strong> <span>{lightbox.name}</span>
+				{#if !isPlaceholder(lightbox.part_number)}<strong>{lightbox.part_number}</strong>{/if}
+				<span>{lightbox.name}</span>
 				<!-- <span class="lb-price">{priceLabel(lightbox)}</span> -->
 			</div>
 		</div>
@@ -773,24 +801,37 @@
 		max-width: 75%;
 	}
 
-	.pn {
-		font-size: 12px;
-		font-weight: 700;
-		color: var(--bme-darker-blue, #0c3358);
+	.phead {
+		font-weight: 600;
+		line-height: 1.35;
 	}
 
-	.pname {
-		font-weight: 600;
+	.pn {
+		font-weight: 700;
+		color: var(--bme-darker-blue, #0c3358);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.sep {
+		color: var(--bme-muted);
+		font-weight: 400;
 	}
 
 	.pdesc {
-		font-size: 13px;
-		color: var(--bme-muted);
-		margin-top: 2px;
-		white-space: pre-line;
+		font-size: 13.5px;
+		color: var(--bme-ink, #1b2733);
+		margin-top: 3px;
 	}
 
-	.pdesc-toggle {
+	.pspec {
+		font-size: 13px;
+		color: var(--bme-muted);
+		margin-top: 4px;
+		white-space: pre-line;
+		line-height: 1.45;
+	}
+
+	.pspec-toggle {
 		display: inline-block;
 		margin-top: 4px;
 		padding: 0;
@@ -802,7 +843,7 @@
 		cursor: pointer;
 	}
 
-	.pdesc-toggle:hover {
+	.pspec-toggle:hover {
 		text-decoration: underline;
 	}
 
@@ -844,6 +885,25 @@
 	.thumb:hover {
 		border-color: var(--bme-dark-blue, #10456e);
 		transform: scale(1.05);
+	}
+
+	.thumb.no-image {
+		display: grid;
+		place-items: center;
+		padding: 2px;
+		background: var(--bme-surface-2, #f7faf5);
+		color: var(--bme-muted);
+		font: inherit;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 1.15;
+		text-align: center;
+		cursor: default;
+	}
+
+	.thumb.no-image:hover {
+		border-color: var(--bme-border, #e2e8ef);
+		transform: none;
 	}
 
 	.thumb img {

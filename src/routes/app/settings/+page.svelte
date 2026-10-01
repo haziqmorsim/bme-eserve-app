@@ -97,10 +97,6 @@
             boilers={data.boilers}
             supabase={data.supabase} />
     </section>
-{:else if tab === 'general'}
-    <section>
-        <GeneralManager settings={data.appSettings} supabase={data.supabase} profile={data.profile} bind:dirty={generalDirty} />
-    </section>
 {:else if tab === 'projects'}
     <section>
         <ProjectManager projects={data.projects} supabase={data.supabase} />
@@ -110,13 +106,13 @@
         <BoilerManager boilers={data.boilers} projects={data.projects} boilerProjects={data.boilerProjects} supabase={data.supabase} />
     </section>
 
-    <section class="bd-section">
+    <!-- <section class="bd-section">
         <BoilerDataManager
             boilers={data.boilers}
             specs={data.boilerSpecs}
             readings={data.boilerReadings}
             supabase={data.supabase} />
-    </section>
+    </section> -->
 {:else if tab === 'parts'}
     <section>
         <PartManager parts={data.parts} components={data.components} boilers={data.boilers} supabase={data.supabase} />
@@ -124,6 +120,10 @@
 {:else if tab === 'users'}
     <section>
         <UserManager users={data.users} projects={data.projects} customerProjects={data.customerProjects} supabase={data.supabase} />
+    </section>
+{:else if tab === 'general'}
+    <section>
+        <GeneralManager settings={data.appSettings} supabase={data.supabase} profile={data.profile} bind:dirty={generalDirty} />
     </section>
 {:else}
     <section>
@@ -144,9 +144,9 @@
 {/if}
 
 <style>
-    .bd-section {
+    /* .bd-section {
         margin-top: 34px;
-    }
+    } */
 
     h1 {
         margin: 5px 0 15px;

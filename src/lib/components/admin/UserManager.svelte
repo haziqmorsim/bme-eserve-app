@@ -6,6 +6,8 @@
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
     import { ROLE_OPTIONS, isCustomerRole } from "$lib/roles";
+    import { nextSort, sortRows, type SortState } from "$lib/table-sort";
+    import SortHeader from "./SortHeader.svelte";
 
     let { users, supabase, projects = [], customerProjects = [] } = $props<{ users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] }>();
 
@@ -48,18 +50,35 @@
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
 
-    let filtered = $derived(users.filter((u: any) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role)]
-            .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
-    }));
+    let sort = $state<SortState>({ key: 'full_name', dir: 'asc' });
+    const sortBy = {
+        full_name: (u: any) => u.full_name,
+        email: (u: any) => u.email,
+        phone: (u: any) => u.phone,
+        company: (u: any) => u.company,
+        role: (u: any) => roleLabel(u.role),
+        last_sign_in: (u: any) => (u.last_sign_in_at ? Date.parse(u.last_sign_in_at) : null)
+    };
+    function setSort(key: string) { sort = nextSort(sort, key); }
+
+    let filtered = $derived(
+        sortRows(
+            users.filter((u: any) => {
+                const q = search.trim().toLowerCase();
+                if (!q) return true;
+                return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role)]
+                    .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
+            }),
+            sort,
+            sortBy
+        )
+    );
     let total = $derived(filtered.length);
     let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
     let curPage = $derived(Math.min(page, pages));
     let paged = $derived(filtered.slice((curPage - 1) * pageSize, curPage * pageSize));
 
-    $effect(() => { search; page = 1; });
+    $effect(() => { search; sort; page = 1; });
 
     function blank() {
         return { full_name: '', email: '', password: '', phone: '', company: '', role: '', project_ids: [] };
@@ -147,7 +166,15 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Role</th><th>Last Sign In</th><th>Actions</th></tr>
+                <tr>
+                    <SortHeader label="Name" key="full_name" {sort} onsort={setSort} />
+                    <SortHeader label="Email" key="email" {sort} onsort={setSort} />
+                    <SortHeader label="Phone" key="phone" {sort} onsort={setSort} />
+                    <SortHeader label="Company" key="company" {sort} onsort={setSort} />
+                    <SortHeader label="Role" key="role" {sort} onsort={setSort} />
+                    <SortHeader label="Last Sign In" key="last_sign_in" {sort} onsort={setSort} />
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {#each paged as u (u.id)}

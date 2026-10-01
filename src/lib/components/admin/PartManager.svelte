@@ -7,6 +7,10 @@
 	import { Plus } from '@lucide/svelte';
 	import { page as pageStore } from '$app/stores';
 	import { toMap, num } from '$lib/settings';
+	import { hasImage } from '$lib/parts';
+	import { allSectionKeys } from '$lib/boiler-design';
+	import { nextSort, sortRows, type SortState } from '$lib/table-sort';
+	import SortHeader from './SortHeader.svelte';
 
 	let { parts, components, boilers, supabase } = $props<{
 		parts: any[];
@@ -34,6 +38,19 @@
 	let boilerCode = $derived(
 		Object.fromEntries(boilers.map((b: any) => [b.id, b.code])) as Record<string, string>
 	);
+	const sectionLabels = new Map(allSectionKeys().map((s) => [s.key, s.label]));
+	function sectionName(key: string | null | undefined): string {
+		if (!key) return '';
+		return (
+			sectionLabels.get(key) ??
+			key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())
+		);
+	}
+	function componentLabel(c: any): string {
+		if (c.name === 'Panel/Instrument') return 'Panel/Instrument (no schematic section)';
+		const section = sectionName(c.section_key);
+		return section ? `${c.name} — ${section}` : c.name;
+	}
 	let formComponents = $derived(
 		components
 			.filter((c: any) => c.boiler_id === form.boiler_id)
@@ -41,18 +58,36 @@
 				const au = (a.name ?? '') === 'Panel/Instrument' ? 1 : 0;
 				const bu = (b.name ?? '') === 'Panel/Instrument' ? 1 : 0;
 				if (au !== bu) return au - bu;
-				return (a.name ?? '').localeCompare(b.name ?? '');
+				return (
+					(a.name ?? '').localeCompare(b.name ?? '') ||
+					sectionName(a.section_key).localeCompare(sectionName(b.section_key))
+				);
 			})
 	);
 
+	let sort = $state<SortState>({ key: 'part_number', dir: 'asc' });
+	const sortBy = {
+		part_number: (p: any) => p.part_number,
+		name: (p: any) => p.name,
+		boiler: (p: any) => boilerCode[p.components?.boiler_id],
+		component: (p: any) => p.components?.name
+	};
+	function setSort(key: string) {
+		sort = nextSort(sort, key);
+	}
+
 	let filtered = $derived(
-		parts.filter((p: any) => {
-			const q = search.trim().toLowerCase();
-			if (!q) return true;
-			return [p.part_number, p.name, p.components?.name, boilerCode[p.components?.boiler_id]].some(
-				(v: any) => (v ?? '').toString().toLowerCase().includes(q)
-			);
-		})
+		sortRows(
+			parts.filter((p: any) => {
+				const q = search.trim().toLowerCase();
+				if (!q) return true;
+				return [p.part_number, p.name, p.description, p.specifications, p.components?.name, boilerCode[p.components?.boiler_id]].some(
+					(v: any) => (v ?? '').toString().toLowerCase().includes(q)
+				);
+			}),
+			sort,
+			sortBy
+		)
 	);
 	let total = $derived(filtered.length);
 	let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
@@ -61,6 +96,7 @@
 
 	$effect(() => {
 		search;
+		sort;
 		page = 1;
 	});
 
@@ -71,6 +107,7 @@
 			part_number: '',
 			name: '',
 			description: '',
+			specifications: '',
 			price: '',
 			image_url: '',
 			stock_quantity: 0
@@ -90,6 +127,7 @@
 			part_number: p.part_number,
 			name: p.name,
 			description: p.description ?? '',
+			specifications: p.specifications ?? '',
 			price: p.price ?? '',
 			image_url: p.image_url ?? '',
 			stock_quantity: p.stock_quantity ?? 0
@@ -136,6 +174,7 @@
 			part_number: form.part_number.trim(),
 			name: form.name.trim(),
 			description: form.description || null,
+			specifications: form.specifications?.trim() || null,
 			price,
 			price_min: price,
 			price_max: price,
@@ -227,10 +266,14 @@
 	{:else}
 		<table class="adm-table">
 			<thead>
-				<tr
-					><th>Part #</th><th>Name</th><th>Boiler</th><th>Component</th
-					><!--<th>Price</th><th>Stock</th>--><th>Actions</th></tr
-				>
+				<tr>
+					<SortHeader label="Part No." key="part_number" {sort} onsort={setSort} />
+					<SortHeader label="Part Name" key="name" {sort} onsort={setSort} />
+					<SortHeader label="Boiler" key="boiler" {sort} onsort={setSort} />
+					<SortHeader label="Component" key="component" {sort} onsort={setSort} />
+					<!--<th>Price</th><th>Stock</th>-->
+					<th>Actions</th>
+				</tr>
 			</thead>
 			<tbody>
 				{#each paged as p (p.id)}
@@ -282,9 +325,7 @@
 				>Component <span class="required">*</span>
 				<select bind:value={form.component_id} class:invalid={fieldErr.component_id}>
 					{#each formComponents as c (c.id)}
-						<option value={c.id}>
-							{c.name === 'Panel/Instrument' ? 'Panel/Instrument (no schematic section)' : c.name}
-						</option>
+						<option value={c.id}>{componentLabel(c)}</option>
 					{/each}
 				</select>
 				{#if fieldErr.component_id}<span class="field-err">{fieldErr.component_id}</span>{/if}
@@ -292,7 +333,7 @@
 			<label
 				>Part Number <span class="required">*</span><input
 					bind:value={form.part_number}
-					placeholder="PB130-TB-001"
+					placeholder="e.g. 2TGP000040"
 					class:invalid={fieldErr.part_number}
 				/>
 				{#if fieldErr.part_number}<span class="field-err">{fieldErr.part_number}</span>{/if}
@@ -311,11 +352,18 @@
 			<label class="full"
 				>Description<textarea rows="2" bind:value={form.description}></textarea></label
 			>
+			<label class="full"
+				>Specifications <span class="hint">One item per line</span><textarea
+					rows="5"
+					bind:value={form.specifications}
+					placeholder={'Calibration range: 0-40 Bar\nPower input: 24VDC'}
+				></textarea></label
+			>
 			<div class="full img-field">
 				<span class="img-label">Part Image <span class="required">*</span></span>
 				<div class="img-row">
 					<div class="img-preview" class:invalid={fieldErr.image_url}>
-						{#if form.image_url}
+						{#if hasImage(form.image_url)}
 							<img src={form.image_url} alt="Part preview" />
 						{:else}
 							<span class="img-empty">No image</span>
@@ -335,9 +383,9 @@
 							onclick={() => fileInput?.click()}
 							disabled={uploading}
 						>
-							{uploading ? 'Uploading...' : form.image_url ? 'Replace Image' : 'Upload Image'}
+							{uploading ? 'Uploading...' : hasImage(form.image_url) ? 'Replace Image' : 'Upload Image'}
 						</button>
-						{#if form.image_url}
+						{#if hasImage(form.image_url)}
 							<button
 								type="button"
 								class="btn-ghost danger"
@@ -386,6 +434,14 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
+	}
+
+	.hint {
+		display: inline;
+		margin-left: 6px;
+		font-size: 12px;
+		font-weight: 400;
+		color: var(--bme-muted);
 	}
 
 	.img-preview.invalid {

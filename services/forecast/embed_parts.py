@@ -28,8 +28,14 @@ def build_text(part: dict) -> str:
         part.get("part_number") or "",
         part.get("name") or "",
         part.get("description") or "",
+        part.get("specifications") or "",
     ]
-    return " | ".join(b.strip() for b in bits if b and b.strip())
+    cleaned = [
+        "; ".join(" ".join(line.split()) for line in b.splitlines() if line.strip())
+        for b in bits
+        if b and b.strip() and b.strip() != "-"
+    ]
+    return " | ".join(cleaned)
 
 
 def embed_batch(texts: list[str]) -> list[list[float]]:
@@ -75,7 +81,7 @@ def main() -> int:
     redo_all = "--all" in sys.argv
     sb = create_client(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-    query = sb.table("parts").select("id, part_number, name, description")
+    query = sb.table("parts").select("id, part_number, name, description, specifications")
     if not redo_all:
         query = query.is_("embedding", "null")
     parts = query.execute().data or []

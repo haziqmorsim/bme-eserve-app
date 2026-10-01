@@ -5,6 +5,8 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Plus } from "@lucide/svelte";
+    import { nextSort, sortRows, type SortState } from "$lib/table-sort";
+    import SortHeader from "./SortHeader.svelte";
 
     let { projects, supabase } = $props<{ projects: any[]; supabase: SupabaseClient }>();
 
@@ -18,22 +20,32 @@
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
 
+    let sort = $state<SortState>({ key: 'project_no', dir: 'asc' });
+    const sortBy = {
+        project_no: (p: any) => p.project_no,
+        name: (p: any) => p.name,
+        location: (p: any) => p.location
+    };
+    function setSort(key: string) { sort = nextSort(sort, key); }
+
     let filtered = $derived(
-        projects
-            .filter((p: any) => {
+        sortRows(
+            projects.filter((p: any) => {
                 const q = search.trim().toLowerCase();
                 if (!q) return true;
                 return [p.project_no, p.name, p.location]
                     .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
-            })
-            .sort((a: any, b: any) => (a.project_no ?? '').localeCompare(b.project_no ?? ''))
+            }),
+            sort,
+            sortBy
+        )
     );
     let total = $derived(filtered.length);
     let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
     let curPage = $derived(Math.min(page, pages));
     let paged = $derived(filtered.slice((curPage - 1) * pageSize, curPage * pageSize));
 
-    $effect(() => { search; page = 1; });
+    $effect(() => { search; sort; page = 1; });
 
     function blank() {
         return { project_no: '', name: '', location: ''};
@@ -120,7 +132,12 @@
     {:else}
         <table class="adm-table">
             <thead>
-                <tr><th>Project No.</th><th>Project Name</th><th>Location</th><th>Actions</th></tr>
+                <tr>
+                    <SortHeader label="Project No." key="project_no" {sort} onsort={setSort} />
+                    <SortHeader label="Project Name" key="name" {sort} onsort={setSort} />
+                    <SortHeader label="Location" key="location" {sort} onsort={setSort} />
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {#each paged as p (p.id)}

@@ -10,6 +10,8 @@
 
     let me: any = $derived(data.me);
 
+    let canManageUsers = $derived(me?.role === 'admin' || me?.role === 'developer');
+
     let editing = $state(false);
     let busy = $state(false);
     let err = $state('');
@@ -263,7 +265,11 @@
                 <div class="row"><dt>Phone</dt><dd>{show(me.phone)}</dd></div>
                 <div class="row"><dt>Role</dt><dd>{ROLE_LABEL[me.role] ?? show(me.role)}</dd></div>
             </dl>
-            <p class="note">Your role is managed by your administrator.</p>
+            {#if canManageUsers}
+                <p class="note">You can change your role in the Settings &gt; Users &gt; Edit User.</p>
+            {:else}
+                <p class="note">Your role is managed by your administrator.</p>
+            {/if}
         </div>
 
         <div class="card sect">

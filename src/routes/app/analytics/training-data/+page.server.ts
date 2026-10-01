@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             .select('*'),
         supabase
             .from('training_part_coverage')
-            .select('part_number, name, chat_labels, enquiry_labels, service_intervals, text_labels')
+            .select('part_id, part_number, name, chat_labels, enquiry_labels, service_intervals, text_labels')
             .order('text_labels', { ascending: false })
     ]);
 
