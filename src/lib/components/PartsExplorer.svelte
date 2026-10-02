@@ -368,8 +368,6 @@
 									<img src={p.image_url} alt={p.name} loading="lazy" />
 								</button>
 							{:else}
-								<!-- Same box as a real thumbnail so every card lines up; disabled
-								     because there is nothing to open. -->
 								<button
 									type="button"
 									class="thumb no-image"
@@ -380,13 +378,16 @@
 									No image
 								</button>
 							{/if}
-							<input
-								type="number"
-								min="1"
-								value={qty[p.id] ?? 1}
-								oninput={(e) => (qty[p.id] = Math.max(1, +e.currentTarget.value))}
-							/>
-							<button class="btn-primary" onclick={() => handleAdd(p)}>Add</button>
+							<div class="act-row">
+								<input
+									type="number"
+									min="1"
+									value={qty[p.id] ?? 1}
+									aria-label="Quantity of {p.name}"
+									oninput={(e) => (qty[p.id] = Math.max(1, +e.currentTarget.value))}
+								/>
+								<button class="btn-primary" onclick={() => handleAdd(p)}>Add</button>
+							</div>
 						</div>
 					</div>
 				{/each}
@@ -798,6 +799,7 @@
 	}
 
 	.info {
+		align-self: flex-start;
 		max-width: 75%;
 	}
 
@@ -854,9 +856,16 @@
 
 	.actions {
 		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 12px;
+		flex-shrink: 0;
+	}
+
+	.act-row {
+		display: flex;
 		align-items: center;
 		gap: 20px;
-		flex-shrink: 0;
 	}
 
 	.actions input {
@@ -868,14 +877,15 @@
 	}
 
 	.thumb {
-		width: 44px;
-		height: 44px;
+		position: relative;
+		width: 100%;
+		aspect-ratio: 4 / 3;
 		padding: 0;
 		border: 1px solid var(--bme-border, #e2e8ef);
 		border-radius: 8px;
 		overflow: hidden;
 		cursor: pointer;
-		background: #f4f6f8;
+		background: #fff;
 		flex-shrink: 0;
 		transition:
 			border-color 140ms ease,
@@ -884,7 +894,7 @@
 
 	.thumb:hover {
 		border-color: var(--bme-dark-blue, #10456e);
-		transform: scale(1.05);
+		transform: scale(1.03);
 	}
 
 	.thumb.no-image {
@@ -907,9 +917,11 @@
 	}
 
 	.thumb img {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		object-fit: contain;
 		display: block;
 	}
 
@@ -1000,8 +1012,32 @@
 		.filter-trigger {
 			width: 100%;
 		}
+	}
+
+	@media (max-width: 640px) {
+		.part {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 12px;
+		}
+
+		.info {
+			max-width: none;
+		}
 
 		.actions {
+			flex-direction: row;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.thumb {
+			width: 100px;
+			flex: 0 0 100px;
+		}
+
+		.act-row {
+			margin-left: auto;
 			gap: 8px;
 		}
 	}
