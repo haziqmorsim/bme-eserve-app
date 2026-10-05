@@ -148,8 +148,8 @@
     {/each}
     <div class="pager"><div class="sk s-pageitem"></div><div class="sk s-pageitem"></div><div class="sk s-pageitem"></div></div>
 
-{:else if route === '/app/analytics'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+{:else if route === '/app/analytics' || route === '/app/analytics/customer-requests'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="stats">
         {#each n(4) as i (i)}<div class="card stat"><div class="sk s-xs w60"></div><div class="sk s-num"></div><div class="sk s-xs w40"></div></div>{/each}
     </div>
@@ -171,6 +171,9 @@
             </div>
         {/each}
     </div>
+
+{:else if route === '/app/analytics/user-activities'}
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="card sect">
         <div class="sk s-h2 w60"></div>
         <div class="ua-stats mt">{#each n(5) as i (i)}<div class="ua-tile"><div class="sk s-num sm"></div><div class="sk s-xs w70"></div></div>{/each}</div>
@@ -191,7 +194,7 @@
     </div>
 
 {:else if route === '/app/analytics/forecasts'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="card pad">
         <div class="sk s-h2 w45"></div>
         <div class="sk s-xs w50 mt6"></div>
@@ -213,7 +216,7 @@
     {/each}
 
 {:else if route === '/app/analytics/suggestions'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="sk s-xs w70 mb"></div>
     <div class="card searchbar"><div class="sk s-search full"></div></div>
     <div class="tabbar">{#each n(3) as i (i)}<div class="sk s-tab"></div>{/each}</div>
@@ -233,7 +236,7 @@
     </div>
 
 {:else if route === '/app/analytics/training-data'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="sk s-xs w70 mb"></div>
     <div class="card sect">
         <div class="sk s-h2 w45"></div>
@@ -263,7 +266,7 @@
     </div>
 
 {:else if route === '/app/analytics/service-records'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="head-actions"><div class="sk s-btn"></div><div class="sk s-btn"></div></div></div>
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="sk s-xs w70 mb"></div>
     <div class="card searchbar"><div class="sk s-search full"></div></div>
     <div class="card pad">
@@ -272,7 +275,7 @@
     </div>
 
 {:else if route === '/app/analytics/email-log'}
-    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-btn"></div></div>
+    <div class="head"><div class="sk s-title" style="margin:0;"></div><div class="sk s-select"></div></div>
     <div class="sk s-xs w70 mb"></div>
     <div class="stats stats3">
         {#each n(3) as i (i)}<div class="card stat"><div class="sk s-num"></div><div class="sk s-xs w60 mt6"></div><div class="sk s-xs w70"></div></div>{/each}
@@ -386,6 +389,7 @@
     .s-input{ height:42px; border-radius:8px; width:100%; }
     .s-textarea{ height:70px; border-radius:8px; }
     .s-btn{ height:38px; width:110px; border-radius:8px; }
+    .s-select{ height:42px; width:240px; max-width:100%; border-radius:8px; }
     .s-submit{ height:46px; width:100%; border-radius:8px; }
     .s-pill{ height:22px; width:64px; border-radius:999px; }
     .s-pill.wide{ width:120px; }
@@ -480,7 +484,6 @@
     .meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .sugg{ display:flex; align-items:baseline; gap:10px; padding:10px 12px; margin-top:8px; background:var(--bme-surface-2); border-radius:8px; }
 
-    .head-actions{ display:flex; gap:10px; flex-wrap:wrap; }
 
     .tbl7{ display:grid; grid-template-columns:repeat(7,1fr); gap:10px; padding:9px 0; border-top:1px solid var(--bme-border); }
     .tbl7.th{ border-top:none; }

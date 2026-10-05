@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { Search, Undo2 } from '@lucide/svelte';
+	import { Search } from '@lucide/svelte';
 
 	let { data } = $props();
 
 	let search = $state('');
-	let tab = $state<'failed' | 'all'>('failed');
+	let tab = $state<'failed' | 'sent'>('failed');
 
 	const KIND_LABEL: Record<string, string> = {
 		quote_admin: 'Quote (staff)',
@@ -33,17 +33,10 @@
 		})
 	);
 
-	const list = $derived(
-		tab === 'failed' ? filtered.filter((r: any) => r.status === 'failed') : filtered
-	);
-</script>
+	const list = $derived(filtered.filter((r: any) => r.status === tab));
 
-<div class="head">
-	<h1>E-mail Deliveries</h1>
-	<a href="/app/analytics">
-		<button class="btn-primary"><Undo2 size={16} /> Analytics</button>
-	</a>
-</div>
+	const sentCount = $derived(data.rows.filter((r: any) => r.status === 'sent').length);
+</script>
 
 <p class="intro">
 	Every outbound e-mail is recorded here. A failure means the message never reached the mail
@@ -89,16 +82,20 @@
 		<button class="tab" class:active={tab === 'failed'} onclick={() => (tab = 'failed')}>
 			Failed ({data.stats.failedTotal})
 		</button>
-		<button class="tab" class:active={tab === 'all'} onclick={() => (tab = 'all')}>
-			All ({data.stats.total})
+		<button class="tab" class:active={tab === 'sent'} onclick={() => (tab = 'sent')}>
+			Sent ({sentCount})
 		</button>
 	</div>
 
 	{#if list.length === 0}
 		<div class="card empty">
-			{tab === 'failed'
-				? 'No failed deliveries. Every recorded e-mail was accepted by the mail service.'
-				: 'Nothing matches this search.'}
+			{#if search.trim()}
+				Nothing matches this search.
+			{:else if tab === 'failed'}
+				No failed deliveries. Every recorded e-mail was accepted by the mail service.
+			{:else}
+				No sent e-mails have been recorded yet.
+			{/if}
 		</div>
 	{:else}
 		<div class="card table-wrap">
@@ -122,9 +119,7 @@
 							<td>
 								<span class="subj">{r.subject}</span>
 								{#if r.related_ref}<span class="ref">{r.related_ref}</span>{/if}
-								{#if r.attachments > 0}<span class="att"
-										>{r.attachments} attachtment{r.attachments === 1 ? '' : 's'}</span
-									>{/if}
+								{#if r.attachments > 0}<span class="att">{r.attachments} attachment{r.attachments === 1 ? '' : 's'}</span>{/if}
 								{#if r.error}<span class="err">{r.error}</span>{/if}
 							</td>
 						</tr>
@@ -136,25 +131,6 @@
 {/if}
 
 <style>
-	.head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-		flex-wrap: wrap;
-		margin-bottom: 6px;
-	}
-
-	h1 {
-		margin: 5px 0 10px;
-	}
-
-	.btn-primary {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-	}
-
 	.intro {
 		color: var(--bme-muted);
 		font-size: 0.85rem;

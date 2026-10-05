@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 	const since7d = Date.now() - 7 * DAY_MS;
 
 	const failed = list.filter((r: any) => r.status === 'failed');
+	const sent = list.filter((r: any) => r.status === 'sent');
 	const failed24h = failed.filter((r: any) => new Date(r.created_at).getTime() >= since24h).length;
 	const last7d = list.filter((r: any) => new Date(r.created_at).getTime() >= since7d);
 	const sent7d = last7d.filter((r: any) => r.status === 'sent').length;
@@ -30,6 +31,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 		stats: {
 			total: list.length,
 			failedTotal: failed.length,
+			sentTotal: sent.length,
 			failed24h,
 			sent7d,
 			failed7d,

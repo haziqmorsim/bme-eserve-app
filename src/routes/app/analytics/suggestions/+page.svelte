@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Search, Undo2 } from '@lucide/svelte';
+	import { Search } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast';
 
@@ -72,13 +72,6 @@
 		addToast('Review saved successfully.');
 	}
 </script>
-
-<div class="head">
-	<h1>Suggestion Reviews</h1>
-	<a href="/app/analytics">
-		<button class="btn-primary"><Undo2 size={16} />Back to Analytics</button>
-	</a>
-</div>
 
 <p class="intro">
 	Confirm or correct the part the assistant suggested. Staff verdict are treated as ground truth and
@@ -189,24 +182,6 @@
 {/if}
 
 <style>
-	.head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-		flex-wrap: wrap;
-		margin-bottom: 6px;
-	}
-
-	h1 {
-		margin: 5px 0 10px;
-	}
-
-	.btn-primary {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-	}
 
 	.intro {
 		color: var(--bme-muted);

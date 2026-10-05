@@ -320,12 +320,18 @@
         <h2>Operational</h2>
         <p class="gen-hint">Maintenance mode blocks customer access while staff keep working, so it can always be switched back off.</p>
         <div class="adm-form">
-            <label>Maintenance Mode
-                <select class="w-25" bind:value={form.maintenance_mode}>
-                    <option value="off">Off</option>
-                    <option value="on">On</option>
-                </select>
-            </label>
+            <div class="full toggle-field">
+                <div class="toggle-head">
+                    <span class="toggle-title">Maintenance Mode</span>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={form.maintenance_mode === 'on'}
+                            aria-label="Show maintenance mode" />
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+            </div>
             <label class="full">Maintenance Message
                 <textarea rows="3" bind:value={form.maintenance_message}></textarea>
             </label>

@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { Undo2 } from "@lucide/svelte";
-
     let { data } = $props();
 
     const totalTextLabels = $derived(
@@ -17,13 +15,6 @@
 
     const pct = (n: number, of: number) => (of > 0 ? Math.min(100, (n / of) * 100) : 0);
 </script>
-
-<div class="head">
-    <h1>Training Data</h1>
-    <a href="/app/analytics">
-        <button class="btn-primary"><Undo2 size={16} /> Analytics</button>
-    </a>
-</div>
 
 <p class="intro">
     How many labelled data exists, and how good the current assistant already is. A trained model is only worth building if it beats the baseline below.
@@ -161,29 +152,11 @@
 </div>
 
 <style>
-    .head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 6px;
-    }
-
-    h1 {
-        margin: 5px 0 10px;
-    }
 
     h2 {
         font-size: 1rem;
         color: var(--bme-dark-blue);
         margin: 1.75rem 0 0.75rem;
-    }
-
-    .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
     }
 
     .intro {

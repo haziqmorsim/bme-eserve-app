@@ -1,6 +1,5 @@
 <script lang="ts">
     import ForecastTrendChart from "./ForecastTrendChart.svelte";
-    import { Undo2 } from "@lucide/svelte";
 
     let { data } = $props();
 
@@ -32,13 +31,6 @@
 
     const months = (d: number) => (d / 30.44).toFixed(1);
 </script>
-
-<div class="head">
-    <h1>Forecasts</h1>
-    <a href="/app/analytics">
-        <button class="btn-primary"><Undo2 size={16} /> Back to Analytics</button>
-    </a>
-</div>
 
 <section class="wrap">
     <header>
@@ -198,32 +190,6 @@
 </section>
 
 <style>
-    .head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
-    }
-
-    h1 {
-        margin: 5px 0 15px;
-    }
-
-    a {
-        display: block;
-        width: max-content;
-        margin-left: auto;
-        margin-bottom: 10px;
-    }
-
-    .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
     .wrap {
         max-width: 100%;
         margin: 0 auto;

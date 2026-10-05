@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Search, Undo2, Plus } from '@lucide/svelte';
+	import { Search, Plus } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast';
 	import Modal from '$lib/components/admin/Modal.svelte';
@@ -89,20 +89,10 @@
 	}
 </script>
 
-<div class="head">
-	<h1>Service Records</h1>
-	<div class="head-actions">
-		<a href="/app/analytics">
-			<button class="btn-primary"><Undo2 size={16} /> Analytics</button>
-		</a>
-	</div>
-</div>
-
 <p class="intro">
 	Keep track of parts that were actually replaced, repaired, or inspected on a customer's boiler.
 	Adding a record here helps the system predict when a part will need replacing next.
 </p>
-
 
 <div class="searchbar card">
 	<span class="search-ic"><Search size={16} /></span>
@@ -117,7 +107,6 @@
 	<Plus size={16} />
 	Add Record
 </button>
-
 
 {#if data.records.length === 0}
 	<div class="card empty">
@@ -251,24 +240,6 @@
 {/if}
 
 <style>
-	.head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-		flex-wrap: wrap;
-	}
-
-	h1 {
-		margin: 5px 0 10px;
-	}
-
-	.head-actions {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		flex-wrap: wrap;
-	}
 	.btn-primary,
 	.btn-ghost {
 		display: inline-flex;
