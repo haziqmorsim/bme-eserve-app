@@ -7,6 +7,7 @@
     import { Plus } from "@lucide/svelte";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let { projects, supabase } = $props<{ projects: any[]; supabase: SupabaseClient }>();
 
@@ -100,6 +101,7 @@
             err = resp.error.message;
             return;
         }
+        logAction(editing === 'new' ? 'project_created' : 'project_updated', { name: activityLabel(payload.project_no) });
         addToast(editing === 'new' ? 'Project added successfully' : 'Project updated successfully');
         editing = null;
         await invalidateAll();
@@ -113,6 +115,7 @@
             err = error.message;
             return;
         }
+        logAction('project_deleted', { name: activityLabel(deleting.project_no || deleting.name) });
         addToast('Project deleted successfully');
         deleting = null;
         await invalidateAll();

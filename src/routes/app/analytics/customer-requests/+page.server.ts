@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const [{ data: quoteRows }, { data: approvalRows }] = await Promise.all([
-        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, quote_items(boiler_code)'), 
+        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, quote_items(boiler_code, part_name, part_number)'), 
         supabase.from('quote_approvals').select('quote_id, created_at')
     ]);
 
@@ -102,6 +102,27 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         .map((p: any) => ({ code: p.project_no, name: p.name, count: projectCount[p.id] ?? 0 }))
         .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 
+    const TOP_PARTS = 10;
+    const partGroups = new Map<string, { count: number; names: Map<string, number> }>();
+    for (const q of quotes) {
+        for (const it of ((q as any).quote_items ?? []) as any[]) {
+            const raw = String(it.part_name ?? it.part_number ?? '').replace(/\s+/g, ' ').trim();
+            if (!raw) continue;
+            const key = raw.toLowerCase();
+            const g = partGroups.get(key) ?? { count: 0, names: new Map<string, number>() };
+            g.count++;
+            g.names.set(raw, (g.names.get(raw) ?? 0) + 1);
+            partGroups.set(key, g);
+        }
+    }
+    const allParts = [...partGroups.values()].map((g) => ({
+        name: [...g.names.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0],
+        count: g.count
+    }));
+    allParts.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const volumeByPart = allParts.slice(0, TOP_PARTS);
+    const partsTotal = allParts.length;
+
     const latestApproval: Record<string, string> = {};
     for (const a of approvals) {
         if (!latestApproval[a.quote_id] || a.created_at > latestApproval[a.quote_id]) {
@@ -140,6 +161,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         avgResolutionMs, 
         volumeByBoiler, 
         volumeByProject, 
+        volumeByPart, 
+        partsTotal, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 
         slaThresholds, 
         agingList

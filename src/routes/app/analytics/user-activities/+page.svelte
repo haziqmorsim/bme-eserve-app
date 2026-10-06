@@ -36,9 +36,7 @@
 			<span class="ua-n">{data.activitySummary.sessions}</span><span class="ua-l">Sessions</span>
 		</div>
 		<div class="ua">
-			<span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l"
-				>Page views</span
-			>
+			<span class="ua-n">{data.activitySummary.pageViews}</span><span class="ua-l">Page views</span>
 		</div>
 		<div class="ua">
 			<span class="ua-n">{data.activitySummary.actions}</span><span class="ua-l"
@@ -46,8 +44,7 @@
 			>
 		</div>
 		<div class="ua">
-			<span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span
-			>
+			<span class="ua-n">{data.activitySummary.enquiries}</span><span class="ua-l">Enquiries</span>
 		</div>
 	</div>
 
@@ -160,319 +157,359 @@
 
 <style>
 	h2 {
-			margin-top: 5px;
-		}
+		margin-top: 5px;
+	}
 
 	.section {
-			padding: 18px 20px;
-			margin: 0 0 4px;
-			color: var(--bme-ink);
-		}
+		padding: 18px 20px;
+		margin: 0 0 4px;
+		color: var(--bme-ink);
+	}
 
 	.hint {
-			margin: 0 0 14px;
-			font-size: 13px;
-			color: var(--bme-muted);
-		}
+		margin: 0 0 14px;
+		font-size: 13px;
+		color: var(--bme-muted);
+	}
 
 	.bars {
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-		}
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
 
 	.bar-row2 {
-			display: grid;
-			grid-template-columns: 200px 1fr auto;
-			align-items: center;
-			gap: 12px;
-		}
+		display: grid;
+		grid-template-columns: 200px 1fr auto;
+		align-items: center;
+		gap: 12px;
+	}
 
 	.bar-key {
-			font-size: 14px;
-			font-weight: 600;
-			color: var(--bme-ink);
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--bme-ink);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
 	.bar-track-green {
-			height: 14px;
-			background: var(--bme-light-green);
-			border-radius: 999px;
-			overflow: hidden;
-		}
+		height: 14px;
+		background: var(--bme-light-green);
+		border-radius: 999px;
+		overflow: hidden;
+	}
 
 	.bar-fill {
-			height: 100%;
-			border-radius: 999px;
-			min-width: 3px;
-			transition: width 0.3s ease;
-		}
+		height: 100%;
+		border-radius: 999px;
+		min-width: 3px;
+		transition: width 0.3s ease;
+	}
 
 	.bar-fill.green {
-			background: var(--bme-darker-green);
-		}
+		background: var(--bme-darker-green);
+	}
 
 	.bar-val {
-			font-size: 13px;
-			font-weight: 700;
-			color: var(--bme-ink);
-			white-space: nowrap;
-		}
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--bme-ink);
+		white-space: nowrap;
+	}
 
 	.grid2 {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			margin: 0 0 4px;
-			gap: 5px;
-		}
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		margin: 0 0 4px;
+		gap: 5px;
+	}
 
 	.grid2 .section {
-			margin-bottom: 0;
-		}
+		margin-bottom: 0;
+	}
 
 	.ua-stats {
-			display: grid;
-			grid-template-columns: repeat(5, 1fr);
-			gap: 12px;
-			margin-bottom: 20px;
-		}
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: 12px;
+		margin-bottom: 20px;
+	}
 
 	.chat-stats {
-			display: grid;
-			grid-template-columns: repeat(4, 1fr);
-			gap: 12px;
-			margin-bottom: 4px;
-		}
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 12px;
+		margin-bottom: 4px;
+	}
 
 	.chat-tile {
-			background: var(--bme-light-green);
-			border-radius: 10px;
-			padding: 14px;
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			text-align: center;
-		}
+		background: var(--bme-light-green);
+		border-radius: 10px;
+		padding: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		text-align: center;
+	}
 
 	.chat-n {
-			font-size: 24px;
-			font-weight: 700;
-			color: var(--bme-darker-green);
-		}
+		font-size: 24px;
+		font-weight: 700;
+		color: var(--bme-darker-green);
+	}
 
 	.chat-l {
-			font-size: 12.5px;
-			color: var(--bme-muted);
-		}
+		font-size: 12.5px;
+		color: var(--bme-muted);
+	}
 
 	:root[data-theme='dark'] .chat-n {
-			color: #9adf6c;
-		}
+		color: #9adf6c;
+	}
 
 	:root[data-theme='dark'] .chat-l {
-			color: #9adf6c;
-		}
+		color: #9adf6c;
+	}
 
 	.ua {
-			background: var(--bme-light-green);
-			border-radius: 10px;
-			padding: 14px;
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			text-align: center;
-		}
+		background: var(--bme-light-green);
+		border-radius: 10px;
+		padding: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		text-align: center;
+	}
 
 	.ua-n {
-			font-size: 24px;
-			font-weight: 700;
-			color: var(--bme-darker-green);
-		}
+		font-size: 24px;
+		font-weight: 700;
+		color: var(--bme-darker-green);
+	}
 
 	.ua-l {
-			font-size: 12.5px;
-			color: var(--bme-muted);
-		}
+		font-size: 12.5px;
+		color: var(--bme-muted);
+	}
 
 	.ua-sub {
-			margin: 6px 0 10px;
-			color: var(--bme-ink);
-		}
+		margin: 6px 0 10px;
+		color: var(--bme-ink);
+	}
 
 	:root[data-theme='dark'] .ua-n {
-			color: #9adf6c;
-		}
+		color: #9adf6c;
+	}
 
 	:root[data-theme='dark'] .ua-l {
-			color: #9adf6c;
-		}
+		color: #9adf6c;
+	}
 
 	.spark {
-			display: flex;
-			align-items: flex-end;
-			gap: 6px;
-			height: 130px;
-			padding-top: 8px;
-		}
+		display: flex;
+		align-items: flex-end;
+		gap: 6px;
+		height: 130px;
+		padding-top: 8px;
+	}
 
 	.spark-col {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: flex-end;
-			height: 100%;
-			gap: 6px;
-		}
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
+		height: 100%;
+		gap: 6px;
+	}
 
 	.spark-bar {
-			width: 100%;
-			max-width: 26px;
-			min-height: 3px;
-			background: var(--bme-darker-green);
-			border-radius: 4px 4px 0 0;
-			transition: height var(--t-med) var(--ease);
-		}
+		width: 100%;
+		max-width: 26px;
+		min-height: 3px;
+		background: var(--bme-darker-green);
+		border-radius: 4px 4px 0 0;
+		transition: height var(--t-med) var(--ease);
+	}
 
 	.spark-x {
-			font-size: 10.5px;
-			color: var(--bme-muted);
-			white-space: nowrap;
-		}
+		font-size: 10.5px;
+		color: var(--bme-muted);
+		white-space: nowrap;
+	}
 
 	.feed {
-			list-style: none;
-			margin: 0;
-			padding: 0;
-			display: flex;
-			flex-direction: column;
-		}
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
 
 	.feed-row {
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			padding: 10px 0;
-			border-top: 1px solid var(--bme-border);
-		}
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 0;
+		border-top: 1px solid var(--bme-border);
+	}
 
 	.feed-row:first-child {
-			border-top: none;
-		}
+		border-top: none;
+	}
 
 	.feed-dot {
-			flex: 0 0 auto;
-			width: 9px;
-			height: 9px;
-			border-radius: 50%;
-			background: var(--bme-muted);
-		}
+		flex: 0 0 auto;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: var(--bme-muted);
+	}
 
 	.feed-dot.request {
-			background: var(--bme-dark-blue);
-		}
+		background: var(--bme-dark-blue);
+	}
 
 	.feed-dot.closed {
-			background: var(--bme-dark-green);
-		}
+		background: var(--bme-dark-green);
+	}
 
 	.feed-dot.reopened {
-			background: var(--bme-orange);
-		}
+		background: var(--bme-orange);
+	}
 
 	.feed-dot.enquiry {
-			background: var(--bme-purple);
-		}
+		background: var(--bme-purple);
+	}
 
 	.feed-dot.page_view {
-			background: var(--bme-dark-blue);
-		}
+		background: var(--bme-dark-blue);
+	}
 
 	.feed-dot.login {
-			background: var(--bme-green);
-		}
+		background: var(--bme-green);
+	}
+
+	.feed-dot.replied {
+		background: #e0509f;
+	}
+
+	:root[data-theme='dark'] .feed-dot.replied {
+		background: #f07cb8;
+	}
+
+	.feed-dot.converted {
+		background: #8d6e63;
+	}
+
+	:root[data-theme='dark'] .feed-dot.converted {
+		background: #bc9d92;
+	}
+
+	.feed-dot.profile {
+		background: var(--bme-light-blue);
+	}
+
+	.feed-dot.added {
+		background: var(--bme-green);
+	}
+
+	.feed-dot.edited {
+		background: var(--bme-amber);
+	}
+
+	.feed-dot.deleted {
+		background: var(--bme-red);
+	}
+
+	.feed-dot.settings {
+		background: #5b5fc7;
+	}
+
+	:root[data-theme='dark'] .feed-dot.settings {
+		background: #8b8fe8;
+	}
 
 	.feed-text {
-			flex: 1;
-			font-size: 13.5px;
-			color: var(--bme-ink);
-			min-width: 0;
-		}
+		flex: 1;
+		font-size: 13.5px;
+		color: var(--bme-ink);
+		min-width: 0;
+	}
 
 	.feed-ref {
-			color: var(--bme-dark-blue);
-			font-weight: 600;
-		}
+		color: var(--bme-dark-blue);
+		font-weight: 600;
+	}
 
 	.feed-time {
-			flex: 0 0 auto;
-			font-size: 12px;
-			color: var(--bme-muted);
-		}
+		flex: 0 0 auto;
+		font-size: 12px;
+		color: var(--bme-muted);
+	}
 
 	@media (max-width: 860px) {
 		.grid2 {
-					grid-template-columns: 1fr;
-				}
+			grid-template-columns: 1fr;
+		}
 	}
 
 	@media (max-width: 480px) {
 		.bar-row2 {
-					grid-template-columns: 1fr auto;
-					grid-template-areas:
-						'key key'
-						'track val';
-					row-gap: 6px;
-					column-gap: 12px;
-					align-items: center;
-				}
+			grid-template-columns: 1fr auto;
+			grid-template-areas:
+				'key key'
+				'track val';
+			row-gap: 6px;
+			column-gap: 12px;
+			align-items: center;
+		}
 
 		.bar-row2 .bar-key {
-					grid-area: key;
-					white-space: normal;
-				}
+			grid-area: key;
+			white-space: normal;
+		}
 
 		.bar-row2 .bar-track-green {
-					grid-area: track;
-				}
+			grid-area: track;
+		}
 
 		.bar-row2 .bar-val {
-					grid-area: val;
-				}
+			grid-area: val;
+		}
 	}
 
 	@media (max-width: 720px) {
 		.ua-stats {
-					grid-template-columns: repeat(6, 1fr);
-				}
+			grid-template-columns: repeat(6, 1fr);
+		}
 
 		.ua {
-					grid-column: span 2;
-				}
+			grid-column: span 2;
+		}
 
 		.ua:nth-child(4) {
-					grid-column: 2 / span 2;
-				}
+			grid-column: 2 / span 2;
+		}
 
 		.ua:nth-child(5) {
-					grid-column: 4 / span 2;
-				}
+			grid-column: 4 / span 2;
+		}
 
 		.chat-stats {
-					grid-template-columns: repeat(2, 1fr);
-				}
+			grid-template-columns: repeat(2, 1fr);
+		}
 
 		.spark {
-					height: 104px;
-					overflow-x: auto;
-					white-space: nowrap;
-				}
+			height: 104px;
+			overflow-x: auto;
+			white-space: nowrap;
+		}
 
 		.spark-x {
-					font-size: 9px;
-				}
+			font-size: 9px;
+		}
 	}
 </style>

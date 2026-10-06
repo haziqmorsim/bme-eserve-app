@@ -6,18 +6,44 @@ const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
 const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const ENTITY_LABEL: Record<string, string> = {
+    project: 'a project',
+    boiler: 'a boiler',
+    part: 'a part',
+    user: 'a user',
+    faq: 'an FAQ'
+};
+const CHANGE_VERB: Record<string, { text: string; kind: string }> = {
+    created: { text: 'added', kind: 'added' },
+    updated: { text: 'edited', kind: 'edited' },
+    deleted: { text: 'deleted', kind: 'deleted' }
+};
+const ACTION_FEED: Record<string, { action: string; kind: string }> = {
+    invoice_converted: { action: 'converted shipping invoice', kind: 'converted' },
+    packing_converted: { action: 'converted packing list', kind: 'converted' },
+    profile_updated: { action: 'edited their profile', kind: 'profile' },
+    general_settings_updated: { action: 'edited general settings', kind: 'settings' }
+};
+for (const entity of Object.keys(ENTITY_LABEL)) {
+    for (const [change, verb] of Object.entries(CHANGE_VERB)) {
+        ACTION_FEED[`${entity}_${change}`] = { action: `${verb.text} ${ENTITY_LABEL[entity]}`, kind: verb.kind };
+    }
+}
+const ACTION_TYPES = Object.keys(ACTION_FEED);
+
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const activitySince = new Date(Date.now() - 30 * DAY_MS).toISOString();
-    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }, { data: chatSessionRows }, { data: chatMessageRows }] = await Promise.all([
+    const [{ data: quoteRows }, { data: approvalRows }, { data: enquiryRows }, { data: eventRows }, { data: chatSessionRows }, { data: chatMessageRows }, { data: actionRows }] = await Promise.all([
         supabase.from('quotes').select('id, reference, created_at, user_id'), 
         supabase.from('quote_approvals').select('quote_id, action, created_at, reviewer_id'), 
-        supabase.from('enquiries').select('id, name, created_at'), 
+        supabase.from('enquiries').select('id, name, created_at, replied_at, replied_by'), 
         supabase.from('activity_events').select('user_id, role, event_type, path, created_at').gte('created_at', activitySince).order('created_at', { ascending: false }).limit(5000), 
         supabase.from('chat_sessions').select('id, user_id, started_at, ended_at, end_reason').gte('started_at', activitySince), 
-        supabase.from('chat_messages').select('session_id, user_id, role, created_at').gte('created_at', activitySince).limit(10000)
+        supabase.from('chat_messages').select('session_id, user_id, role, created_at').gte('created_at', activitySince).limit(10000), 
+        supabase.from('activity_events').select('user_id, event_type, meta, created_at').in('event_type', ACTION_TYPES).gte('created_at', activitySince).order('created_at', { ascending: false }).limit(200)
     ]);
 
     const quotes = quoteRows ?? [];
@@ -26,11 +52,14 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const activityEvents = eventRows ?? [];
     const chatSessions = chatSessionRows ?? [];
     const chatMessages = chatMessageRows ?? [];
+    const actionEvents = actionRows ?? [];
 
     const ownerIds = [...new Set(quotes.map((q) => q.user_id).filter(Boolean))];
     const reviewerIds = [...new Set(approvals.map((a) => (a as any).reviewer_id).filter(Boolean))];
     const eventUserIds = [...new Set(activityEvents.map((e: any) => e.user_id).filter(Boolean))];
-    const personIds = [...new Set([...ownerIds, ...reviewerIds, ...eventUserIds])];
+    const enquiryReplierIds = [...new Set(enquiries.map((e: any) => e.replied_by).filter(Boolean))];
+    const actionUserIds = [...new Set(actionEvents.map((e: any) => e.user_id).filter(Boolean))];
+    const personIds = [...new Set([...ownerIds, ...reviewerIds, ...eventUserIds, ...enquiryReplierIds, ...actionUserIds])];
     const person: Record<string, { name: string; company: string | null; role: string | null }> = {};
     if (personIds.length) {
         const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role').in('id', personIds);
@@ -152,6 +181,31 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             action: 'sent an enquiry', 
             detail: '', 
             kind: 'enquiry'
+        });
+    }
+    for (const e of enquiries) {
+        if (!(e as any).replied_at) continue;
+        const rid = (e as any).replied_by;
+        bizEvents.push({
+            ts: (e as any).replied_at, 
+            who: rid ? (person[rid]?.name ?? 'Staff') : 'Staff', 
+            action: 'marked enquiry as replied', 
+            detail: (e as any).name ?? '', 
+            kind: 'replied'
+        });
+    }
+    for (const ev of actionEvents as any[]) {
+        const feed = ACTION_FEED[ev.event_type];
+        if (!feed) continue;
+        const meta = (ev.meta ?? {}) as Record<string, unknown>;
+        let detail = typeof meta.name === 'string' ? meta.name : '';
+        if (!detail && typeof meta.files === 'number' && meta.files > 1) detail = `${meta.files} files`;
+        bizEvents.push({
+            ts: ev.created_at, 
+            who: ev.user_id ? (person[ev.user_id]?.name ?? 'Someone') : 'Someone', 
+            action: feed.action, 
+            detail, 
+            kind: feed.kind
         });
     }
     bizEvents.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));

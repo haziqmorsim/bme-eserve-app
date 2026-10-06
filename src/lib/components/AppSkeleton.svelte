@@ -163,8 +163,8 @@
         <div class="ag-tiles mt">{#each n(3) as i (i)}<div class="sk s-tile"></div>{/each}</div>
         {#each n(3) as i (i)}<div class="ag-row"><div class="sk s-md w45"></div><div class="sk s-xs w15"></div><div class="sk s-pill wide"></div></div>{/each}
     </div>
-    <div class="grid2">
-        {#each n(2) as k (k)}
+    <div class="grid3">
+        {#each n(3) as k (k)}
             <div class="card sect">
                 <div class="sk s-h2 w50"></div>
                 <div class="bars mt">{#each n(4) as i (i)}<div class="bar-row"><div class="sk s-lbl"></div><div class="sk s-track"></div><div class="sk s-val"></div></div>{/each}</div>
@@ -461,6 +461,7 @@
     .s-track{ height:14px; border-radius:999px; }
     .s-val{ height:14px; width:56px; }
     .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .grid3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
 
     .ua-stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
     .ua-tile{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px; }
@@ -509,9 +510,14 @@
     @keyframes skShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
     @keyframes skFade { from { opacity: 0; } to { opacity: 1; } }
 
+    @media (max-width: 1100px) {
+        .grid3{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .grid3 > :nth-child(3){ grid-column:1 / -1; }
+    }
     @media (max-width: 860px) {
         .home{ grid-template-columns:1fr; }
         .grid2{ grid-template-columns:1fr; }
+        .grid3{ grid-template-columns:1fr; }
     }
     @media (max-width: 720px) {
         .stats{ grid-template-columns:repeat(2,1fr); }

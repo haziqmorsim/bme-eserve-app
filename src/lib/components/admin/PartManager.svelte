@@ -11,6 +11,7 @@
 	import { allSectionKeys } from '$lib/boiler-design';
 	import { nextSort, sortRows, type SortState } from '$lib/table-sort';
 	import SortHeader from './SortHeader.svelte';
+	import { logAction, activityLabel } from '$lib/activity';
 
 	let { parts, components, boilers, supabase } = $props<{
 		parts: any[];
@@ -191,6 +192,7 @@
 			err = resp.error.message;
 			return;
 		}
+		logAction(editing === 'new' ? 'part_created' : 'part_updated', { name: activityLabel(payload.name) });
 		addToast(editing === 'new' ? 'Part added successfully' : 'Part updated successfully');
 		editing = null;
 		await invalidateAll();
@@ -204,6 +206,7 @@
 			err = error.message;
 			return;
 		}
+		logAction('part_deleted', { name: activityLabel(deleting.name) });
 		addToast('Part deleted successfully');
 		deleting = null;
 		await invalidateAll();

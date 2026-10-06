@@ -8,6 +8,7 @@
     import { ROLE_OPTIONS, isCustomerRole } from "$lib/roles";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let { users, supabase, projects = [], customerProjects = [] } = $props<{ users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] }>();
 
@@ -135,6 +136,7 @@
         const { data: resp, error } = await supabase.functions.invoke('admin-users', { body });
         busy = false;
         if (error || resp?.error) { err = await fnError(error, resp, 'Operation failed.'); return; }
+        logAction(action === 'create' ? 'user_created' : 'user_updated', { name: activityLabel(form.full_name || form.email) });
         addToast(action === 'create' ? 'User added successfully' : 'User updated successfully');
         editing = null;
         await invalidateAll();
@@ -147,6 +149,7 @@
         });
         busy = false;
         if (error || resp?.error) { err = await fnError(error, resp, 'Delete failed.'); return; }
+        logAction('user_deleted', { name: activityLabel(deleting.full_name || deleting.email) });
         addToast('User deleted successfully');
         deleting = null;
         await invalidateAll();

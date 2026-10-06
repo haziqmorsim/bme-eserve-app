@@ -9,6 +9,7 @@
     import SortHeader from "./SortHeader.svelte";
     import { hasImage } from "$lib/parts";
     import { BOILER_IMAGE_BUCKET, boilerImageSources, grateFor } from "$lib/boiler-design";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let { boilers, supabase, projects = [], boilerProjects = [] } = $props<{
         boilers: any[];
@@ -157,6 +158,7 @@
         const projErr = await syncProjects(boilerId);
         busy = false;
         if (projErr) { err = projErr; return; }
+        logAction(editing === 'new' ? 'boiler_created' : 'boiler_updated', { name: activityLabel(payload.code) });
         addToast(editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully');
         editing = null;
         await invalidateAll();
@@ -196,6 +198,7 @@
         const { error } = await supabase.from('boilers').delete().eq('id', deleting.id);
         busy = false;
         if (error) { err = error.message; return; }
+        logAction('boiler_deleted', { name: activityLabel(deleting.code) });
         addToast('Boiler deleted successfully');
         deleting = null;
         await invalidateAll();

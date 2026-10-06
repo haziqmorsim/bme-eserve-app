@@ -1,3 +1,5 @@
+import { page } from '$app/state';
+
 export type ActivityUser = { id: string; role: string | null } | null | undefined;
 
 export type ActivityInput = {
@@ -25,4 +27,23 @@ export async function logActivity(
     } catch {
         
     }
+}
+
+export function logAction(eventType: string, meta?: Record<string, unknown>): void {
+    try {
+        const d: any = page.data;
+        const profile = d?.profile;
+        void logActivity(
+            d?.supabase,
+            profile ? { id: profile.id, role: profile.role } : null,
+            { event_type: eventType, path: page.url.pathname, meta: meta ?? null }
+        );
+    } catch {
+        
+    }
+}
+
+export function activityLabel(value: unknown, max = 80): string {
+    const s = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }

@@ -5,6 +5,7 @@
     import ChangePasswordModal from "$lib/components/ChangePasswordModal.svelte";
     import Modal from "$lib/components/admin/Modal.svelte";
     import { ROLE_LABEL } from "$lib/roles";
+    import { logAction } from "$lib/activity";
 
     let { data } = $props();
 
@@ -126,6 +127,8 @@
             err = error.message;
             return;
         }
+
+        logAction('profile_updated');
 
         let emailNotice = false;
         if (emailChanged) {

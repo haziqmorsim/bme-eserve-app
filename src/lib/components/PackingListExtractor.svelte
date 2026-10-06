@@ -12,7 +12,7 @@
         : n.toLocaleString('en-MY', { minimumFractionDigits: dp, maximumFractionDigits: dp});
 </script>
 
-<PdfExtractor {canRun} label="package(s)" {extract} {buildWorkbook}>
+<PdfExtractor {canRun} label="package(s)" activityType="packing_converted" {extract} {buildWorkbook}>
     {#snippet results({ rows })}
         {@const lists = rows as PackingList[]}
         {@const packages = lists.flatMap((l) => l.packages)}

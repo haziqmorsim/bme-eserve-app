@@ -2,10 +2,12 @@
     import { FileText, X } from "@lucide/svelte";
     import { addToast } from "$lib/stores/toast";
     import { onDestroy, type Snippet } from "svelte";
+    import { logAction } from "$lib/activity";
 
     let {
         canRun = true,
         label = 'document',
+        activityType = null,
         runningNote = 'This runs in your browser, so the PDFs stay on this device. Keep this tab open until it is finished.',
         extract,
         buildWorkbook,
@@ -13,6 +15,7 @@
     } = $props<{
         canRun?: boolean;
         label?: string;
+        activityType?: string | null;
         runningNote?: string;
         extract: (
             file: File,
@@ -148,6 +151,9 @@
             warnings = problems;
             resultMsg = `Extracted ${collected.length} ${label} from ${files.length} file${files.length > 1 ? 's' : ''}.`;
             stage = 'done';
+            if (activityType && collected.length > 0) {
+                logAction(activityType, { files: files.length, rows: collected.length });
+            }
         } catch (err) {
             console.error('Extraction failed:', err);
             stage = 'idle';

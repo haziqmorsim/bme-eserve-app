@@ -2,6 +2,7 @@
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import type { SupabaseClient } from "@supabase/supabase-js";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let { settings = [], supabase, profile = null, dirty = $bindable(false) } = $props<{
         settings?: any[];
@@ -31,9 +32,12 @@
         }
     ] as const;
 
-    const OPTIONAL_KEYS: Record<string, { is_public: boolean }> = Object.fromEntries(
-        REMINDER_FIELDS.map((f) => [f.key, { is_public: false }])
-    );
+    const OPTIONAL_KEYS: Record<string, { is_public: boolean }> = {
+        ...Object.fromEntries(REMINDER_FIELDS.map((f) => [f.key, { is_public: false }])),
+        quote_ref_prefix_custom: { is_public: true },
+        quote_ref_middle_custom: { is_public: true },
+        quote_ref_suffix_custom: { is_public: true }
+    };
 
     function initial() {
         const m: Record<string, string> = {};
@@ -101,9 +105,11 @@
             e.sla_overdue_hours = 'Overdue threshold must be greater than the aging threshold.';
         }
 
-        const prefix = (form.quote_ref_prefix ?? '').trim();
-        if (prefix && !/^[A-Za-z0-9]{1,10}$/.test(prefix)) {
-            e.quote_ref_prefix = 'Use 1-10 letters or digits only.';
+        for (const part of REF_PARTS) {
+            if ((form[part.key] ?? part.fallback) !== 'custom') continue;
+            const text = (form[part.customKey] ?? '').trim();
+            if (!text) e[part.customKey] = 'Enter the custom text.';
+            else if (!/^[A-Za-z0-9]{1,10}$/.test(text)) e[part.customKey] = 'Use 1-10 letters or digits only.';
         }
 
         const semail = (form.support_email ?? '').trim();
@@ -174,6 +180,7 @@
         }
 
         busy = false;
+        logAction('general_settings_updated');
         addToast('Settings saved successfully.');
         await invalidateAll();
     }
@@ -200,10 +207,17 @@
         { value: 'project', label: 'Project no. (PB0928)' },
         { value: 'boiler', label: 'Boiler code (BM-0001)' },
         { value: 'index', label: 'Index (0001)' },
+        { value: 'custom', label: 'Custom text' },
         { value: 'none', label: 'None' }
     ];
 
-    function sampleToken(token: string): string {
+    const REF_PARTS = [
+        { label: 'Prefix', key: 'quote_ref_prefix', customKey: 'quote_ref_prefix_custom', fallback: 'custom', placeholder: 'BME' },
+        { label: 'Middle Part', key: 'quote_ref_middle', customKey: 'quote_ref_middle_custom', fallback: 'year', placeholder: 'e.g. SVC' },
+        { label: 'Suffix', key: 'quote_ref_suffix', customKey: 'quote_ref_suffix_custom', fallback: 'index', placeholder: 'e.g. REQ' }
+    ] as const;
+
+    function sampleToken(token: string, customText: string): string {
         const now = new Date();
         const dd = String(now.getDate()).padStart(2, '0');
         const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -213,6 +227,7 @@
             case 'project': return 'PB0928';
             case 'boiler': return 'BM-0001';
             case 'index': return '0001';
+            case 'custom': return customText.trim();
             default: return '';
         }
     }
@@ -220,18 +235,14 @@
     let refPreview = $derived.by(() => {
         const sepRaw = form.quote_ref_separator ?? '-';
         const sep = sepRaw === 'none' ? '' : sepRaw;
-        const parts = [
-            (form.quote_ref_prefix ?? '').trim(),
-            sampleToken(form.quote_ref_middle ?? 'year'),
-            sampleToken(form.quote_ref_suffix ?? 'index')
-        ].filter((p) => p !== '');
+        const parts = REF_PARTS.map((p) =>
+            sampleToken(form[p.key] ?? p.fallback, form[p.customKey] ?? (p.key === 'quote_ref_prefix' ? 'BME' : ''))
+        ).filter((p) => p !== '');
         return parts.length ? parts.join(sep) : '(empty)';
     });
 
     let refWarning = $derived.by(() => {
-        const mid = form.quote_ref_middle ?? 'year';
-        const suf = form.quote_ref_suffix ?? 'index';
-        if (mid === 'index' || suf === 'index') return '';
+        if (REF_PARTS.some((p) => (form[p.key] ?? p.fallback) === 'index')) return '';
         return 'Without an Index part, two requests can produce the same reference. A running number is appended automatically when that happens.';
     });
 </script>
@@ -279,10 +290,26 @@
         <h2>Quotations</h2>
         <p class="gen-hint">The reference format applies to newly created requests only, existing reference numbers are never rewritten.</p>
         <div class="adm-form">
-            <label>Prefix
-                <input class="w-50" bind:value={form.quote_ref_prefix} placeholder="BME" class:invalid={fieldErr.quote_ref_prefix} />
-                {#if fieldErr.quote_ref_prefix}<span class="field-err">{fieldErr.quote_ref_prefix}</span>{/if}
-            </label>
+            {#snippet refPart(p: (typeof REF_PARTS)[number])}
+                <label>{p.label}
+                    <select class="w-50" bind:value={form[p.key]}>
+                        {#each REF_TOKENS as t (t.value)}
+                            <option value={t.value}>{t.label}</option>
+                        {/each}
+                    </select>
+                    {#if (form[p.key] ?? p.fallback) === 'custom'}
+                        <input
+                            class="w-50"
+                            bind:value={form[p.customKey]}
+                            placeholder={p.placeholder}
+                            maxlength="10"
+                            aria-label="{p.label} custom text"
+                            class:invalid={fieldErr[p.customKey]} />
+                        {#if fieldErr[p.customKey]}<span class="field-err">{fieldErr[p.customKey]}</span>{/if}
+                    {/if}
+                </label>
+            {/snippet}
+            {@render refPart(REF_PARTS[0])}
             <label>Separator
                 <select class="w-25" bind:value={form.quote_ref_separator}>
                     <option value="-">Hyphen ( - )</option>
@@ -290,20 +317,8 @@
                     <option value="none">No separator</option>
                 </select>
             </label>
-            <label>Middle Part
-                <select class="w-50" bind:value={form.quote_ref_middle}>
-                    {#each REF_TOKENS as t (t.value)}
-                        <option value={t.value}>{t.label}</option>
-                    {/each}
-                </select>
-            </label>
-            <label>Suffix
-                <select class="w-50" bind:value={form.quote_ref_suffix}>
-                    {#each REF_TOKENS as t (t.value)}
-                        <option value={t.value}>{t.label}</option>
-                    {/each}
-                </select>
-            </label>
+            {@render refPart(REF_PARTS[1])}
+            {@render refPart(REF_PARTS[2])}
             <div class="full ref-preview">
                 <span class="rp-label">Example reference</span>
                 <code class="rp-value">{refPreview}</code>

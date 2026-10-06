@@ -16,6 +16,7 @@
 <PdfExtractor
     {canRun}
     label="invoice(s)"
+    activityType="invoice_converted"
     runningNote="Each page is read the e-Serve AI assistant. Keep this tab open until it is finished."
     {extract}
     {buildWorkbook}>

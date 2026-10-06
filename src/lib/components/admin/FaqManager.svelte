@@ -5,6 +5,7 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Plus, Menu } from "@lucide/svelte";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let { faqs, supabase } = $props<{ faqs: any[]; supabase: SupabaseClient }>();
 
@@ -94,6 +95,7 @@
             : await supabase.from('faqs').update(payload).eq('id', editing);
         busy = false;
         if (resp.error) { err = resp.error.message; return; }
+        logAction(editing === 'new' ? 'faq_created' : 'faq_updated', { name: activityLabel(payload.question) });
         addToast(editing === 'new' ? 'Question added successfully' : 'Question updated successfully');
         editing = null;
         await invalidateAll();
@@ -104,6 +106,7 @@
         const { error } = await supabase.from('faqs').delete().eq('id', deleting.id);
         busy = false;
         if (error) { err = error.message; return; }
+        logAction('faq_deleted', { name: activityLabel(deleting.question) });
         addToast('Question deleted successfully');
         deleting = null;
         await invalidateAll();
@@ -118,6 +121,7 @@
             .eq('id', f.id);
         moving = null;
         if (error) { addToast(`Could not update: ${error.message}`, 'error'); return; }
+        logAction('faq_updated', { name: activityLabel(f.question) });
         addToast(f.is_published ? 'Question unpublished' : 'Question published');
         await invalidateAll();
     }
