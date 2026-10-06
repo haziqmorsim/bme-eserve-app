@@ -4,7 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { Plus } from "@lucide/svelte";
+    import { Search, Plus } from "@lucide/svelte";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
     import { hasImage } from "$lib/parts";
@@ -206,7 +206,10 @@
 </script>
 
 <div class="adm-bar">
-    <input class="adm-search" type="search" placeholder="Search boilers..." bind:value={search} />
+    <div class="searchbar card">
+        <span class="search-ic"><Search size={16} /></span>
+        <input class="adm-search" type="search" placeholder="Search boilers..." bind:value={search} />
+    </div>
     <button class="btn-primary" onclick={startNew}>
         <Plus size={16} /> Add Boiler
     </button>
@@ -348,6 +351,38 @@
 {/if}
 
 <style>
+    .searchbar {
+        width: 280px;
+        position: relative;
+        padding: 0;
+        border-radius: 10px;
+    }
+
+    .searchbar:focus-within {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .searchbar input {
+        width: 100%;
+        padding: 11px 14px 11px 36px;
+        border: none;
+        background: transparent;
+    }
+
+    .searchbar input::-webkit-search-cancel-button {
+        display: none;
+    }
+
+    .search-ic {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--bme-muted);
+        display: inline-flex;
+        pointer-events: none;
+    }
+
     .adm-bar .btn-primary {
         display: inline-flex;
         align-items: center;
@@ -460,5 +495,11 @@
         margin: 5px 0 0;
         font-size: 12.5px;
         color: var(--bme-muted);
+    }
+
+    @media (max-width: 640px) {
+        .searchbar {
+            width: 200px;
+        }
     }
 </style>

@@ -245,13 +245,9 @@
 
 <h1>History</h1>
 
-<div class="searchbar">
-    <Search size={17} />
-    <input
-        type="search"
-        bind:value={search}
-        placeholder={searchPlaceholder}
-        aria-label="Search history" />
+<div class="searchbar card">
+    <span class="search-ic"><Search size={16} /></span>
+    <input type="search" bind:value={search} placeholder={searchPlaceholder} aria-label="Search history" />
     {#if search}
         <button class="clear" onclick={() => (search = '')} aria-label="Clear search">
             <X size={15} />
@@ -564,15 +560,10 @@
     }
 
     .searchbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0 10px;
-        margin-bottom: 16px;
-        background: var(--bme-surface);
-        border: 1px solid var(--bme-border);
+        position: relative;
+        padding: 0;
+        margin-bottom: 18px;
         border-radius: 10px;
-        color: var(--bme-muted);
     }
 
     .searchbar:focus-within {
@@ -580,17 +571,24 @@
     }
 
     .searchbar input {
-        flex: 1;
-        min-width: 0;
+        width: 100%;
+        padding: 11px 14px 11px 36px;
         border: none;
-        outline: none;
         background: transparent;
-        font: inherit;
-        color: var(--bme-ink);
     }
 
     .searchbar input::-webkit-search-cancel-button {
         display: none;
+    }
+
+    .search-ic {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--bme-muted);
+        display: inline-flex;
+        pointer-events: none;
     }
 
     .clear {

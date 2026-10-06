@@ -4,7 +4,7 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { Plus, Menu } from "@lucide/svelte";
+    import { Search, Plus, Menu } from "@lucide/svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
     let { faqs, supabase } = $props<{ faqs: any[]; supabase: SupabaseClient }>();
@@ -247,7 +247,10 @@
 </script>
 
 <div class="adm-bar">
-    <input type="search" class="adm-search" placeholder="Search questions..." bind:value={search} />
+    <div class="searchbar card">
+        <span class="search-ic"><Search size={16} /></span>
+        <input type="search" class="adm-search" placeholder="Search questions..." bind:value={search} />
+    </div>
     <button class="btn-primary" onclick={startNew}>
         <Plus size={16} /> Add Question
     </button>
@@ -347,6 +350,38 @@
 {/if}
 
 <style>
+    .searchbar {
+        width: 280px;
+        position: relative;
+        padding: 0;
+        border-radius: 10px;
+    }
+
+    .searchbar:focus-within {
+        border-color: var(--bme-dark-blue);
+    }
+
+    .searchbar input {
+        width: 100%;
+        padding: 11px 14px 11px 36px;
+        border: none;
+        background: transparent;
+    }
+
+    .searchbar input::-webkit-search-cancel-button {
+        display: none;
+    }
+
+    .search-ic {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--bme-muted);
+        display: inline-flex;
+        pointer-events: none;
+    }
+
     .adm-form {
         display: flex;
         flex-direction: column;
@@ -442,9 +477,14 @@
     }
 
     @media (max-width: 640px) {
+        .searchbar {
+            width: 200px;
+        }
+
         .ans-full { 
             display: none; 
         }
+        
         .ans-short { 
             display: inline; 
         }

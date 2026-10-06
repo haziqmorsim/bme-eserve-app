@@ -669,7 +669,7 @@ label input, label select, label textarea {
 	}
 
 	.adm-search {
-		max-width: none;
+		max-width: 200px;
 		flex: 1;
 	}
 }
