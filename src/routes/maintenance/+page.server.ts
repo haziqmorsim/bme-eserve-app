@@ -1,8 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { toMap, str, bool } from "$lib/settings";
-
-const MAINTENANCE_EXEMPT = new Set(['admin', 'manager', 'coo', 'developer']);
+import { isStaffRole } from "$lib/roles";
 
 export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
@@ -22,7 +21,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
             .select('role')
             .eq('id', user.id)
             .single();
-        if (MAINTENANCE_EXEMPT.has(profile?.role)) throw redirect(303, '/app');
+        if (isStaffRole(profile?.role)) throw redirect(303, '/app');
     }
 
     return {

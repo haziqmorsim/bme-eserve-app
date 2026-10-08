@@ -48,12 +48,14 @@ export function guard(req: Request): boolean {
 
 export type Recipient = { id: string; email: string | null; full_name: string | null };
 
-export async function recipientsByRole(admin: SupabaseClient, roles: string[]):
+export async function recipientsByRole(admin: SupabaseClient, roles: string[], page?: string):
 Promise<Recipient[]> {
-    const { data } = await admin
+    let query = admin
         .from('profiles')
         .select('id, email, full_name, role')
         .in('role', roles);
+    if (page) query = query.contains('pages', [page]);
+    const { data } = await query;
     return (data ?? []).map((p: any) => ({ id: p.id, email: p.email, full_name: p.full_name }));
 }
 

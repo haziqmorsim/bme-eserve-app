@@ -2,7 +2,7 @@ import { enqueueJob, type JobType } from "$lib/server/jobs";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF } from '$lib/roles';
 const TYPES: JobType[] = ['embed_parts', 'bulk_tag_enquiries'];
 
 export const POST: RequestHandler = async ({ request, locals }) => {

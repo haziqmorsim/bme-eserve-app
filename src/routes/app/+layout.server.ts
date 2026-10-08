@@ -1,6 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { toMap, str, bool } from "$lib/settings";
+import { isActorRole, isStaffRole, canAccessPage } from "$lib/roles";
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
     const { session, user } = await safeGetSession();
@@ -8,7 +9,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, role, region_id, must_change_password, whats_new_seen_version')
+        .select('id, full_name, company, role, department, position, pages, region_id, must_change_password, whats_new_seen_version')
         .eq('id', user.id)
         .single();
 
@@ -23,7 +24,6 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         console.error('[app_settings] read failed:', settingsError.message);
     }
 
-    const MAINTENANCE_EXEMPT = new Set(['admin', 'manager', 'coo', 'developer']);
     const settingsMap = toMap(settingRows);
     const maintenanceOn = bool(settingsMap, 'maintenance_mode', false);
 
@@ -31,7 +31,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         console.warn('[app_settings] no public rows visible to this user - check migrations 0044/0045 were applied.');
     }
 
-    if (maintenanceOn && !MAINTENANCE_EXEMPT.has(profile?.role)) {
+    if (maintenanceOn && !isStaffRole(profile?.role)) {
         throw redirect(303, '/maintenance');
     }
 
@@ -46,10 +46,8 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         content: whatsNewContent
     };
 
-    const ACTOR_ROLES = new Set(['admin', 'manager', 'coo']); // exclude developer (read-only)
-
     let pendingCount = 0;
-    if (profile && ACTOR_ROLES.has(profile.role)) {
+    if (profile && isActorRole(profile.role) && canAccessPage(profile, 'requests')) {
         const { count } = await supabase
             .from('quotes')
             .select('id', { count: 'exact', head: true })
@@ -57,9 +55,8 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
         pendingCount = count ?? 0;
     }
 
-    const STAFF = new Set(['admin', 'manager', 'coo']); // exclude developer
     let enquiryCount = 0;
-    if (profile && STAFF.has(profile.role)) {
+    if (profile && isActorRole(profile.role) && canAccessPage(profile, 'enquiries')) {
         const { count } = await supabase
             .from('enquiries')
             .select('id', { count: 'exact', head: true })

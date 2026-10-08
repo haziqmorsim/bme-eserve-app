@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Boiler } from '$lib/types';
+	import { isStaffRole } from '$lib/roles';
 	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
@@ -363,8 +364,7 @@
 			: null
 	);
 
-	const STAFF_ROLES = new Set(['admin', 'manager', 'coo', 'developer']);
-	const isStaff = $derived(STAFF_ROLES.has(profile?.role));
+	const isStaff = $derived(isStaffRole(profile?.role));
 
 	let reportBusy = $state(false);
 

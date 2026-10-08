@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF } from '$lib/roles';
 
 type PartRef = { id: string; part_number: string; name: string };
 

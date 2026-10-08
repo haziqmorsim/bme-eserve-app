@@ -1,10 +1,12 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { earnedCoupons } from "$lib/coupon";
+import { requirePage } from "$lib/page-access";
 
-export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
+export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
+    requirePage((await parent()).profile, 'cart');
 
     const [{ count }, { data: redeemed }] = await Promise.all([
         supabase

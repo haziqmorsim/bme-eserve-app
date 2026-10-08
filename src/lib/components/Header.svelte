@@ -4,7 +4,7 @@
     import { Menu, X, UserRound } from "@lucide/svelte";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
     import ThemeToggle from "$lib/components/ThemeToggle.svelte";
-    import { canUseOthers } from "$lib/roles";
+    import { userPages, isStaffRole } from "$lib/roles";
 
     let { profile, pendingCount = 0, enquiryCount = 0, notifications = [], supabase } = $props();
     let count = $derived($quoteItems.reduce((n, i) => n + i.quantity, 0));
@@ -31,11 +31,8 @@
         form.submit();
     }
 
-    let isStaff = $derived(
-        profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'coo' || profile?.role === 'developer'
-    );
-    let isAdmin = $derived(profile?.role === 'admin' || profile?.role === 'developer');
-    let showOthers = $derived(canUseOthers(profile?.role));
+    let can = $derived(new Set(userPages(profile)));
+    let canSettings = $derived(isStaffRole(profile?.role));
 </script>
 
 <header class="header">
@@ -46,19 +43,25 @@
             </a>
         </div>
         <div class="pages">
-            <a class="btn-ghost" class:active={$page.url.pathname === '/app'} href="/app">Home</a>
-            <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Cart{#if count > 0}<span class="badge">{count}</span>{/if}</a>
-            <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
-            {#if isStaff}
+            {#if can.has('home')}
+                <a class="btn-ghost" class:active={$page.url.pathname === '/app'} href="/app">Home</a>
+            {/if}
+            {#if can.has('cart')}
+                <a class="btn-ghost quote-btn" class:active={$page.url.pathname === '/app/quotes'} href="/app/quotes">Cart{#if count > 0}<span class="badge">{count}</span>{/if}</a>
+            {/if}
+            {#if can.has('history')}
+                <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/history')} href="/app/history">History</a>
+            {/if}
+            {#if can.has('requests')}
                 <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/requests')} href="/app/requests">Requests{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}</a>
             {/if}
-            {#if isStaff}
+            {#if can.has('enquiries')}
                 <a class="btn-ghost badge-btn" class:active={$page.url.pathname.startsWith('/app/enquiries')} href="/app/enquiries">Enquiries{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
-            {#if isStaff}
+            {#if can.has('analytics')}
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/analytics')} href="/app/analytics">Analytics</a>
             {/if}
-            {#if showOthers}
+            {#if can.has('others')}
                 <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/others')} href="/app/others">Others</a>
             {/if}
         </div>
@@ -74,16 +77,18 @@
             </div>
             <div class="actions">
                 <ThemeToggle />
-                <a
-                    href="/app/profile"
-                    class="profile-icon"
-                    class:active={$page.url.pathname.startsWith('/app/profile')}
-                    aria-label="Profile"
-                    title="Profile">
-                    <UserRound size={20} />
-                </a>
+                {#if can.has('profile')}
+                    <a
+                        href="/app/profile"
+                        class="profile-icon"
+                        class:active={$page.url.pathname.startsWith('/app/profile')}
+                        aria-label="Profile"
+                        title="Profile">
+                        <UserRound size={20} />
+                    </a>
+                {/if}
                 <NotificationBell {notifications} {supabase} />
-                {#if isAdmin}
+                {#if canSettings}
                     <a class="btn-ghost" class:active={$page.url.pathname.startsWith('/app/settings')} href="/app/settings">Settings</a>
                 {/if}
                 <form action="/logout" method="POST" onsubmit={endChatThenLogout}>
@@ -111,23 +116,29 @@
     <div class="side-body">
         <nav class="side-group top">
             <p class="side-greeting">Hi, <span class="name">{profile?.full_name ?? 'there'}</span></p>
-            <a href="/app" class="side-link" class:active={$page.url.pathname === '/app'} onclick={close}>Home</a>
-            <a href="/app/quotes" class="side-link" class:active={$page.url.pathname === '/app/quotes'} onclick={close}>
-                <span>Cart</span>{#if count > 0}<span class="badge">{count}</span>{/if}
-            </a>
-            <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
-            {#if isStaff}
+            {#if can.has('home')}
+                <a href="/app" class="side-link" class:active={$page.url.pathname === '/app'} onclick={close}>Home</a>
+            {/if}
+            {#if can.has('cart')}
+                <a href="/app/quotes" class="side-link" class:active={$page.url.pathname === '/app/quotes'} onclick={close}>
+                    <span>Cart</span>{#if count > 0}<span class="badge">{count}</span>{/if}
+                </a>
+            {/if}
+            {#if can.has('history')}
+                <a href="/app/history" class="side-link" class:active={$page.url.pathname.startsWith('/app/history')} onclick={close}>History</a>
+            {/if}
+            {#if can.has('requests')}
                 <a href="/app/requests" class="side-link" class:active={$page.url.pathname.startsWith('/app/requests')} onclick={close}>
                     <span>Requests</span>{#if pendingCount > 0}<span class="badge">{pendingCount}</span>{/if}
                 </a>
             {/if}
-            {#if isStaff}
+            {#if can.has('enquiries')}
                 <a href="/app/enquiries" class="side-link" class:active={$page.url.pathname.startsWith('/app/enquiries')} onclick={close}><span>Enquiries</span>{#if enquiryCount > 0}<span class="badge">{enquiryCount}</span>{/if}</a>
             {/if}
-            {#if isStaff}
+            {#if can.has('analytics')}
                 <a href="/app/analytics" class="side-link" class:active={$page.url.pathname.startsWith('/app/analytics')} onclick={close}>Analytics</a>
             {/if}
-            {#if showOthers}
+            {#if can.has('others')}
                 <a href="/app/others" class="side-link" class:active={$page.url.pathname.startsWith('/app/others')} onclick={close}>Others</a>
             {/if}
         </nav>
@@ -136,11 +147,13 @@
             <div class="side-bell">
                 <ThemeToggle variant="segmented" />
             </div>
-            <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
+            {#if can.has('profile')}
+                <a href="/app/profile" class="side-link" class:active={$page.url.pathname.startsWith('/app/profile')} onclick={close}>Profile</a>
+            {/if}
             <div class="side-bell">
                 <NotificationBell {notifications} {supabase} label="Notifications" />
             </div>
-            {#if isAdmin}
+            {#if canSettings}
                 <a href="/app/settings" class="side-link" class:active={$page.url.pathname.startsWith('/app/settings')} onclick={close}>Settings</a>
             {/if}
             <form action="/logout" method="POST" onsubmit={endChatThenLogout}>

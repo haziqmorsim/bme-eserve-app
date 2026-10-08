@@ -4,14 +4,15 @@
     import { UserRound, Pencil, KeyRound } from "@lucide/svelte";
     import ChangePasswordModal from "$lib/components/ChangePasswordModal.svelte";
     import Modal from "$lib/components/admin/Modal.svelte";
-    import { ROLE_LABEL } from "$lib/roles";
+    import { ROLE_LABEL, isStaffRole, hasJobDetails } from "$lib/roles";
     import { logAction } from "$lib/activity";
 
     let { data } = $props();
 
     let me: any = $derived(data.me);
 
-    let canManageUsers = $derived(me?.role === 'admin' || me?.role === 'developer');
+    let canManageUsers = $derived(isStaffRole(me?.role));
+    let showJob = $derived(hasJobDetails(me?.role));
 
     let editing = $state(false);
     let busy = $state(false);
@@ -33,7 +34,8 @@
             full_name: m.full_name ?? '',
             company: m.company ?? '',
             email: m.email ?? '',
-            phone: m.phone ?? '',
+            department: m.department ?? '',
+            position: m.position ?? '',
             address_line1: m.address_line1 ?? '',
             address_line2: m.address_line2 ?? '',
             city: m.city ?? '',
@@ -113,7 +115,8 @@
             p_full_name: form.full_name, 
             p_company: form.company, 
             p_email: newEmail, 
-            p_phone: form.phone, 
+            p_department: form.department, 
+            p_position: form.position, 
             p_address_line1: form.address_line1, 
             p_address_line2: form.address_line2, 
             p_city: form.city, 
@@ -218,9 +221,14 @@
                         <KeyRound size={16} /> <span id="pw-btn-text">Change Password</span>
                     </button>
                 </div>
-                <label><span>Phone</span>
-                    <input bind:value={form.phone} placeholder="+60..." />
-                </label>
+                {#if showJob}
+                    <label><span>Department</span>
+                        <input bind:value={form.department} placeholder="e.g. Service" />
+                    </label>
+                    <label><span>Position</span>
+                        <input bind:value={form.position} placeholder="e.g. Manager" />
+                    </label>
+                {/if}
                 <label><span>Role</span>
                     <input value={ROLE_LABEL[me.role] ?? me.role} disabled />
                 </label>
@@ -265,7 +273,10 @@
                 <div class="row"><dt>Company</dt><dd>{show(me.company)}</dd></div>
                 <div class="row"><dt>E-mail</dt><dd>{show(me.email)}</dd></div>
                 <div class="row"><dt>Password</dt><dd>********</dd></div>
-                <div class="row"><dt>Phone</dt><dd>{show(me.phone)}</dd></div>
+                {#if showJob}
+                    <div class="row"><dt>Department</dt><dd>{show(me.department)}</dd></div>
+                    <div class="row"><dt>Position</dt><dd>{show(me.position)}</dd></div>
+                {/if}
                 <div class="row"><dt>Role</dt><dd>{ROLE_LABEL[me.role] ?? show(me.role)}</dd></div>
             </dl>
             {#if canManageUsers}

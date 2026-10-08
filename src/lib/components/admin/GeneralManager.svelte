@@ -154,7 +154,7 @@
             if (retryData && retryData.length > 0) return null;
         }
 
-        return `"${key}" was not saved. Editing settings requires the admin or developer role.`;
+        return `"${key}" was not saved. Editing settings requires a staff or developer account.`;
     }
 
     async function save() {

@@ -1,9 +1,10 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
+import { isStaffRole } from "$lib/roles";
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
-    if (profile?.role !== 'admin' && profile?.role !== 'developer') throw error(403, 'Forbidden');
+    if (!isStaffRole(profile?.role)) throw error(403, 'Forbidden');
 
     const [boilers, components, parts, users, customerProjects, lastSignIns, faqs, boilerSpecs, boilerReadings, projects, boilerProjects, appSettings, dashMetrics, dashGroups, dashMotors, dashMotorCells, dashRul, dashBaselines, dashIndicators] = await Promise.all([
         supabase.from('boilers').select('*').order('code'),
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
         supabase
             .from('profiles')
-            .select('id, full_name, company, email, phone, role')
+            .select('id, full_name, company, email, department, position, role, pages')
             .order('full_name'), 
         supabase.from('customer_projects').select('user_id, project_id'), 
         supabase.rpc('user_last_sign_ins'), 

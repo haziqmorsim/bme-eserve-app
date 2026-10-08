@@ -12,6 +12,7 @@
     import { logActivity } from "$lib/activity";
     import { quoteItems } from "$lib/stores/quote";
     import { toMap, bool } from "$lib/settings";
+    import { isStaffRole } from "$lib/roles";
 
     let { data, children } = $props();
     let { supabase } = $derived(data);
@@ -50,10 +51,9 @@
     //     return () => live.stop();
     // });
 
-    const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
     let settingsMap = $derived(toMap(data.settings));
     let maintenanceOn = $derived(bool(settingsMap, 'maintenance_mode', false));
-    let isStaff = $derived(STAFF.has(data.profile?.role));
+    let isStaff = $derived(isStaffRole(data.profile?.role));
 
     async function handleTimeout() {
         if (data.profile?.id) {

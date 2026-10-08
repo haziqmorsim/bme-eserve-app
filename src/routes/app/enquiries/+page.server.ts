@@ -1,10 +1,12 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF } from '$lib/roles';
+import { requirePage } from '$lib/page-access';
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
+    requirePage(profile, 'enquiries');
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const [enquiryRes, partsRes] = await Promise.all([

@@ -1,14 +1,16 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { TIERS, couponCode } from "$lib/coupon";
+import { isStaffRole } from "$lib/roles";
+import { requirePage } from "$lib/page-access";
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGetSession } }) => {
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
 
     const { profile } = await parent();
-    const role = profile?.role;
-    const isStaff = role === 'admin' || role === 'manager' || role === 'coo' || role === 'developer';
+    requirePage(profile, 'history');
+    const isStaff = isStaffRole(profile?.role);
 
     const { data: quoteRows } = await supabase
         .from('quotes')

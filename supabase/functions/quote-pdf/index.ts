@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
             .select('role')
             .eq('id', user.id)
             .single();
-        const STAFF = ['admin', 'manager', 'coo', 'developer'];
+        const STAFF = ['staff', 'developer'];
         if (!me || !STAFF.includes(me.role)) {
             return json(403, { error: 'Only staff can download quotation PDFs.' });
         }

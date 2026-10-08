@@ -1,12 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { readInvoicePage, UnreadableReply } from '$lib/server/invoice-reader';
-import { OTHERS_ROLES } from '$lib/roles';
+import { canAccessPage } from '$lib/roles';
 import type { RequestHandler } from './$types';
 
 export const config = { maxDuration: 60 };
-
-const CAN_RUN = OTHERS_ROLES;
 
 const MAX_IMAGE_BASE64 = 4 * 1024 * 1024;
 const MAX_OCR_CHARS = 20_000;
@@ -17,10 +15,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const { data: profile } = await locals.supabase
         .from('profiles')
-        .select('role')
+        .select('role, pages')
         .eq('id', user.id)
         .single();
-    if (!profile || !CAN_RUN.has(profile.role)) return json({ error: 'forbidden' }, { status: 403 });
+    if (!profile || !canAccessPage(profile, 'others')) return json({ error: 'forbidden' }, { status: 403 });
 
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'not_configured' }, { status: 503 });
 

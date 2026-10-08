@@ -67,4 +67,7 @@ export interface Profile {
     region_id: string | null;
     email: string | null;
     phone: string | null;
+    department: string | null;
+    position: string | null;
+    pages: string[];
 }

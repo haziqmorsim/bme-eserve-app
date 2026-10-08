@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 		const overdue = enquiries ?? [];
 		if (overdue.length === 0) return json(200, { ok: true, reminded: 0, threshold });
 
-		const admins = await recipientsByRole(admin, ['admin']);
+		const admins = await recipientsByRole(admin, ['staff'], 'enquiries');
 
 		const now = Date.now();
 

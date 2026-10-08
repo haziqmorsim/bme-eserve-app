@@ -12,7 +12,7 @@ const RED = rgb(0.75, 0.22, 0.17);
 const AMBER = rgb(0.75, 0.55, 0.05);
 const GREEN = rgb(0.24, 0.47, 0.16);
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+const STAFF = new Set(['staff', 'developer']);
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         let page = doc.addPage([W, H]);
         let y = H - M;
 
-        const text = (s: string, x: number, yy: number size = 10, f = font, color = INK) => 
+        const text = (s: string, x: number, yy: number, size = 10, f = font, color = INK) => 
             page.drawText(s ?? '', { x, y: yy, size, font: f, color });
         const rightText = (s: string, xRight: number, yy: number, size = 10, f = font, color = INK) =>
             page.drawText(s ?? '', { x: xRight - f.widthOfTextAtSize(s ?? '', size), y: yy, size, font: f, color });
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
             y -= 10;
             text(s, M, y, 11, bold, BLUE);
             y -= 6;
-            page.drawLine({ start: { x: M, y }, end: { x: W - M, y } thickness: 0.8, color: LINE });
+            page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.8, color: LINE });
             y -= 16;
         };
 
@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
                 const m: any = monthByKey.get(i.indicator_key);
                 const days = m?.breach_days ?? 0;
                 const breached = m?.breached === true;
-                const noData != m;
+                const noData = !m;
 
                 text(i.label.length > 58 ? i.label.slice(0, 57) + '...' : i.label, cInd, y, 9);
                 text(noData ? '—' : String(days), cDays, y, 9);

@@ -1,9 +1,11 @@
 import type { PageLoad } from "./$types";
 import type { Boiler, Component, Part } from "$lib/types";
 import { isCustomerRole } from "$lib/roles";
+import { requirePage } from "$lib/page-access";
 
 export const load: PageLoad = async ({ parent, url }) => {
     const { supabase, profile } = await parent();
+    requirePage(profile, 'home');
     const isCustomer = !!profile && isCustomerRole(profile.role);
 
     let assignedIds: Set<string> | null = null;

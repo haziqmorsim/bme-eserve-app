@@ -325,13 +325,17 @@
 					>
 						<div class="info">
 							<div class="phead">
-								{#if !isPlaceholder(p.part_number)}<span class="pn">{p.part_number}</span
-									><span class="sep">{' — '}</span>{/if}<span class="pname">{p.name}</span>
+								<span class="pn" class:blank={isPlaceholder(p.part_number)}>
+									{isPlaceholder(p.part_number) ? '' : p.part_number}
+								</span>
+								<span class="sep">{' — '}</span><span class="pname">{p.name}</span>
 							</div>
-							{#if !isPlaceholder(p.description)}
-								<div class="pdesc">{p.description}</div>
-							{/if}
-							{#if textLines(p.specifications).length}
+							<div class="pdesc" class:blank={isPlaceholder(p.description)}>
+								{isPlaceholder(p.description) ? '(no description)' : p.description}
+							</div>
+							{#if !textLines(p.specifications).length}
+								<div class="pspec blank">(no specifications)</div>
+							{:else}
 								{@const specs = textLines(p.specifications)}
 								{@const isLong = specs.length > SPEC_LINE_LIMIT}
 								{@const isExpanded = expandedSpecs.has(p.id)}

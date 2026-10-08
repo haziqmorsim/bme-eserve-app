@@ -1,7 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF } from '$lib/roles';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {

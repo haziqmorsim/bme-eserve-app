@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
 		if (overdue.length === 0) return json(200, { ok: true, reminded: 0, threshold });
 
-		const staff = await recipientsByRole(admin, ['admin', 'manager', 'coo']);
+		const staff = await recipientsByRole(admin, ['staff'], 'requests');
 
 		for (const q of overdue) {
 			const since = lastActivity[q.id] ?? q.created_at;

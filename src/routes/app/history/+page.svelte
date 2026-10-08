@@ -5,6 +5,7 @@
     import { Search, X } from "@lucide/svelte";
     import Pagination from "$lib/components/admin/Pagination.svelte";
     import { untrack } from "svelte";
+    import { isActorRole, roleLabel } from "$lib/roles";
 
     let { data } = $props();
 
@@ -14,8 +15,7 @@
         return [];
     }
 
-    const ACTOR_ROLES = new Set(['admin', 'manager', 'coo']);
-    let canAct = $derived(ACTOR_ROLES.has(data.profile?.role));
+    let canAct = $derived(isActorRole(data.profile?.role));
     let working = $state<string | null>(null);
     let copied = $state<string | null>(null);
 
@@ -239,7 +239,7 @@
 
     function staffLabel(a: any): string {
         if (a.staff_name) return a.staff_name;
-        return a.role === 'admin' ? 'Admin' : a.role === 'manager' ? 'Manager' : a.role === 'coo' ? 'COO' : (a.role ?? 'Staff');
+        return roleLabel(a.role) || 'Staff';
     }
 </script>
 

@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 			await Promise.all([
 				admin.from('boilers').select('id, code, name'),
 				admin.from('customer_boilers').select('user_id, boiler_id'),
-				admin.from('profiles').select('id, full_name, company, email').in('role', ['customer', 'shipping']),
+				admin.from('profiles').select('id, full_name, company, email').eq('role', 'customer'),
 				admin.from('components').select('id, boiler_id, name'),
 				admin
 					.from('parts')
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
 		if (total === 0) return json(200, { ok: true, findings: 0, emailed: 0 });
 
-		const admins = await recipientsByRole(admin, ['admin']);
+		const admins = await recipientsByRole(admin, ['staff']);
 		if (admins.length === 0) return json(200, { ok: true, findings: total, emailed: 0 });
 
 		await notifyRecipients(admin, admins, {

@@ -5,7 +5,7 @@
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
     import { Search, Plus } from "@lucide/svelte";
-    import { ROLE_OPTIONS, isCustomerRole } from "$lib/roles";
+    import { ROLE_OPTIONS, isCustomerRole, hasJobDetails, PAGE_OPTIONS, defaultPages, availablePages, userPages, STAFF_ONLY_PAGES } from "$lib/roles";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
@@ -41,6 +41,18 @@
         form.project_ids = [...set];
     }
 
+    function togglePage(key: string) {
+        if (!allowedPages.has(key)) return;
+        const set = new Set<string>(form.pages ?? []);
+        if (set.has(key)) set.delete(key); else set.add(key);
+        form.pages = PAGE_OPTIONS.map((p) => p.key).filter((k) => set.has(k));
+    }
+
+    function onRoleChange(e: Event) {
+        form.role = (e.currentTarget as HTMLSelectElement).value;
+        form.pages = defaultPages(form.role || 'customer');
+    }
+
     const pageSize = 20;
     let search = $state('');
     let page = $state(1);
@@ -51,12 +63,16 @@
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
 
+    let formRole = $derived(form.role || 'customer');
+    let allowedPages = $derived(new Set<string>(availablePages(formRole)));
+
     let sort = $state<SortState>({ key: 'full_name', dir: 'asc' });
     const sortBy = {
         full_name: (u: any) => u.full_name,
         email: (u: any) => u.email,
-        phone: (u: any) => u.phone,
         company: (u: any) => u.company,
+        department: (u: any) => (hasJobDetails(u.role) ? u.department : null),
+        position: (u: any) => (hasJobDetails(u.role) ? u.position : null),
         role: (u: any) => roleLabel(u.role),
         last_sign_in: (u: any) => (u.last_sign_in_at ? Date.parse(u.last_sign_in_at) : null)
     };
@@ -67,7 +83,7 @@
             users.filter((u: any) => {
                 const q = search.trim().toLowerCase();
                 if (!q) return true;
-                return [u.full_name, u.email, u.phone, u.company, roleLabel(u.role)]
+                return [u.full_name, u.email, u.company, u.department, u.position, roleLabel(u.role)]
                     .some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
             }),
             sort,
@@ -82,14 +98,19 @@
     $effect(() => { search; sort; page = 1; });
 
     function blank() {
-        return { full_name: '', email: '', password: '', phone: '', company: '', role: '', project_ids: [] };
+        return {
+            full_name: '', email: '', password: '', company: '', role: '',
+            department: '', position: '', project_ids: [], pages: defaultPages('customer')
+        };
     }
     function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
     function startEdit(u: any) {
         form = {
             full_name: u.full_name ?? '', email: u.email ?? '', password: '',
-            phone: u.phone ?? '', company: u.company ?? '', role: u.role ?? '',
-            project_ids: [...(assignedByUser[u.id] ?? [])]
+            company: u.company ?? '', role: u.role ?? '',
+            department: u.department ?? '', position: u.position ?? '',
+            project_ids: [...(assignedByUser[u.id] ?? [])],
+            pages: userPages(u)
         };
         err = ''; fieldErr = {}; editing = u.id;
     }
@@ -114,6 +135,9 @@
         if (isCustomerRole(form.role || 'customer') && (form.project_ids ?? []).length === 0) {
             e.project_ids = 'At least one project is required.';
         }
+        if (!(form.pages ?? []).some((k: string) => allowedPages.has(k))) {
+            e.pages = 'Select at least one page.';
+        }
         fieldErr = e;
         return Object.keys(e).length === 0;
     }
@@ -125,10 +149,13 @@
         const action = editing === 'new' ? 'create' : 'update';
         const body: any = {
             action, email: form.email.trim(), full_name: form.full_name || null,
-            company: form.company || null, phone: form.phone || null,
+            company: form.company || null,
             role: form.role || 'customer'
         };
         const isCustomer = isCustomerRole(form.role || 'customer');
+        body.department = isCustomer ? null : form.department?.trim() || null;
+        body.position = isCustomer ? null : form.position?.trim() || null;
+        body.pages = (form.pages ?? []).filter((k: string) => allowedPages.has(k));
         body.project_ids = isCustomer ? (form.project_ids ?? []) : [];
         if (action === 'create') body.password = form.password;
         else body.id = editing;
@@ -175,8 +202,9 @@
                 <tr>
                     <SortHeader label="Name" key="full_name" {sort} onsort={setSort} />
                     <SortHeader label="Email" key="email" {sort} onsort={setSort} />
-                    <SortHeader label="Phone" key="phone" {sort} onsort={setSort} />
                     <SortHeader label="Company" key="company" {sort} onsort={setSort} />
+                    <SortHeader label="Department" key="department" {sort} onsort={setSort} />
+                    <SortHeader label="Position" key="position" {sort} onsort={setSort} />
                     <SortHeader label="Role" key="role" {sort} onsort={setSort} />
                     <SortHeader label="Last Sign In" key="last_sign_in" {sort} onsort={setSort} />
                     <th>Actions</th>
@@ -187,8 +215,9 @@
                     <tr>
                         <td style="vertical-align: middle;"><strong>{u.full_name ?? '—'}</strong></td>
                         <td style="text-align: center; vertical-align: middle;">{u.email ?? '—'}</td>
-                        <td style="text-align: center; vertical-align: middle;">{u.phone ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{u.company ?? '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{(hasJobDetails(u.role) && u.department) || '—'}</td>
+                        <td style="text-align: center; vertical-align: middle;">{(hasJobDetails(u.role) && u.position) || '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{roleLabel(u.role)}</td>
                         <td style="text-align: center; vertical-align: middle;">{lastSignIn(u.last_sign_in_at)}</td>
                         <td>
@@ -214,7 +243,7 @@
             <label>Full Name <span class="required">*</span><input bind:value={form.full_name} class:invalid={fieldErr.full_name} />
                 {#if fieldErr.full_name}<span class="field-err">{fieldErr.full_name}</span>{/if}
             </label>
-            <label>Email <span class="required">*</span><input type="email" bind:value={form.email} class:invalid={fieldErr.email} />
+            <label>E-mail <span class="required">*</span><input type="email" bind:value={form.email} class:invalid={fieldErr.email} />
                 {#if fieldErr.email}<span class="field-err">{fieldErr.email}</span>{/if}
             </label>
             {#if editing === 'new'}
@@ -222,16 +251,19 @@
                     {#if fieldErr.password}<span class="field-err">{fieldErr.password}</span>{/if}
                 </label>
             {/if}
-            <label><span>Phone Number</span><input bind:value={form.phone} placeholder="+60..." /></label>
             <label>Company Name <span class="required">*</span><input bind:value={form.company} class:invalid={fieldErr.company} />
                 {#if fieldErr.company}<span class="field-err">{fieldErr.company}</span>{/if}
             </label>
             <label>Role <span class="required">*</span>
-                <select bind:value={form.role} class:invalid={fieldErr.role}>
+                <select value={form.role} onchange={onRoleChange} class:invalid={fieldErr.role}>
                     {#each ROLES as r (r.value)}<option value={r.value}>{r.label}</option>{/each}
                 </select>
                 {#if fieldErr.role}<span class="field-err">{fieldErr.role}</span>{/if}
             </label>
+            {#if hasJobDetails(formRole)}
+                <label>Department<input bind:value={form.department} placeholder="e.g. Service" /></label>
+                <label>Position<input bind:value={form.position} placeholder="e.g. Manager" /></label>
+            {/if}
         </div>
         <div class="project-actions">
             {#if isCustomerRole(form.role || 'customer')}
@@ -249,6 +281,33 @@
                     {#if fieldErr.project_ids}<span class="field-err">{fieldErr.project_ids}</span>{/if}
                 </div>
             {/if}
+            <div class="project-field">
+                <span class="pf-label">Page(s) <span class="required">*</span></span>
+                <div class="project-picker page-picker" class:invalid={fieldErr.pages}>
+                    {#each PAGE_OPTIONS as pg (pg.key)}
+                        {@const allowed = allowedPages.has(pg.key)}
+                        <label
+                            class="project-item"
+                            class:disabled={!allowed}
+                            title={allowed ? undefined : 'Only for staff and developer accounts'}>
+                            <input
+                                type="checkbox"
+                                checked={allowed && (form.pages ?? []).includes(pg.key)}
+                                disabled={!allowed}
+                                onchange={() => togglePage(pg.key)} />
+                            <span>{pg.label}</span>
+                        </label>
+                    {/each}
+                </div>
+                <p class="project-hint">
+                    {#if isCustomerRole(formRole)}
+                        {STAFF_ONLY_PAGES.map((k) => PAGE_OPTIONS.find((p) => p.key === k)?.label).join(', ')} are only for staff and developer accounts.
+                    {:else}
+                        Unticked pages are hidden from the menu and cannot be opened.
+                    {/if}
+                </p>
+                {#if fieldErr.pages}<span class="field-err">{fieldErr.pages}</span>{/if}
+            </div>
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-ghost" onclick={cancel} disabled={busy}>Cancel</button>
@@ -358,6 +417,25 @@
         cursor: pointer;
     }
 
+    .project-actions > .project-field + .project-field {
+        margin-top: 14px;
+    }
+
+    .page-picker {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        column-gap: 10px;
+    }
+
+    .project-item.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .project-item.disabled input {
+        cursor: not-allowed;
+    }
+
     .project-hint {
         margin: 5px 0;
         font-size: 12.5px;
@@ -367,6 +445,10 @@
     @media (max-width: 640px) {
         .searchbar {
             width: 200px;
+        }
+
+        .page-picker {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 </style>

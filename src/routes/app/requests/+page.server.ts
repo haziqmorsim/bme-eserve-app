@@ -1,13 +1,14 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-
-const CLOSER_ROLES = new Set(['admin', 'manager', 'coo']);
+import { isActorRole } from "$lib/roles";
+import { requirePage } from "$lib/page-access";
 
 export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
     const { profile } = await parent();
+    requirePage(profile, 'requests');
     const role = profile?.role;
     const isDeveloper = role === 'developer';
-    const canClose = !!role && CLOSER_ROLES.has(role);
+    const canClose = isActorRole(role);
 
     if (!canClose && !isDeveloper) throw error(403, 'Only staff have access.');
 

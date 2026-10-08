@@ -2,15 +2,17 @@ import { fail, redirect } from "@sveltejs/kit";
 import { createClient } from "@supabase/supabase-js";
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from "$env/static/public";
 import { isStrongPassword } from "$lib/password";
+import { requirePage } from "$lib/page-access";
 import type { Actions, PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({ parent, locals: { safeGetSession, supabase } }) => {
     const { user } = await safeGetSession();
     if (!user) throw redirect(303, '/login');
+    requirePage((await parent()).profile, 'profile');
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, email, phone, role, address_line1, address_line2, postcode, city, state, country')
+        .select('id, full_name, company, email, department, position, role, address_line1, address_line2, postcode, city, state, country')
         .eq('id', user.id)
         .maybeSingle();
 

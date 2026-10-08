@@ -1,7 +1,7 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF, staffTitle } from '$lib/roles';
 
 const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,9 +62,9 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     const personIds = [...new Set([...ownerIds, ...reviewerIds, ...eventUserIds, ...enquiryReplierIds, ...actionUserIds])];
     const person: Record<string, { name: string; company: string | null; role: string | null }> = {};
     if (personIds.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role').in('id', personIds);
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, company, role, position').in('id', personIds);
         for (const p of profs ?? []) {
-            person[p.id] = { name: p.full_name || 'User', company: p.company ?? null, role: p.role ?? null };
+            person[p.id] = { name: p.full_name || 'User', company: p.company ?? null, role: (p.role === 'customer' ? 'Customer' : staffTitle(p.position, p.role)) || null };
         } 
     }
 

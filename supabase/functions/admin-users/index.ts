@@ -1,10 +1,27 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 
-const ALLOWED_ROLES = ['customer', 'shipping', 'admin', 'manager', 'coo', 'developer'];
-const CUSTOMER_ROLES = ['customer', 'shipping'];
+const ALLOWED_ROLES = ['customer', 'staff', 'developer'];
+const CUSTOMER_ROLES = ['customer'];
 function normaliseRole(r: unknown): string {
     return typeof r === 'string' && ALLOWED_ROLES.includes(r) ? r : 'customer';
+}
+
+const ALL_PAGES = ['home', 'cart', 'history', 'profile', 'requests', 'enquiries', 'analytics', 'others'];
+const BASE_PAGES = ['home', 'cart', 'history', 'profile'];
+const STAFF_ONLY_PAGES = ['requests', 'enquiries', 'analytics'];
+function normalisePages(role: string, pages: unknown): string[] {
+    const allowed = CUSTOMER_ROLES.includes(role)
+        ? ALL_PAGES.filter((p) => !STAFF_ONLY_PAGES.includes(p))
+        : ALL_PAGES;
+    if (!Array.isArray(pages)) return CUSTOMER_ROLES.includes(role) ? [...BASE_PAGES] : [...ALL_PAGES];
+    return allowed.filter((p) => pages.includes(p));
+}
+
+function jobField(role: string, value: unknown): string | null {
+    if (CUSTOMER_ROLES.includes(role)) return null;
+    const s = typeof value === 'string' ? value.trim() : '';
+    return s || null;
 }
 
 async function syncProjectsAndBoilers(admin: any, userId: string, role: string, projectIds: unknown): Promise<string | null> {
@@ -68,13 +85,13 @@ Deno.serve(async (req) => {
             .select('role')
             .eq('id', user.id)
             .single();
-        if (me?.role !== 'admin' && me?.role !== 'developer') return json(403, { error: 'Forbidden' });
+        if (me?.role !== 'staff' && me?.role !== 'developer') return json(403, { error: 'Forbidden' });
 
         const body = await req.json();
         const action = body.action;
 
         if (action === 'create') {
-            const { email, password, full_name, company, phone } = body;
+            const { email, password, full_name, company } = body;
             const role = normaliseRole(body.role);
             if (!email || !password) return json(400, { error: 'Email and password are required.' });
 
@@ -91,7 +108,9 @@ Deno.serve(async (req) => {
                 role,
                 full_name: full_name ?? null,
                 company: company ?? null,
-                phone: phone ?? null,
+                department: jobField(role, body.department),
+                position: jobField(role, body.position),
+                pages: normalisePages(role, body.pages),
                 email,
                 must_change_password: true
             });
@@ -104,7 +123,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'update') {
-            const { id, email, full_name, company, phone } = body;
+            const { id, email, full_name, company } = body;
             const role = normaliseRole(body.role);
             if (!id) return json(400, { error: 'Missing id' });
 
@@ -115,7 +134,9 @@ Deno.serve(async (req) => {
             const { error: pErr } = await admin.from('profiles').update({
                 full_name: full_name ?? null,
                 company: company ?? null,
-                phone: phone ?? null,
+                department: jobField(role, body.department),
+                position: jobField(role, body.position),
+                pages: normalisePages(role, body.pages),
                 email: email ?? null,
                 role,
             }).eq('id', id);

@@ -1,8 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 
-const CLOSER_ROLES = new Set(['admin', 'manager', 'coo']);
-const ROLE_LABEL: Record<string, string> = { admin: 'Admin', manager: 'Manager', coo: 'COO' };
+const CLOSER_ROLES = new Set(['staff']);
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -26,11 +25,11 @@ Deno.serve(async (req) => {
 
         const { data: me } = await admin
             .from('profiles')
-            .select('role, full_name')
+            .select('role, full_name, position')
             .eq('id', user.id)
             .single();
         if (!me || !CLOSER_ROLES.has(me.role)) {
-            return json(403, { error: 'Only Admin, Manager, or COO can act on requests.' });
+            return json(403, { error: 'Only staff can act on requests.' });
         }
 
         const body = await req.json();
@@ -72,7 +71,7 @@ Deno.serve(async (req) => {
                 ok: true,
                 status: 'closed',
                 reviewed_at: reviewedAt,
-                staff_name: me.full_name ?? ROLE_LABEL[me.role] ?? me.role
+                staff_name: me.full_name ?? me.position ?? 'Staff'
             });
         }
 
@@ -102,7 +101,7 @@ Deno.serve(async (req) => {
                 status: quote.status,
                 approval_id: inserted?.id ?? null,
                 created_at: inserted?.created_at ?? createdAt,
-                staff_name: me.full_name ?? ROLE_LABEL[me.role] ?? me.role
+                staff_name: me.full_name ?? me.position ?? 'Staff'
             });
         }
 

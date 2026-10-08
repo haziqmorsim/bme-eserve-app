@@ -3,7 +3,7 @@ import type { PageServerLoad } from "./$types";
 import { slaStateWeekday, DEFAULT_SLA } from "$lib/sla";
 import { toMap, num } from "$lib/settings";
 
-const STAFF = new Set(['admin', 'manager', 'coo', 'developer']);
+import { STAFF_ROLES as STAFF } from '$lib/roles';
 
 const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
 

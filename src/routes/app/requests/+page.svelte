@@ -5,6 +5,7 @@
     import { emptyFilters, matches } from "$lib/filters";
     import SlaBadge from "$lib/components/SlaBadge.svelte";
     import { levelSince } from "$lib/sla";
+    import { roleLabel } from "$lib/roles";
 
     let { data } = $props();
     let working = $state<string | null>(null);
@@ -30,7 +31,7 @@
 
     function actorLabel(a: any): string {
         if (a.staff_name) return a.staff_name;
-        return a.role === 'admin' ? 'Admin' : a.role === 'manager' ? 'Manager' : a.role === 'coo' ? 'COO' : (a.role ?? 'Staff');
+        return roleLabel(a.role) || 'Staff';
     }
     function when(ts: string): string {
         return new Date(ts).toLocaleString();

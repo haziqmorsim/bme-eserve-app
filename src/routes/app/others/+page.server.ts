@@ -1,12 +1,9 @@
-import { error } from "@sveltejs/kit";
-import { canUseOthers } from "$lib/roles";
+import { requirePage } from "$lib/page-access";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ parent, url }) => {
     const { profile } = await parent();
-    if (!profile || !canUseOthers(profile.role)) {
-        throw error(403, 'Only Shipping/Packing and Developer accounts have access.');
-    }
+    requirePage(profile, 'others');
 
     const TABS = ['invoice', 'packing'] as const;
     const requested = url.searchParams.get('tab');
