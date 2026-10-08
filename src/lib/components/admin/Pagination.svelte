@@ -1,6 +1,6 @@
 <script lang="ts">
-    let { total, page, pageSize, onpage } = $props<{
-        total: number; page: number; pageSize: number; onpage: (p: number) => void;
+    let { total, page, pageSize, onpage, compact = false } = $props<{
+        total: number; page: number; pageSize: number; onpage: (p: number) => void; compact?: boolean;
     }>();
 
     let start = $derived(total === 0 ? 0 : (page - 1) * pageSize + 1);
@@ -8,6 +8,13 @@
     let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
 
     let items = $derived(buildItems(page, pages));
+    let miniItems = $derived(buildMini(page, pages));
+
+    function buildMini(current: number, totalPages: number): number[] {
+        const count = Math.min(3, totalPages);
+        const first = Math.max(1, Math.min(current - 1, totalPages - count + 1));
+        return Array.from({ length: count }, (_, i) => first + i);
+    }
 
     function buildItems(current: number, totalPages: number): (number | '...')[] {
         const delta = 2;
@@ -37,7 +44,7 @@
 
 <div class="pager">
     <span class="pager-info">Showing {start}-{end} of {total} results</span>
-    <div class="pager-btns">
+    <div class="pager-btns" class:full={compact}>
         <button class="pg-btn" disabled={page <= 1} onclick={() => go(1)} aria-label="First page">«</button>
         <button class="pg-btn" disabled={page <= 1} onclick={() => go(page - 1)} aria-label="Previous page">‹</button>
 
@@ -53,3 +60,33 @@
         <button class="pg-btn" disabled={page >= pages} onclick={() => go(pages)} aria-label="Last page">»</button>
     </div>
 </div>
+
+{#if compact}
+    <div class="pager-mini" aria-label="Pagination">
+        <button class="pg-btn" disabled={page <= 1} onclick={() => go(page - 1)} aria-label="Previous page">‹</button>
+        {#each miniItems as it (it)}
+            <button class="pg-btn" class:active={it === page} aria-current={it === page ? 'page' : undefined} onclick={() => go(it)}>{it}</button>
+        {/each}
+        <button class="pg-btn" disabled={page >= pages} onclick={() => go(page + 1)} aria-label="Next page">›</button>
+    </div>
+{/if}
+
+<style>
+    .pager-mini {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    @media (max-width: 640px) {
+        .pager-btns.full {
+            display: none;
+        }
+
+        .pager-mini {
+            display: flex;
+        }
+    }
+</style>

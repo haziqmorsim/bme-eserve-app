@@ -2,6 +2,7 @@
     import { Search, Mail } from "@lucide/svelte";
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
+    import Pagination from "$lib/components/admin/Pagination.svelte";
 
     let { data } = $props();
     let search = $state('');
@@ -28,6 +29,19 @@
     let unreplied = $derived(filtered.filter((e: any) => !e.replied_at));
     let replied = $derived(filtered.filter((e: any) => e.replied_at));
     let list = $derived(tab === 'unreplied' ? unreplied : replied);
+
+    const PAGE_SIZE = 10;
+    let page = $state(1);
+
+    $effect(() => {
+        search;
+        tab;
+        page = 1;
+    });
+
+    let totalPages = $derived(Math.max(1, Math.ceil(list.length / PAGE_SIZE)));
+    let curPage = $derived(Math.min(page, totalPages));
+    let pagedList = $derived(list.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE));
 
     function when(ts: string): string {
         return new Date(ts).toLocaleString();
@@ -115,7 +129,7 @@
             {/if}
         </div>
     {:else}
-        {#each list as e (e.id)}
+        {#each pagedList as e (e.id)}
             <div class="card enquiry">
                 <div class="ehead">
                     <div>
@@ -205,10 +219,17 @@
                 {/if}
             </div>
         {/each}
+        <div class="pg-wrap">
+            <Pagination total={list.length} page={curPage} pageSize={PAGE_SIZE} onpage={(p) => (page = p)} />
+        </div>
     {/if}
 {/if}
 
 <style>
+    .pg-wrap :global(.pager) {
+        margin-top: 16px;
+    }
+
     h1 { 
         margin: 5px 0 15px;
     }

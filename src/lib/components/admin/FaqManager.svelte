@@ -309,7 +309,7 @@
 </div>
 
 {#if count > 0}
-    <Pagination total={count} page={curPage} {pageSize} onpage={(p) => (page = p)} />
+    <Pagination total={count} page={curPage} {pageSize} onpage={(p) => (page = p)} compact />
 {/if}
 
 {#if editing !== null}
@@ -477,8 +477,16 @@
     }
 
     @media (max-width: 640px) {
+        .adm-bar {
+            display: flex;
+        }
+
         .searchbar {
-            width: 200px;
+            width: 100%;
+        }
+
+        .btn-primary {
+            margin-left: auto;
         }
 
         .ans-full { 

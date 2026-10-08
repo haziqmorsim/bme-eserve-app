@@ -634,4 +634,15 @@
         outline: 2px solid var(--bme-dark-blue);
         outline-offset: 2px;
     }
+
+    @media (max-width: 640px) {
+        .adm-form {
+            padding: 10px;
+        }
+
+        .gen-stamp {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    }
 </style>
