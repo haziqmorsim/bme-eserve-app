@@ -100,7 +100,8 @@
     function blank() {
         return {
             full_name: '', email: '', password: '', company: '', role: '',
-            department: '', position: '', project_ids: [], pages: defaultPages('customer')
+            department: '', position: '', project_ids: [], pages: defaultPages('customer'),
+            send_invite: false
         };
     }
     function startNew() { form = blank(); err = ''; fieldErr = {}; editing = 'new'; }
@@ -161,10 +162,27 @@
         else body.id = editing;
 
         const { data: resp, error } = await supabase.functions.invoke('admin-users', { body });
-        busy = false;
-        if (error || resp?.error) { err = await fnError(error, resp, 'Operation failed.'); return; }
+        if (error || resp?.error) { busy = false; err = await fnError(error, resp, 'Operation failed.'); return; }
         logAction(action === 'create' ? 'user_created' : 'user_updated', { name: activityLabel(form.full_name || form.email) });
-        addToast(action === 'create' ? 'User added successfully' : 'User updated successfully');
+
+        let inviteResult: 'none' | 'sent' | string = 'none';
+        if (action === 'create' && form.send_invite) {
+            const { data: inv, error: invErr } = await supabase.functions.invoke('send-user-invitation', {
+                body: { email: body.email, password: form.password }
+            });
+            inviteResult = invErr || inv?.error
+                ? await fnError(invErr, inv, 'Unknown error.')
+                : 'sent';
+        }
+        busy = false;
+
+        if (inviteResult === 'sent') {
+            addToast(`User added successfully. Invitation e-mail sent to ${body.email}.`);
+        } else if (inviteResult !== 'none') {
+            addToast(`User added successfully, but the invitation e-mail could not be sent: ${inviteResult}`, 'error', 9000);
+        } else {
+            addToast(action === 'create' ? 'User added successfully' : 'User updated successfully');
+        }
         editing = null;
         await invalidateAll();
     }
@@ -282,7 +300,7 @@
                 </div>
             {/if}
             <div class="project-field">
-                <span class="pf-label">Page(s) <span class="required">*</span></span>
+                <span class="pf-label">Accessible Page(s) <span class="required">*</span></span>
                 <div class="project-picker page-picker" class:invalid={fieldErr.pages}>
                     {#each PAGE_OPTIONS as pg (pg.key)}
                         {@const allowed = allowedPages.has(pg.key)}
@@ -303,11 +321,17 @@
                     {#if isCustomerRole(formRole)}
                         {STAFF_ONLY_PAGES.map((k) => PAGE_OPTIONS.find((p) => p.key === k)?.label).join(', ')} are only for staff and developer accounts.
                     {:else}
-                        Unticked pages are hidden from the menu and cannot be opened.
+                        Unticked pages are hidden from the menu and cannot be accessed.
                     {/if}
                 </p>
                 {#if fieldErr.pages}<span class="field-err">{fieldErr.pages}</span>{/if}
             </div>
+            {#if editing === 'new'}
+                <label class="invite-check">
+                    <input type="checkbox" bind:checked={form.send_invite} />
+                    <span>Send user invitation e-mail automatically</span>
+                </label>
+            {/if}
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
                 <button class="btn-ghost" onclick={cancel} disabled={busy}>Cancel</button>
@@ -434,6 +458,23 @@
 
     .project-item.disabled input {
         cursor: not-allowed;
+    }
+
+    .invite-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 16px 0 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .invite-check input {
+        margin: 0;
+        width: 16px;
+        height: 16px;
+        flex: none;
     }
 
     .project-hint {
