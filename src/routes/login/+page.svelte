@@ -95,7 +95,7 @@
     }
 
     .sub {
-        margin: 0 0 22px;
+        margin: 0 0 15px;
         color: var(--bme-muted);
     }
 
@@ -157,7 +157,7 @@
     }
 
     .enquiry {
-        margin-top: 6px;
+        margin: 6px 0 0;
         font-size: 13px;
         color: var(--bme-muted);
         text-align: center;

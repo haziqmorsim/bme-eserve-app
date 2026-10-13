@@ -240,7 +240,7 @@
         justify-content: end;
         align-items: center;
         margin-top: 15px;
-        gap: 20px;
+        gap: 15px;
     }
 
     .profile-icon {
@@ -267,7 +267,7 @@
     .pages {
         margin-top: auto;
         display: flex;
-        gap: 20px;
+        gap: 15px;
     }
 
     .title-container {

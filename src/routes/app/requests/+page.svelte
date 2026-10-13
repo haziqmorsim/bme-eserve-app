@@ -1,7 +1,7 @@
 <script lang="ts">
     import { invalidateAll, goto } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
-    import RequestFilters from "$lib/components/RequestFilters.svelte";
+    import SearchFilter from "$lib/components/SearchFilter.svelte";
     import { emptyFilters, matches } from "$lib/filters";
     import SlaBadge from "$lib/components/SlaBadge.svelte";
     import { levelSince } from "$lib/sla";
@@ -68,7 +68,7 @@
 
 <h1>Requests</h1>
 
-<RequestFilters bind:filters regions={data.regions} showStatus={false} placeholder="Search by reference or customer..." />
+<SearchFilter bind:filters regions={data.regions} showStatus={false} placeholder="Search by reference or customer..." />
 
 {#if source.length === 0}
     <div class="card empty">No requests are awaiting action.</div>
@@ -390,6 +390,7 @@
     }
 
     .btn-ghost:disabled {
+        background: transparent;
         opacity: 0.6;
         cursor: default;
     }

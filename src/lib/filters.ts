@@ -11,7 +11,7 @@ export function emptyFilters(): Filters {
 }
 
 export function isActive(f: Filters): boolean {
-    return !!f.q.trim || f.status !== 'all' || f.region !== 'all' || !!f.from || !!f.to;
+    return !!f.q.trim() || f.status !== 'all' || f.region !== 'all' || !!f.from || !!f.to;
 }
 
 type Fields = {

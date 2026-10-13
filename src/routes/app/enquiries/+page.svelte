@@ -1,11 +1,13 @@
 <script lang="ts">
-    import { Search, Mail } from "@lucide/svelte";
+    import { Mail } from "@lucide/svelte";
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import Pagination from "$lib/components/admin/Pagination.svelte";
+    import SearchFilter from "$lib/components/SearchFilter.svelte";
+    import { emptyFilters, isActive, matches } from "$lib/filters";
 
     let { data } = $props();
-    let search = $state('');
+    let filters = $state(emptyFilters());
     let tab = $state<'unreplied' | 'replied'>('unreplied');
     let busy = $state<Set<string>>(new Set());
     let isDeveloper = $derived(data.profile?.role === 'developer');
@@ -20,11 +22,10 @@
             .slice(0, 8);
     });
 
-    let filtered = $derived(data.enquiries.filter((e: any) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return [e.name, e.email, e.company, e.message].some((v: any) => (v ?? '').toString().toLowerCase().includes(q));
-    }));
+    let filtered = $derived(data.enquiries.filter((e: any) => matches(filters, {
+        search: [e.name, e.email, e.company, e.message],
+        date: e.created_at
+    })));
 
     let unreplied = $derived(filtered.filter((e: any) => !e.replied_at));
     let replied = $derived(filtered.filter((e: any) => e.replied_at));
@@ -34,7 +35,9 @@
     let page = $state(1);
 
     $effect(() => {
-        search;
+        filters.q;
+        filters.from;
+        filters.to;
         tab;
         page = 1;
     });
@@ -106,10 +109,7 @@
 
 <h1>Enquiries</h1>
 
-<div class="searchbar card">
-    <span class="search-ic"><Search size={16} /></span>
-    <input type="search" placeholder="Search by name, e-mail, company, or message..." bind:value={search} />
-</div>
+<SearchFilter bind:filters showStatus={false} showRegion={false} placeholder="Search by name, e-mail, company, or message..." />
 
 {#if data.enquiries.length === 0}
     <div class="card empty">No enquiries have been received yet.</div>
@@ -120,8 +120,8 @@
     </div>
     {#if list.length === 0}
         <div class="card empty">
-            {#if search.trim()}
-                No enquiries matched your search.
+            {#if isActive(filters)}
+                No enquiries matched your filters.
             {:else if tab === 'unreplied'}
                 No unreplied enquiries.
             {:else}
@@ -234,30 +234,6 @@
         margin: 5px 0 15px;
     }
  
-    .searchbar {
-        position: relative;
-        padding: 0;
-        margin-bottom: 18px;
-        border-radius: 10px;
-    }
- 
-    .search-ic {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--bme-muted);
-        display: inline-flex;
-        pointer-events: none;
-    }
- 
-    .searchbar input {
-        width: 100%;
-        padding: 11px 14px 11px 36px;
-        border: none;
-        background: transparent;
-    }
-
     .tabbar {
         display: inline-flex;
         gap: 8px;

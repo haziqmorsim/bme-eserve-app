@@ -2,10 +2,11 @@
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
     import { addItem } from "$lib/stores/quote";
-    import { Search, X } from "@lucide/svelte";
     import Pagination from "$lib/components/admin/Pagination.svelte";
     import { untrack } from "svelte";
     import { isActorRole, roleLabel } from "$lib/roles";
+    import SearchFilter from "$lib/components/SearchFilter.svelte";
+    import { emptyFilters, matches } from "$lib/filters";
 
     let { data } = $props();
 
@@ -168,12 +169,10 @@
         }
     }
 
-    let search = $state('');
+    let filters = $state(emptyFilters());
 
-    function hit(values: (string | null | undefined)[]): boolean {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return values.some((v) => (v ?? '').toString().toLowerCase().includes(q));
+    function hit(values: (string | null | undefined)[], date?: string | null): boolean {
+        return matches(filters, { search: values, date });
     }
 
     let groups = $derived(data.reviewGroups ?? []);
@@ -195,16 +194,16 @@
         g.customer?.full_name, 
         g.quote?.status, 
         ...itemText(g.quote)
-    ])));
+    ], g.lastActivity)));
 
     let filteredQuotes = $derived(myQuotes.filter((q: any) => hit([
         q.reference, 
         q.notes, 
         q.status, 
         ...itemText(q)
-    ])));
+    ], q.created_at)));
 
-    let filteredChats = $derived(chats.filter((c: any) => hit(chatText(c))));
+    let filteredChats = $derived(chats.filter((c: any) => hit(chatText(c), c.started_at)));
 
     const PAGE_SIZE = 10;
     let tab = $state<'reviews' | 'requests' | 'chats'>(untrack(() => (data.isStaff ? 'reviews' : 'requests')));
@@ -220,7 +219,9 @@
     );
 
     $effect(() => {
-        search;
+        filters.q;
+        filters.from;
+        filters.to;
         reviewPage = 1;
         requestPage = 1;
     });
@@ -245,15 +246,7 @@
 
 <h1>History</h1>
 
-<div class="searchbar card">
-    <span class="search-ic"><Search size={16} /></span>
-    <input type="search" bind:value={search} placeholder={searchPlaceholder} aria-label="Search history" />
-    {#if search}
-        <button class="clear" onclick={() => (search = '')} aria-label="Clear search">
-            <X size={15} />
-        </button>
-    {/if}
-</div>
+<SearchFilter bind:filters showStatus={false} showRegion={false} placeholder={searchPlaceholder} />
 
 <div class="tabbar">
     {#if data.isStaff}
@@ -269,7 +262,7 @@
         {#if groups.length === 0}
             <div class="card empty">You have not acted on any requests yet.</div>
         {:else if filteredGroups.length === 0}
-            <div class="card empty">No reviews match your search.</div>
+            <div class="card empty">No reviews match your filters.</div>
         {:else}
             {#each pagedGroups as g (g.quote?.id)}
                 <div class="card quote">
@@ -417,7 +410,7 @@
         {#if myQuotes.length === 0}
             <div class="card empty">You have not submitted any requests yet.</div>
         {:else if filteredQuotes.length === 0}
-            <div class="card empty">No requests match your search.</div>
+            <div class="card empty">No requests match your filters.</div>
         {:else}
             {#each pagedQuotes as q (q.id)}
                 <div class="card quote">
@@ -478,7 +471,7 @@
         {#if chats.length === 0}
             <div class="card empty">You have no chatbot conversations yet.</div>
         {:else if filteredChats.length === 0}
-            <div class="card empty">No conversations match your search.</div>
+            <div class="card empty">No conversations match your filters.</div>
         {:else}
             {#each filteredChats as c (c.id)}
                 <div class="card chat-session">
@@ -557,55 +550,6 @@
     .again:disabled {
         opacity: 0.55;
         cursor: default;
-    }
-
-    .searchbar {
-        position: relative;
-        padding: 0;
-        margin-bottom: 18px;
-        border-radius: 10px;
-    }
-
-    .searchbar:focus-within {
-        border-color: var(--bme-dark-blue);
-    }
-
-    .searchbar input {
-        width: 100%;
-        padding: 11px 14px 11px 36px;
-        border: none;
-        background: transparent;
-    }
-
-    .searchbar input::-webkit-search-cancel-button {
-        display: none;
-    }
-
-    .search-ic {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--bme-muted);
-        display: inline-flex;
-        pointer-events: none;
-    }
-
-    .clear {
-        display: inline-grid;
-        place-items: center;
-        flex: 0 0 auto;
-        width: 22px;
-        height: 22px;
-        border: none;
-        border-radius: 50%;
-        background: var(--bme-bg);
-        color: var(--bme-muted);
-        cursor: pointer;
-    }
-
-    .clear:hover {
-        color: var(--bme-ink);
     }
 
     .tabbar {

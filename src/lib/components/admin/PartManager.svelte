@@ -77,9 +77,17 @@
 		sort = nextSort(sort, key);
 	}
 
+	let ordered = $derived(
+		sortRows(
+			sortRows(parts, { key: 'component', dir: 'asc' }, sortBy),
+			{ key: 'boiler', dir: 'asc' },
+			sortBy
+		)
+	);
+
 	let filtered = $derived(
 		sortRows(
-			parts.filter((p: any) => {
+			ordered.filter((p: any) => {
 				const q = search.trim().toLowerCase();
 				if (!q) return true;
 				return [p.part_number, p.name, p.description, p.specifications, p.components?.name, boilerCode[p.components?.boiler_id]].some(

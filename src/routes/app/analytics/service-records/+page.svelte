@@ -1,12 +1,14 @@
 <script lang="ts">
-	import { Search, Plus } from '@lucide/svelte';
+	import { Plus } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast';
 	import Modal from '$lib/components/admin/Modal.svelte';
+	import SearchFilter from '$lib/components/SearchFilter.svelte';
+	import { emptyFilters, matches } from '$lib/filters';
 
 	let { data } = $props();
 
-	let search = $state('');
+	let filters = $state(emptyFilters());
 	let adding = $state(false);
 	let saving = $state(false);
 	let isDeveloper = $derived(data.profile?.role === 'developer');
@@ -22,13 +24,12 @@
 	let notes = $state('');
 
 	const filtered = $derived(
-		data.records.filter((r: any) => {
-			const q = search.trim().toLowerCase();
-			if (!q) return true;
-			return [r.project_label, r.boiler_label, r.part_label, r.part_name, r.notes].some((v: any) =>
-				(v ?? '').toString().toLowerCase().includes(q)
-			);
-		})
+		data.records.filter((r: any) =>
+			matches(filters, {
+				search: [r.project_label, r.boiler_label, r.part_label, r.part_name, r.notes],
+				date: r.serviced_on ? `${r.serviced_on}T00:00:00` : null
+			})
+		)
 	);
 
 	const canSave = $derived(!!projectId && !!boilerId && !!partId && !!servicedOn && !saving);
@@ -94,14 +95,12 @@
 	Adding a record here helps the system predict when a part will need replacing next.
 </p>
 
-<div class="searchbar card">
-	<span class="search-ic"><Search size={16} /></span>
-	<input
-		type="search"
-		placeholder="Search by project, boiler, part, or notes..."
-		bind:value={search}
-	/>
-</div>
+<SearchFilter
+	bind:filters
+	showStatus={false}
+	showRegion={false}
+	placeholder="Search by project, boiler, part, or notes..."
+/>
 
 <button class="btn-primary add-btn" onclick={openModal} disabled={isDeveloper}>
 	<Plus size={16} />
@@ -113,7 +112,7 @@
 		No service records yet. Add the first one to start measuring true part life.
 	</div>
 {:else if filtered.length === 0}
-	<div class="card empty">No records matched your search.</div>
+	<div class="card empty">No records matched your filters.</div>
 {:else}
 	<div class="card table-wrap">
 		<table>
@@ -280,30 +279,6 @@
 		display: block;
 		color: var(--bme-muted, #6b7280);
 		font-size: 0.75rem;
-	}
-
-	.searchbar {
-		position: relative;
-		padding: 0;
-		border-radius: 10px;
-	}
-
-	.search-ic {
-		position: absolute;
-		left: 12px;
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--bme-muted, #6b7280);
-		display: inline-flex;
-		pointer-events: none;
-	}
-
-	.searchbar input {
-		width: 100%;
-		height: 100%;
-		padding: 11px 14px 11px 36px;
-		border: none;
-		background: transparent;
 	}
 
 	.table-wrap {

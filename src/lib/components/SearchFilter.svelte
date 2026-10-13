@@ -3,8 +3,7 @@
     import { emptyFilters, isActive, type Filters } from "$lib/filters";
 
     let {
-        filters = $bindable(), 
-        regions = [], 
+        filters = $bindable(),
         showStatus = true, 
         showRegion = true, 
         placeholder = "Search by reference..."
@@ -39,18 +38,6 @@
             </select>
         </label>
     {/if}
-
-    <!-- {#if showRegion}
-        <label class="f">
-            <span>Region</span>
-            <select bind:value={filters.region}>
-                <option value="all">All regions</option>
-                {#each regions as r (r.name)}
-                    <option value={r.name}>{r.name}</option>
-                {/each}
-            </select>
-        </label>
-    {/if} -->
 
     <label class="f">
         <span>From</span>

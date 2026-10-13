@@ -1,24 +1,24 @@
 <script lang="ts">
-	import { Search } from '@lucide/svelte';
+	import SearchFilter from '$lib/components/SearchFilter.svelte';
+	import { emptyFilters, matches } from '$lib/filters';
 	import { invalidateAll } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast';
 
 	let { data } = $props();
 
-	let search = $state('');
+	let filters = $state(emptyFilters());
 	let tab = $state<'pending' | 'reviewed' | 'all'>('pending');
 	let busy = $state<Set<string>>(new Set());
 	let picking = $state<string | null>(null);
 	let pickQuery = $state('');
 
 	const filtered = $derived(
-		data.rows.filter((r: any) => {
-			const q = search.trim().toLowerCase();
-			if (!q) return true;
-			return [r.query_text, r.suggested_part_number, r.actual_part_number, r.boiler_code].some(
-				(v: any) => (v ?? '').toString().toLowerCase().includes(q)
-			);
-		})
+		data.rows.filter((r: any) =>
+			matches(filters, {
+				search: [r.query_text, r.suggested_part_number, r.actual_part_number, r.boiler_code],
+				date: r.created_at
+			})
+		)
 	);
 
 	const list = $derived(
@@ -78,14 +78,12 @@
 	override the customer's own feedbacl.
 </p>
 
-<div class="searchbar card">
-	<span class="search-ic"><Search size={16} /></span>
-	<input
-		type="search"
-		placeholder="Search by message, parrt number, or boiler..."
-		bind:value={search}
-	/>
-</div>
+<SearchFilter
+	bind:filters
+	showStatus={false}
+	showRegion={false}
+	placeholder="Search by message, part number, or boiler..."
+/>
 
 {#if data.rows.length === 0}
 	<div class="card empty">No suggestions have been recorded yet.</div>
@@ -182,47 +180,11 @@
 {/if}
 
 <style>
-
 	.intro {
 		color: var(--bme-muted);
 		font-size: 0.85rem;
 		line-height: 1.5;
 		margin: 0 0 18px;
-	}
-
-	.searchbar {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 10px 14px;
-		margin-bottom: 20px;
-		background: var(--bme-surface);
-		border: 1px solid var(--bme-border);
-		border-radius: 10px;
-		color: var(--bme-muted);
-	}
-
-	.searchbar:focus-within {
-		border-color: var(--bme-dark-blue);
-	}
-
-	.search-ic {
-		display: flex;
-		flex: 0 0 auto;
-	}
-
-	.searchbar input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		outline: none;
-		background: transparent;
-		font: inherit;
-		color: var(--bme-ink);
-	}
-
-	.searchbar input::-webkit-search-cancel-button {
-		display: none;
 	}
 
 	.tabbar {

@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { Search } from '@lucide/svelte';
+	import SearchFilter from '$lib/components/SearchFilter.svelte';
+	import { emptyFilters, isActive, matches } from '$lib/filters';
 
 	let { data } = $props();
 
-	let search = $state('');
+	let filters = $state(emptyFilters());
 	let tab = $state<'failed' | 'sent'>('failed');
 
 	const KIND_LABEL: Record<string, string> = {
@@ -24,13 +25,12 @@
 	const when = (ts: string) => new Date(ts).toLocaleString();
 
 	const filtered = $derived(
-		data.rows.filter((r: any) => {
-			const q = search.trim().toLowerCase();
-			if (!q) return true;
-			return [r.to_email, r.subject, r.related_ref, r.kind, r.error].some((v: any) =>
-				(v ?? '').toString().toLowerCase().includes(q)
-			);
-		})
+		data.rows.filter((r: any) =>
+			matches(filters, {
+				search: [r.to_email, r.subject, r.related_ref, r.kind, r.error],
+				date: r.created_at
+			})
+		)
 	);
 
 	const list = $derived(filtered.filter((r: any) => r.status === tab));
@@ -45,12 +45,12 @@
 
 <div class="stats">
 	<div class="card stat" class:alert={data.stats.failed24h > 0}>
-		<span class="s-val">{data.stats.failed24h}</span>
+		<span class="s-val failed">{data.stats.failed24h}</span>
 		<span class="s-lbl">Failed (24h)</span>
 		<span class="s-sub">{data.stats.failedTotal} in the log overall</span>
 	</div>
 	<div class="card stat">
-		<span class="s-val"
+		<span class="s-val success"
 			>{data.stats.successRate7d === null ? '—' : `${data.stats.successRate7d}%`}</span
 		>
 		<span class="s-lbl">Success rate (7d)</span>
@@ -69,14 +69,12 @@
 		deployed and e-mail is attempted.
 	</div>
 {:else}
-	<div class="searchbar">
-		<span class="search-ic"><Search size={16} /></span>
-		<input
-			type="search"
-			placeholder="Search by recipient, subject, reference, or error..."
-			bind:value={search}
-		/>
-	</div>
+	<SearchFilter
+		bind:filters
+		showStatus={false}
+		showRegion={false}
+		placeholder="Search by recipient, subject, reference, or error..."
+	/>
 
 	<div class="tabbar">
 		<button class="tab" class:active={tab === 'failed'} onclick={() => (tab = 'failed')}>
@@ -89,8 +87,8 @@
 
 	{#if list.length === 0}
 		<div class="card empty">
-			{#if search.trim()}
-				Nothing matches this search.
+			{#if isActive(filters)}
+				Nothing matches these filters.
 			{:else if tab === 'failed'}
 				No failed deliveries. Every recorded e-mail was accepted by the mail service.
 			{:else}
@@ -163,6 +161,22 @@
 		line-height: 1.1;
 	}
 
+	.s-val.failed {
+		color: #8e261b;
+	}
+
+	:root[data-theme="dark"] .s-val.failed {
+		color: #ff9d8f;
+	}
+
+	.s-val.success {
+		color: #2f5e18;
+	}
+
+	:root[data-theme="dark"] .s-val.s-val.success {
+		color: #9adf6c;
+	}
+
 	.stat.alert .s-val {
 		color: var(--bme-red);
 	}
@@ -176,41 +190,6 @@
 	.s-sub {
 		font-size: 0.75rem;
 		color: var(--bme-muted);
-	}
-
-	.searchbar {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 0 10px;
-		margin-bottom: 16px;
-		background: var(--bme-surface);
-		border: 1px solid var(--bme-border);
-		border-radius: 10px;
-		color: var(--bme-muted);
-	}
-
-	.searchbar:focus-within {
-		border-color: var(--bme-dark-blue);
-	}
-
-	.search-ic {
-		display: flex;
-		flex: 0 0 auto;
-	}
-
-	.searchbar input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		outline: none;
-		background: transparent;
-		font: inherit;
-		color: var(--bme-ink);
-	}
-
-	.searchbar input::-webkit-search-cancel-button {
-		display: none;
 	}
 
 	.tabbar {

@@ -148,9 +148,6 @@
 			{#if data.volumeByPart.length === 0}
 				<p class="hint">No part data.</p>
 			{:else}
-				<p class="hint">
-					Top {data.volumeByPart.length} of {data.partsTotal} requested parts, counted across all boilers.
-				</p>
 				<ol class="part-list">
 					{#each data.volumeByPart as p (p.name)}
 						<li class="part-row">
@@ -165,6 +162,9 @@
 						</li>
 					{/each}
 				</ol>
+				<p class="hint">
+					Top {data.volumeByPart.length} of {data.partsTotal} requested parts, counted across all boilers.
+				</p>
 			{/if}
 		</div>
 	</div>
@@ -234,7 +234,7 @@
 	}
 
 	.hint {
-		margin: 0 0 14px;
+		margin: 10px 0 0;
 		font-size: 13px;
 		color: var(--bme-muted);
 	}
