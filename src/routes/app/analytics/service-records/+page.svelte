@@ -35,7 +35,7 @@
 	const canSave = $derived(!!projectId && !!boilerId && !!partId && !!servicedOn && !saving);
 
 	const when = (d: string) =>
-		new Date(d + 'T:00:00:00').toLocaleDateString('en-MY', {
+		new Date(`${d}T00:00:00`).toLocaleDateString('en-MY', {
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric'

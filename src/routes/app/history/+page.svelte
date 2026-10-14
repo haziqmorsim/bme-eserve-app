@@ -21,6 +21,17 @@
     let copied = $state<string | null>(null);
 
     let addingFor = $state<string | null>(null);
+    let reopened = $state<Set<string>>(new Set());
+
+    function reopen(quoteId: string) {
+        reopened = new Set(reopened).add(quoteId);
+    }
+
+    function clearReopened(quoteId: string) {
+        const next = new Set(reopened);
+        next.delete(quoteId);
+        reopened = next;
+    }
     let newAction = $state('');
     let addError = $state<string | null>(null);
     let downloading = $state<string | null>(null);
@@ -56,6 +67,7 @@
         }
 
         cancelAdd();
+        clearReopened(q.id);
         await invalidateAll();
         addToast('Action recorded.');
     }
@@ -299,13 +311,23 @@
                         <span class="tl-title">Action history</span>
                         {#each g.actions ?? [] as a (a.id)}
                             <div class="tl-row">
-                                <p class="tl-head">
-                                    <strong>{staffLabel(a)}</strong>
-                                    <span class="tl-when">{when(a.created_at)}</span>
-                                </p>
-                                <p class="tl-action"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
+                                <p class="tl-when">{when(a.created_at)}</p>
+                                <p class="tl-line"><strong>Staff Name:</strong> {staffLabel(a)}</p>
+                                <p class="tl-line"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
                             </div>
                         {/each}
+
+                        {#if g.quote.status === 'closed'}
+                            <div class="tl-row tl-closed">
+                                {#if g.closedAt ?? g.closedAction?.created_at}
+                                    <p class="tl-when">{when(g.closedAt ?? g.closedAction.created_at)}</p>
+                                {/if}
+                                {#if g.closedAction}
+                                    <p class="tl-line"><strong>Staff Name:</strong> {staffLabel(g.closedAction)}</p>
+                                {/if}
+                                <p class="tl-line"><strong>Closed request</strong></p>
+                            </div>
+                        {/if}
 
                         {#if addingFor === g.quote.id}
                             <div class="add-form">
@@ -327,19 +349,15 @@
                                     </button>
                                 </div>
                             </div>
-                        {:else if canAct}
+                        {:else if canAct && (g.quote.status !== 'closed' || reopened.has(g.quote.id))}
                             <button class="add-btn" onclick={() => openAdd(g.quote.id)}>Add action</button>
                         {/if}
                     </div>
 
                     {#if g.quote.status === 'closed'}
-                        <p class="closed-note">
-                            {#if g.closedAction}
-                                This request was closed by <b>{staffLabel(g.closedAction)}</b>{g.closedAt ? ` on ${when(g.closedAt)}` : ''}.
-                            {:else}
-                                This request was closed{g.closedAt ? ` on ${when(g.closedAt)}` : ''}.
-                            {/if}
-                        </p>
+                        {#if canAct && !reopened.has(g.quote.id)}
+                            <button class="reopen-btn" onclick={() => reopen(g.quote.id)}>Reopen</button>
+                        {/if}
 
                         <!-- <div class="qfoot">
                             <button class="pdf-btn" onclick={() => downloadPdf(g.quote)} disabled={downloading === g.quote.id}>
@@ -688,26 +706,40 @@
         margin-bottom: 0;
     }
 
-    .tl-head {
-        margin: 0 0 2px;
-        font-size: 14px;
-        color: var(--bme-ink);
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
     .tl-when {
+        margin: 0 0 2px;
         font-size: 12.5px;
         font-weight: 400;
         color: var(--bme-muted);
     }
 
-    .tl-action {
+    .tl-line {
         margin: 0;
         font-size: 14px;
         color: var(--bme-ink);
+    }
+
+    .tl-closed {
+        border-left-color: var(--bme-dark-blue);
+    }
+
+    .reopen-btn {
+        margin-top: 14px;
+        padding: 8px 18px;
+        border: 1px solid var(--bme-dark-blue);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--bme-dark-blue);
+        font: inherit;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+    }
+
+    .reopen-btn:hover {
+        background: var(--bme-dark-blue);
+        color: #ffffff;
     }
 
     .notes {
@@ -733,20 +765,6 @@
 
     .attach-links li {
         margin: 2px 0;
-    }
-
-    .closed-note {
-        margin: 14px 0 0;
-        padding: 10px 14px;
-        background: var(--bme-surface-2);
-        border: 1px solid var(--bme-border);
-        border-radius: 8px;
-        font-size: 13.5px;
-        color: var(--bme-muted);
-    }
-
-    .closed-note b {
-        color: var(--bme-ink);
     }
 
     .pdf-btn {

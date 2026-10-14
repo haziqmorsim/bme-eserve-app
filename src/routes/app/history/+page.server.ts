@@ -78,7 +78,15 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
                 const actions = actionsByQuote[qid] ?? [];
                 const lastActivity = actions.length ? actions[actions.length - 1].created_at : q?.created_at;
 
-                const closingAction = [...actions].reverse().find((a: any) => a.action === 'closed') ?? null;
+                const closedRows = actions.filter((a: any) => a.action === 'closed');
+                const reviewedMs = q?.reviewed_at ? new Date(q.reviewed_at).getTime() : null;
+                const closingAction = closedRows.length
+                    ? reviewedMs === null
+                        ? closedRows[closedRows.length - 1]
+                        : closedRows.reduce((best: any, a: any) =>
+                            Math.abs(new Date(a.created_at).getTime() - reviewedMs) <
+                            Math.abs(new Date(best.created_at).getTime() - reviewedMs) ? a : best)
+                    : null;
 
                 return {
                     quote: q,
