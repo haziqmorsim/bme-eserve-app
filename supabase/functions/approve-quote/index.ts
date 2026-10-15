@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         }
 
         const body = await req.json();
-        const action = body.action as 'close' | 'add_action';
+        const action = body.action as 'close' | 'add_action' | 'reopen';
         const quoteId = body.quote_id;
         const actionTaken = (body.action_taken ?? '').toString().trim();
         if (!quoteId) return json(400, { error: 'Missing quote_id.' });
@@ -75,8 +75,52 @@ Deno.serve(async (req) => {
             });
         }
 
+        const { data: lastEntry } = await admin
+            .from('quote_approvals')
+            .select('action')
+            .eq('quote_id', quoteId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        const isReopened = lastEntry?.action === 'reopened';
+
+        if (action === 'reopen') {
+            if (quote.status !== 'closed') {
+                return json(409, { error: 'Only a closed request can be reopened.' });
+            }
+            if (isReopened) {
+                return json(409, { error: 'This request has already been reopened.' });
+            }
+
+            const { data: inserted, error: insertError } = await admin
+                .from('quote_approvals')
+                .insert({
+                    quote_id: quoteId,
+                    level: 1,
+                    role: me.role,
+                    reviewer_id: user.id,
+                    action: 'reopened',
+                    action_taken: null
+                })
+                .select('id, created_at')
+                .single();
+
+            if (insertError) return json(400, { error: insertError.message });
+
+            return json(200, {
+                ok: true,
+                status: quote.status,
+                approval_id: inserted?.id ?? null,
+                created_at: inserted?.created_at ?? null,
+                staff_name: me.full_name ?? me.position ?? 'Staff'
+            });
+        }
+
         if (action === 'add_action') {
             if (!actionTaken) return json(400, { error: 'Action Taken is required.' });
+            if (quote.status === 'closed' && !isReopened) {
+                return json(409, { error: 'Reopen this request before adding an action.' });
+            }
 
             const createdAt = new Date().toISOString();
 

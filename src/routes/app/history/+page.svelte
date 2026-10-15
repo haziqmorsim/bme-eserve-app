@@ -21,16 +21,22 @@
     let copied = $state<string | null>(null);
 
     let addingFor = $state<string | null>(null);
-    let reopened = $state<Set<string>>(new Set());
 
-    function reopen(quoteId: string) {
-        reopened = new Set(reopened).add(quoteId);
-    }
+    async function reopen(q: any) {
+        if (!canAct || working === q.id) return;
+        working = q.id;
+        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
+            body: { quote_id: q.id, action: 'reopen' }
+        });
+        working = null;
 
-    function clearReopened(quoteId: string) {
-        const next = new Set(reopened);
-        next.delete(quoteId);
-        reopened = next;
+        if (error || resp?.error) {
+            addToast(resp?.error ?? error?.message ?? 'Could not reopen this request.', 'error');
+            return;
+        }
+
+        await invalidateAll();
+        addToast(`${q.reference} reopened.`);
     }
     let newAction = $state('');
     let addError = $state<string | null>(null);
@@ -67,7 +73,6 @@
         }
 
         cancelAdd();
-        clearReopened(q.id);
         await invalidateAll();
         addToast('Action recorded.');
     }
@@ -204,7 +209,7 @@
         g.quote?.reference, 
         g.customer?.company, 
         g.customer?.full_name, 
-        g.quote?.status, 
+        shownStatus(g), 
         ...itemText(g.quote)
     ], g.lastActivity)));
 
@@ -250,6 +255,10 @@
         return new Date(ts).toLocaleString();
     }
 
+    function shownStatus(g: any): string {
+        return g.reopened ? 'open' : (g.quote?.status ?? '');
+    }
+
     function staffLabel(a: any): string {
         if (a.staff_name) return a.staff_name;
         return roleLabel(a.role) || 'Staff';
@@ -281,7 +290,7 @@
                     <div class="qhead">
                         <div>
                             <strong>{g.quote.reference}</strong>
-                            <span class="status {g.quote.status}">{g.quote.status}</span>
+                            <span class="status {shownStatus(g)}">{shownStatus(g)}</span>
                         </div>
                         <small>Last activity {when(g.lastActivity)}</small>
                     </div>
@@ -313,21 +322,16 @@
                             <div class="tl-row">
                                 <p class="tl-when">{when(a.created_at)}</p>
                                 <p class="tl-line"><strong>Staff Name:</strong> {staffLabel(a)}</p>
-                                <p class="tl-line"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
+                                {#if a.action === 'reopened'}
+                                    <p class="tl-reopened"><strong>Reopened request</strong></p>
+                                {:else}
+                                    <p class="tl-line"><strong>Action Taken:</strong> {a.action_taken ?? '—'}</p>
+                                    {#if a.closes}
+                                        <p class="tl-closed"><strong>Closed request</strong></p>
+                                    {/if}
+                                {/if}
                             </div>
                         {/each}
-
-                        {#if g.quote.status === 'closed'}
-                            <div class="tl-row tl-closed">
-                                {#if g.closedAt ?? g.closedAction?.created_at}
-                                    <p class="tl-when">{when(g.closedAt ?? g.closedAction.created_at)}</p>
-                                {/if}
-                                {#if g.closedAction}
-                                    <p class="tl-line"><strong>Staff Name:</strong> {staffLabel(g.closedAction)}</p>
-                                {/if}
-                                <p class="tl-line"><strong>Closed request</strong></p>
-                            </div>
-                        {/if}
 
                         {#if addingFor === g.quote.id}
                             <div class="add-form">
@@ -349,14 +353,20 @@
                                     </button>
                                 </div>
                             </div>
-                        {:else if canAct && (g.quote.status !== 'closed' || reopened.has(g.quote.id))}
-                            <button class="add-btn" onclick={() => openAdd(g.quote.id)}>Add action</button>
+                        {:else if g.quote.status !== 'closed' || g.reopened}
+                            <button class="add-btn" disabled={!canAct} onclick={() => openAdd(g.quote.id)}>Add action</button>
+                            {#if !canAct}
+                                <p class="hint">Read-only for the developer role.</p>
+                            {/if}
                         {/if}
                     </div>
 
-                    {#if g.quote.status === 'closed'}
-                        {#if canAct && !reopened.has(g.quote.id)}
-                            <button class="reopen-btn" onclick={() => reopen(g.quote.id)}>Reopen</button>
+                    {#if g.quote.status === 'closed' && !g.reopened}
+                        <button class="reopen-btn" disabled={!canAct || working === g.quote.id} onclick={() => reopen(g.quote)}>
+                            {working === g.quote.id ? 'Reopening...' : 'Reopen'}
+                        </button>
+                        {#if !canAct}
+                            <p class="hint">Read-only for the developer role.</p>
                         {/if}
 
                         <!-- <div class="qfoot">
@@ -719,8 +729,30 @@
         color: var(--bme-ink);
     }
 
+    .tl-reopened {
+        width: fit-content;
+        margin-top: 10px;
+        font-size: 14px;
+        border: 1px solid var(--bme-dark-blue);
+        padding: 5px 10px;
+        color: var(--bme-dark-blue);
+        border-radius: 5px;
+    }
+
     .tl-closed {
-        border-left-color: var(--bme-dark-blue);
+        width: fit-content;
+        margin-top: 10px;
+        font-size: 14px;
+        border: 1px solid var(--bme-darker-green);
+        padding: 5px 10px;
+        color: var(--bme-darker-green);
+        border-radius: 5px;
+    }
+
+    .hint {
+        margin: 10px 0 0;
+        font-size: 13px;
+        color: var(--bme-muted);
     }
 
     .reopen-btn {
@@ -737,9 +769,15 @@
         transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
     }
 
-    .reopen-btn:hover {
+    .reopen-btn:hover:not(:disabled) {
         background: var(--bme-dark-blue);
         color: #ffffff;
+    }
+
+    .reopen-btn:disabled,
+    .add-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
     }
 
     .notes {
@@ -803,7 +841,7 @@
         transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
     }
 
-    .add-btn:hover {
+    .add-btn:hover:not(:disabled) {
         background: var(--bme-hover);
         border-color: var(--bme-dark-blue);
     }

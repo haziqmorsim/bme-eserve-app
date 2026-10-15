@@ -88,10 +88,25 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
                             Math.abs(new Date(best.created_at).getTime() - reviewedMs) ? a : best)
                     : null;
 
+                let awaitingReclose = false;
+                const timeline = actions.map((a: any) => {
+                    let closes = false;
+                    if (a.action === 'reopened') {
+                        awaitingReclose = true;
+                    } else if (a.action === 'closed') {
+                        if (closingAction && a.id === closingAction.id) closes = true;
+                        else if (awaitingReclose) closes = true;
+                        awaitingReclose = false;
+                    }
+                    return { ...a, closes };
+                });
+                const reopened = actions.length > 0 && actions[actions.length - 1].action === 'reopened';
+
                 return {
                     quote: q,
                     customer: custMap[q?.user_id] ?? { full_name: null, company: null },
-                    actions,
+                    actions: timeline,
+                    reopened,
                     lastActivity,
                     closedAction: closingAction,
                     closedAt: q?.reviewed_at ?? closingAction?.created_at ?? null

@@ -4,12 +4,47 @@
     import { normaliseCode } from "$lib/coupon";
     import { invalidateAll } from "$app/navigation";
     import { addToast } from "$lib/stores/toast";
+    import { hasImage } from "$lib/parts";
+    import { ImageOff } from "@lucide/svelte";
+    import { untrack } from "svelte";
 
     let { data } = $props();
     let notes = $state('');
     let submitting = $state(false);
     let done = $state(false);
     let errorMsg = $state('');
+
+    let images = $state<Record<string, string | null>>({});
+    let brokenImages = $state<Set<string>>(new Set());
+    let idsKey = $derived(
+        [...new Set($quoteItems.map((i) => i.partId).filter(Boolean))].sort().join(',')
+    );
+
+    $effect(() => {
+        const ids = idsKey ? idsKey.split(',') : [];
+        const missing = ids.filter((id) => !(id in untrack(() => images)));
+        if (missing.length === 0) return;
+
+        data.supabase
+            .from('parts')
+            .select('id, image_url')
+            .in('id', missing)
+            .then(({ data: rows }: { data: { id: string; image_url: string | null }[] | null }) => {
+                const next = { ...images };
+                for (const id of missing) next[id] = null;
+                for (const r of rows ?? []) next[r.id] = r.image_url;
+                images = next;
+            });
+    });
+
+    function imageOf(partId: string): string | null {
+        const url = images[partId];
+        return hasImage(url) && !brokenImages.has(partId) ? (url as string) : null;
+    }
+
+    function markBroken(partId: string) {
+        brokenImages = new Set(brokenImages).add(partId);
+    }
 
     let attachments = $state<File[]>([]);
     let attachErr = $state('');
@@ -227,8 +262,22 @@
         </div>    
         {#each $quoteItems as item (item.partId)}
             <div class="row">
-                <span class="left">
-                    <strong>{item.partNumber}</strong><br /><small>{item.partName}</small>
+                <span class="left part">
+                    <span class="thumb" class:noimg={!imageOf(item.partId)}>
+                        {#if imageOf(item.partId)}
+                            <img
+                                src={imageOf(item.partId)}
+                                alt={item.partName}
+                                loading="lazy"
+                                onerror={() => markBroken(item.partId)}
+                            />
+                        {:else}
+                            <ImageOff size={20} aria-label="No image available" />
+                        {/if}
+                    </span>
+                    <span class="ptext">
+                        <strong>{item.partNumber}</strong><small>{item.partName}</small>
+                    </span>
                 </span>
                 <span>{item.boilerCode}</span>
                 <span>
@@ -382,6 +431,52 @@
 
     .left {
         text-align: left;
+    }
+
+    .part {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .thumb {
+        position: relative;
+        flex: 0 0 64px;
+        width: 64px;
+        height: 64px;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        background: #ffffff;
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+    }
+
+    .thumb.noimg {
+        background: var(--bme-surface-2);
+        color: var(--bme-muted);
+    }
+
+    .thumb img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .ptext {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        text-align: left;
+    }
+
+    .ptext small {
+        overflow-wrap: anywhere;
     }
 
     /* .coupon {
@@ -632,6 +727,12 @@
 
         .row .left {
             grid-column: 1 / -1;
+        }
+
+        .thumb {
+            flex-basis: 56px;
+            width: 56px;
+            height: 56px;
         }
 
         .row > span:nth-child(2) {
