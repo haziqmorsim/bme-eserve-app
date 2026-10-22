@@ -2,7 +2,7 @@
     import { FileText, X } from "@lucide/svelte";
     import { addToast } from "$lib/stores/toast";
     import { onDestroy, type Snippet } from "svelte";
-    import { logAction } from "$lib/activity";
+    import { logAction, activityLabel } from "$lib/activity";
 
     let {
         canRun = true,
@@ -12,7 +12,7 @@
         extract,
         buildWorkbook,
         results
-    } = $props<{
+    }: {
         canRun?: boolean;
         label?: string;
         activityType?: string | null;
@@ -23,7 +23,7 @@
         ) => Promise<{ rows: any[]; warnings: string[] }>;
         buildWorkbook: (rows: any[]) => Promise<Blob>;
         results: Snippet<[{ rows: any[]; warnings: string[] }]>;
-    }>();
+    } = $props();
 
     const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -152,7 +152,11 @@
             resultMsg = `Extracted ${collected.length} ${label} from ${files.length} file${files.length > 1 ? 's' : ''}.`;
             stage = 'done';
             if (activityType && collected.length > 0) {
-                logAction(activityType, { files: files.length, rows: collected.length });
+                logAction(activityType, {
+                    files: files.length,
+                    rows: collected.length,
+                    names: files.slice(0, 5).map((f) => activityLabel(f.name, 120))
+                });
             }
         } catch (err) {
             console.error('Extraction failed:', err);

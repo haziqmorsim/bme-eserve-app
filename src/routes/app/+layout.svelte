@@ -7,6 +7,7 @@
     import WhatsNewModal from "$lib/components/WhatsNewModal.svelte";
     import { navigating } from "$app/stores";
     import { afterNavigate } from "$app/navigation";
+    import { page } from "$app/state";
     import { live } from "$lib/stores/live.svelte";
     import { untrack } from "svelte";
     import { logActivity } from "$lib/activity";
@@ -57,6 +58,11 @@
 
     async function handleTimeout() {
         if (data.profile?.id) {
+            await logActivity(
+                supabase,
+                { id: data.profile.id, role: data.profile.role },
+                { event_type: 'sign_out', path: null, meta: { reason: 'timeout' } }
+            );
             try {
                 await supabase
                     .from('chat_sessions')
@@ -110,10 +116,17 @@
         const path = url?.pathname;
         if (!path || !path.startsWith('/app')) return;
         if (path === '/app' && !url?.searchParams.has('boiler')) return;
+
+        const meta: Record<string, string> = {};
+        const tab = url?.searchParams.get('tab');
+        if (tab) meta.tab = tab;
+        const boilerCode = (page.data as any)?.boiler?.code;
+        if (path === '/app' && boilerCode) meta.boiler = String(boilerCode);
+
         logActivity(
             data.supabase,
             data.profile ? { id: data.profile.id, role: data.profile.role } : null,
-            { event_type: 'page_view', path }
+            { event_type: 'page_view', path, meta: Object.keys(meta).length ? meta : null }
         );
     });
 </script>

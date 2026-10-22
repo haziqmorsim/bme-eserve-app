@@ -1,12 +1,12 @@
 <script lang="ts">
     import type { SortState } from "$lib/table-sort";
 
-    let { label, key, sort, onsort } = $props<{
+    let { label, key, sort, onsort }: {
         label: string;
         key: string;
         sort: SortState;
         onsort: (key: string) => void;
-    }>();
+    } = $props();
 
     let active = $derived(sort.key === key);
     let dir = $derived(active ? sort.dir : null);

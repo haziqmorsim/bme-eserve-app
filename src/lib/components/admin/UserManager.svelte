@@ -10,7 +10,7 @@
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { users, supabase, projects = [], customerProjects = [] } = $props<{ users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] }>();
+    let { users, supabase, projects = [], customerProjects = [] }: { users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] } = $props();
 
     const ROLES = ROLE_OPTIONS;
     function roleLabel(r: string): string {

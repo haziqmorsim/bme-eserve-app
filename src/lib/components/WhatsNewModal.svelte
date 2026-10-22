@@ -4,13 +4,13 @@
     import { fade, scale } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
 
-    let { show = false, version = '', content = '', supabase, profileId = null } = $props<{
+    let { show = false, version = '', content = '', supabase, profileId = null }: {
         show?: boolean;
         version?: string;
         content?: string;
         supabase: SupabaseClient;
         profileId?: string | null;
-    }>();
+    } = $props();
 
     let dismissed = $state(false);
     let visible = $derived(show && !dismissed);

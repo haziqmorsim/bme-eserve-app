@@ -11,12 +11,12 @@
     import { BOILER_IMAGE_BUCKET, boilerImageSources, grateFor } from "$lib/boiler-design";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { boilers, supabase, projects = [], boilerProjects = [] } = $props<{
+    let { boilers, supabase, projects = [], boilerProjects = [] }: {
         boilers: any[];
         supabase: SupabaseClient;
         projects?: any[];
         boilerProjects?: any[];
-    }>();
+    } = $props();
 
     let projectsByBoiler = $derived.by(() => {
         const m: Record<string, string[]> = {};
@@ -158,7 +158,7 @@
         const projErr = await syncProjects(boilerId);
         busy = false;
         if (projErr) { err = projErr; return; }
-        logAction(editing === 'new' ? 'boiler_created' : 'boiler_updated', { name: activityLabel(payload.code) });
+        logAction(editing === 'new' ? 'boiler_created' : 'boiler_updated', { name: activityLabel(payload.name ? `${payload.code} – ${payload.name}` : payload.code) });
         addToast(editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully');
         editing = null;
         await invalidateAll();
@@ -198,7 +198,7 @@
         const { error } = await supabase.from('boilers').delete().eq('id', deleting.id);
         busy = false;
         if (error) { err = error.message; return; }
-        logAction('boiler_deleted', { name: activityLabel(deleting.code) });
+        logAction('boiler_deleted', { name: activityLabel(deleting.name ? `${deleting.code} – ${deleting.name}` : deleting.code) });
         addToast('Boiler deleted successfully');
         deleting = null;
         await invalidateAll();

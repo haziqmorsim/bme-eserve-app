@@ -12,7 +12,7 @@
         customerNoBoilers = false, 
         supabase = null, 
         profile = null
-    } = $props<{
+    }: {
         boilers: Boiler[];
         projects?: Project[];
         boilerProjects?: BoilerProject[];
@@ -21,7 +21,7 @@
         customerNoBoilers?: boolean;
         supabase?: any;
         profile?: any;
-    }>();
+    } = $props();
 
     let search = $state('');
 

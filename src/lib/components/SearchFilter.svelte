@@ -7,13 +7,13 @@
         showStatus = true, 
         showRegion = true, 
         placeholder = "Search by reference..."
-    } = $props<{
+    }: {
         filters: Filters;
         regions?: { id?: string; name: string; }[];
         showStatus?: boolean;
         showRegion?: boolean;
         placeholder?: string;
-    }>();
+    } = $props();
 
     let active = $derived(isActive(filters));
 

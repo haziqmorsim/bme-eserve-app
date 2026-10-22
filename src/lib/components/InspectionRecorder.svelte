@@ -11,7 +11,7 @@
 		tubeReadings = [],
 		supabase,
 		onclose
-	} = $props<{
+	}: {
 		boilerId: string;
 		inspection?: any;
 		inspectionItems?: any[];
@@ -19,7 +19,7 @@
 		tubeReadings?: any[];
 		supabase: any;
 		onclose: () => void;
-	}>();
+	} = $props();
 
 	const today = new Date().toISOString().slice(0, 10);
 

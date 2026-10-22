@@ -9,12 +9,12 @@
         action = null,
         supabase,
         onclose
-    } = $props<{
+    }: {
         boilerId: string;
         action?: any;
         supabase: any;
         onclose: () => void;
-    }>();
+    } = $props();
 
     let form = $state(
         untrack(() => ({

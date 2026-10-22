@@ -45,7 +45,7 @@
 		activeProjectId = null,
 		supabase = null,
 		profile = null
-	} = $props<{
+	}: {
 		boiler: Boiler;
 		readings?: SectionReadingRow[];
 		metrics?: MetricRow[];
@@ -71,7 +71,7 @@
 		activeProjectId?: string | null;
 		supabase?: any;
 		profile?: any;
-	}>();
+	} = $props();
 
 	const resolvedProject = $derived.by(() => {
 		const ids = new Set(

@@ -34,9 +34,24 @@ export const actions: Actions = {
         if (data.user) {
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('must_change_password')
+                .select('must_change_password, role')
                 .eq('id', data.user.id)
                 .maybeSingle();
+
+            if (profile?.role !== 'developer') {
+                try {
+                    await supabase.from('activity_events').insert({
+                        user_id: data.user.id,
+                        role: profile?.role ?? null,
+                        event_type: 'sign_in',
+                        path: '/login',
+                        meta: null
+                    });
+                } catch {
+                    // Logging must never block sign-in.
+                }
+            }
+
             if (profile?.must_change_password) throw redirect(303, '/change-password');
         }
 

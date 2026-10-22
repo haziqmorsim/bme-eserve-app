@@ -14,7 +14,7 @@
         baselines = [],
         indicators = [],
         supabase
-    } = $props<{
+    }: {
         metrics?: any[];
         groups?: any[];
         motors?: any[];
@@ -24,7 +24,7 @@
         baselines?: any[];
         indicators?: any[];
         supabase: SupabaseClient;
-    }>();
+    } = $props();
 
     type Section = 'overview' | 'trends' | 'motors' | 'analytics' | 'baselines' | 'indicators';
     let section = $state<Section>('overview');

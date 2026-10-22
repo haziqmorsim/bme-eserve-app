@@ -3,7 +3,7 @@
     import { slaState, ageLabel, slaStateWeekday, weekdayAgeLabel, SLA_LABEL, DEFAULT_SLA } from "$lib/sla";
     import { toMap, num } from "$lib/settings";
 
-    let { since, weekdays = false } = $props<{ since: string; weekdays?: boolean }>();
+    let { since, weekdays = false }: { since: string; weekdays?: boolean } = $props();
 
     let thresholds = $derived.by(() => {
         const m = toMap(($page.data as any)?.settings);

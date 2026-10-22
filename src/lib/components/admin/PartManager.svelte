@@ -13,12 +13,12 @@
 	import SortHeader from './SortHeader.svelte';
 	import { logAction, activityLabel } from '$lib/activity';
 
-	let { parts, components, boilers, supabase } = $props<{
+	let { parts, components, boilers, supabase }: {
 		parts: any[];
 		components: any[];
 		boilers: any[];
 		supabase: SupabaseClient;
-	}>();
+	} = $props();
 
 	let lowStockThreshold = $derived(
 		num(toMap(($pageStore.data as any)?.settings), 'low_stock_threshold', 5)

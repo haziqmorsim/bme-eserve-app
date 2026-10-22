@@ -6,12 +6,12 @@
 	import { grateFor } from '$lib/boiler-design';
 	import { Plus } from '@lucide/svelte';
 
-	let { boilers, specs, readings, supabase } = $props<{
+	let { boilers, specs, readings, supabase }: {
 		boilers: any[];
 		specs: any[];
 		readings: any[];
 		supabase: SupabaseClient;
-	}>();
+	} = $props();
 
 	let boilerId = $state<string>('');
 

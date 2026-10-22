@@ -15,13 +15,13 @@
 		components = [],
 		parts = [],
 		onadd
-	} = $props<{
+	}: {
 		boiler: Boiler;
 		readings?: any[];
 		components?: Component[];
 		parts?: Part[];
 		onadd?: (part: Part, qty: number) => void;
-	}>();
+	} = $props();
 
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, components));

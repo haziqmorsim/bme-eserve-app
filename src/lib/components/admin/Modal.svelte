@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { title, onclose, children, wide = false } = $props<{ title: string; onclose: () => void; children: any; wide?: boolean }>();
+    let { title, onclose, children, wide = false }: { title: string; onclose: () => void; children: any; wide?: boolean } = $props();
 
     function handleKey(e: KeyboardEvent) {
         if (e.key === 'Escape') onclose();

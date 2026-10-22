@@ -7,7 +7,7 @@
     import { addItem } from "$lib/stores/quote";
     import { addToast } from "$lib/stores/toast";
 
-    let { notifications = [], supabase, label = '' } = $props<{ notifications: any[]; supabase: SupabaseClient; label?: string }>();
+    let { notifications = [], supabase, label = '' }: { notifications: any[]; supabase: SupabaseClient; label?: string } = $props();
 
     let open = $state(false);
     let busy = $state(false);

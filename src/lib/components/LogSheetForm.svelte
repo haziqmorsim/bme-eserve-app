@@ -8,12 +8,12 @@
         metrics = [],
         supabase,
         onclose
-    } = $props<{
+    }: {
         boilerId: string;
         metrics?: any[];
         supabase: any;
         onclose: () => void;
-    }>();
+    } = $props();
 
     const today = new Date().toISOString().slice(0, 10);
 

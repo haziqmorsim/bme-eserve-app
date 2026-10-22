@@ -7,13 +7,13 @@
         fill = true,
         yTicks = 5,
         tickHours = 1
-    } = $props<{
+    }: {
         series?: TrendSeries[];
         height?: number;
         fill?: boolean;
         yTicks?: number;
         tickHours?: number;
-    }>();
+    } = $props();
 
     const PAD_L = 40;
     const PAD_R = 16;

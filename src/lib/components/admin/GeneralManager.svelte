@@ -4,12 +4,12 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { settings = [], supabase, profile = null, dirty = $bindable(false) } = $props<{
+    let { settings = [], supabase, profile = null, dirty = $bindable(false) }: {
         settings?: any[];
         supabase: SupabaseClient;
         profile?: any;
         dirty?: boolean;
-    }>();
+    } = $props();
 
     const REMINDER_FIELDS = [
         {

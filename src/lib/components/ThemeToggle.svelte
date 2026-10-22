@@ -2,7 +2,7 @@
     import { Sun, Moon } from "@lucide/svelte";
     import { theme } from "$lib/theme.svelte";
 
-    let { size = 20, variant = 'icon' } = $props<{ size?: number; variant?: 'icon' | 'segmented' }>();
+    let { size = 20, variant = 'icon' }: { size?: number; variant?: 'icon' | 'segmented' } = $props();
 </script>
 
 {#if variant === 'segmented'}

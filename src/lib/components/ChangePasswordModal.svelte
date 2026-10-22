@@ -9,7 +9,7 @@
 
     type Field = 'current' | 'next' | 'confirm';
 
-    let { open = $bindable(false) } = $props<{ open?: boolean }>();
+    let { open = $bindable(false) }: { open?: boolean } = $props();
 
     let current = $state('');
     let next = $state('');

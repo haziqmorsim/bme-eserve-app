@@ -11,7 +11,7 @@
         readings = [], 
         imageUrl = null, 
         onselect
-    } = $props<{
+    }: {
         def: GrateDef;
         sections: ResolvedSection[];
         mode?: 'dashboard' | 'parts';
@@ -20,7 +20,7 @@
         readings?: SectionReadingRow[];
         imageUrl?: string | null;
         onselect?: (key: string, componentIds: string[]) => void;
-    }>();
+    } = $props();
 
     let open = $state<string | null>(null);
     let tip = $state<{ key: string; left: number; top: number; placement: 'above' | 'below'; arrowX: number } | null>(null);

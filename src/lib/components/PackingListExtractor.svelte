@@ -2,7 +2,7 @@
     import PdfExtractor from './PdfExtractor.svelte';
     import type { PackingList } from '$lib/extract/types';
 
-    let { canRun = true } = $props<{ canRun?: boolean }>();
+    let { canRun = true }: { canRun?: boolean } = $props();
 
     const extract = async (file: File, onProgress: any) => (await import('$lib/extract/packing')).extractPackingList(file, onProgress);
     const buildWorkbook = async (rows: PackingList[]) => (await import('$lib/extract/workbook')).buildPackingWorkbook(rows);

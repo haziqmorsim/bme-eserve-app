@@ -15,7 +15,7 @@
 		feedback?: 'accepted' | 'rejected' | null;
 	};
 
-	let { supabase = null, user = null } = $props<{ supabase?: any; user?: any }>();
+	let { supabase = null, user = null }: { supabase?: any; user?: any } = $props();
 
 	let sessionId: string | null = null;
 

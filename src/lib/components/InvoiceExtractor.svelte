@@ -2,7 +2,7 @@
     import PdfExtractor from "$lib/components/PdfExtractor.svelte";
     import type { InvoiceRow, ProgressFn } from "$lib/extract/types";
 
-    let { canRun = true } = $props<{ canRun?: boolean }>();
+    let { canRun = true }: { canRun?: boolean } = $props();
 
     const extract = async (file: File, onProgress: ProgressFn) =>
         (await import('$lib/extract/invoice')).extractInvoices(file, onProgress);

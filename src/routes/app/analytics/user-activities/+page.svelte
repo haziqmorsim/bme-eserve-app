@@ -1,7 +1,37 @@
 <script lang="ts">
 	import { ROLE_LABEL } from '$lib/roles';
+	import SearchFilter from '$lib/components/SearchFilter.svelte';
+	import Pagination from '$lib/components/admin/Pagination.svelte';
+	import { emptyFilters, isActive, matches } from '$lib/filters';
 
 	let { data } = $props();
+
+	const FEED_PAGE_SIZE = 20;
+	let filters = $state(emptyFilters());
+	let feedPage = $state(1);
+
+	let filteredFeed = $derived(
+		(data.recentActivity ?? []).filter((ev: any) =>
+			matches(filters, { search: [ev.who, ev.action, ev.detail], date: ev.ts })
+		)
+	);
+
+	$effect(() => {
+		filters.q;
+		filters.from;
+		filters.to;
+		feedPage = 1;
+	});
+
+	let feedPages = $derived(Math.max(1, Math.ceil(filteredFeed.length / FEED_PAGE_SIZE)));
+	let feedCur = $derived(Math.min(feedPage, feedPages));
+	let pagedFeed = $derived(
+		filteredFeed.slice((feedCur - 1) * FEED_PAGE_SIZE, feedCur * FEED_PAGE_SIZE)
+	);
+
+	function fullDate(ts: string): string {
+		return new Date(ts).toLocaleString();
+	}
 
 	let maxDaily = $derived(Math.max(1, ...data.dailyActivity.map((d: any) => d.count)));
 	let maxUser = $derived(Math.max(1, ...data.topUsers.map((u: any) => u.count)));
@@ -135,12 +165,29 @@
 </div>
 
 <div class="card section">
-	<h2>Recent activity</h2>
+	<h2>Recent activity (last {data.windowDays} days)</h2>
+
+	<div class="feed-filter">
+		<SearchFilter
+			bind:filters
+			showStatus={false}
+			showRegion={false}
+			placeholder="Search by name or activity..."
+		/>
+	</div>
+
 	{#if data.recentActivity.length === 0}
 		<p class="hint">No recent records yet.</p>
+	{:else if filteredFeed.length === 0}
+		<p class="hint">No activity matches your filters.</p>
 	{:else}
+		<p class="feed-count">
+			{filteredFeed.length}
+			{filteredFeed.length === 1 ? 'activity' : 'activities'}{isActive(filters) ? ' found' : ''}
+			{#if data.eventsCapped}<span class="feed-cap"> · showing the most recent records only</span>{/if}
+		</p>
 		<ul class="feed">
-			{#each data.recentActivity as ev, i (i)}
+			{#each pagedFeed as ev, i (`${ev.ts}-${i}`)}
 				<li class="feed-row">
 					<span class="feed-dot {ev.kind}"></span>
 					<span class="feed-text"
@@ -148,10 +195,19 @@
 						{ev.action}
 						{#if ev.detail}<span class="feed-ref">{ev.detail}</span>{/if}</span
 					>
-					<span class="feed-time">{ago(ev.ts)}</span>
+					<span class="feed-time" title={fullDate(ev.ts)}>{ago(ev.ts)}</span>
 				</li>
 			{/each}
 		</ul>
+		<div class="feed-pager">
+			<Pagination
+				total={filteredFeed.length}
+				page={feedCur}
+				pageSize={FEED_PAGE_SIZE}
+				onpage={(p: number) => (feedPage = p)}
+				compact
+			/>
+		</div>
 	{/if}
 </div>
 
@@ -392,6 +448,29 @@
 		background: var(--bme-green);
 	}
 
+	.feed-dot.logout {
+		background: var(--bme-muted);
+	}
+
+	.feed-filter :global(.filters) {
+		margin-bottom: 14px;
+		box-shadow: none;
+	}
+
+	.feed-count {
+		margin: 0 0 6px;
+		font-size: 12.5px;
+		color: var(--bme-muted);
+	}
+
+	.feed-cap {
+		font-style: italic;
+	}
+
+	.feed-pager :global(.pager) {
+		margin-top: 14px;
+	}
+
 	.feed-dot.replied {
 		background: #e0509f;
 	}
@@ -442,6 +521,7 @@
 	.feed-ref {
 		color: var(--bme-dark-blue);
 		font-weight: 600;
+		overflow-wrap: break-word;
 	}
 
 	.feed-time {

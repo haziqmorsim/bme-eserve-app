@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { route = '', tab = '' } = $props<{ route?: string; tab?: string }>();
+    let { route = '', tab = '' }: { route?: string; tab?: string } = $props();
     const n = (count: number) => Array.from({ length: count }, (_, i) => i);
 </script>
 

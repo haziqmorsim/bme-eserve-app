@@ -9,7 +9,7 @@
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { projects, supabase } = $props<{ projects: any[]; supabase: SupabaseClient }>();
+    let { projects, supabase }: { projects: any[]; supabase: SupabaseClient } = $props();
 
     const pageSize = 20;
     let search = $state('');
@@ -101,7 +101,7 @@
             err = resp.error.message;
             return;
         }
-        logAction(editing === 'new' ? 'project_created' : 'project_updated', { name: activityLabel(payload.project_no) });
+        logAction(editing === 'new' ? 'project_created' : 'project_updated', { name: activityLabel(payload.name ? `${payload.project_no} – ${payload.name}` : payload.project_no) });
         addToast(editing === 'new' ? 'Project added successfully' : 'Project updated successfully');
         editing = null;
         await invalidateAll();
@@ -115,7 +115,7 @@
             err = error.message;
             return;
         }
-        logAction('project_deleted', { name: activityLabel(deleting.project_no || deleting.name) });
+        logAction('project_deleted', { name: activityLabel(deleting.name ? `${deleting.project_no} – ${deleting.name}` : deleting.project_no) });
         addToast('Project deleted successfully');
         deleting = null;
         await invalidateAll();

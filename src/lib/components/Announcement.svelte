@@ -2,7 +2,7 @@
     import { fade, scale } from "svelte/transition";
     import { cubicOut } from "svelte/easing";
 
-    let { message = '' } = $props<{ message?: string }>();
+    let { message = '' }: { message?: string } = $props();
 
     let dismissed = $state(false);
 

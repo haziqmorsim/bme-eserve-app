@@ -7,7 +7,7 @@
     import { Search, Plus, Menu } from "@lucide/svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { faqs, supabase } = $props<{ faqs: any[]; supabase: SupabaseClient }>();
+    let { faqs, supabase }: { faqs: any[]; supabase: SupabaseClient } = $props();
 
     const pageSize = 20;
     let search = $state('');
@@ -233,7 +233,7 @@
         const failed = results.find((r) => r.error);
         if (failed) {
             orderOverride = null;
-            addToast(`Could not reorder: ${failed.error.message}`, 'error');
+            addToast(`Could not reorder: ${failed.error?.message}`, 'error');
             return;
         }
         await invalidateAll();

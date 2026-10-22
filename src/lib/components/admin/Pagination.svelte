@@ -1,7 +1,7 @@
 <script lang="ts">
-    let { total, page, pageSize, onpage, compact = false } = $props<{
+    let { total, page, pageSize, onpage, compact = false }: {
         total: number; page: number; pageSize: number; onpage: (p: number) => void; compact?: boolean;
-    }>();
+    } = $props();
 
     let start = $derived(total === 0 ? 0 : (page - 1) * pageSize + 1);
     let end = $derived(Math.min(page * pageSize, total));

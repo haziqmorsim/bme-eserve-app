@@ -1,5 +1,5 @@
 <script lang="ts">
-    let { status, level } = $props<{ status: string; level: number }>();
+    let { status, level }: { status: string; level: number } = $props();
 
     const steps = [
         { n: 1, label: 'Admin' },
