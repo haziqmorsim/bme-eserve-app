@@ -2,19 +2,28 @@
     import { Sun, Moon } from "@lucide/svelte";
     import { theme } from "$lib/theme.svelte";
 
-    let { size = 20, variant = 'icon' }: { size?: number; variant?: 'icon' | 'segmented' } = $props();
+    let {
+        size = 20,
+        variant = 'icon',
+        fontSize = 14,
+        compact = false
+    }: {
+        size?: number;
+        variant?: 'icon' | 'segmented';
+        fontSize?: number;
+        compact?: boolean;
+    } = $props();
 </script>
 
 {#if variant === 'segmented'}
-    <div class="theme-seg" role="group" aria-label="Theme">
+    <div class="theme-seg" class:compact role="group" aria-label="Theme" style="--seg-fs:{fontSize}px">
         <button
             type="button"
             class="seg"
             class:active={theme.current === 'light'}
             aria-pressed={theme.current === 'light'}
             onclick={() => theme.set('light')}>
-            <Sun size={15} />
-            <span>Light</span>
+            <Sun size={fontSize + 1} />
         </button>
         <button
             type="button"
@@ -22,8 +31,7 @@
             class:active={theme.current === 'dark'}
             aria-pressed={theme.current === 'dark'}
             onclick={() => theme.set('dark')}>
-            <Moon size={15} />
-            <span>Dark</span>
+            <Moon size={fontSize + 1} />
         </button>
     </div>
 {:else}
@@ -74,10 +82,16 @@
         background: var(--bme-surface);
         color: var(--bme-dark-blue);
         font: inherit;
-        font-size: 14px;
+        font-size: var(--seg-fs, 14px);
         font-weight: 600;
+        line-height: 1.3;
         cursor: pointer;
         transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+    }
+
+    .compact .seg {
+        gap: 5px;
+        padding: 5px 10px;
     }
 
     .seg.active {

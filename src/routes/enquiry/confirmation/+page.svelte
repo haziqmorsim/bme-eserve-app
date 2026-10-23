@@ -4,7 +4,7 @@
 
 <div class="auth">
     <div class="card panel">
-        <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
+        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
         <div class="check"><CircleCheck size={48} /></div>
         <h1>Enquiry Sent</h1>
         <p class="msg">Your enquiry has been sent successfully. You will receive a confirmation e-mail from us.</p>

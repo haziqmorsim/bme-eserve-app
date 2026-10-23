@@ -1,5 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
+    import { track, flush } from "$lib/tracking";
 
     let { data } = $props();
 
@@ -10,6 +12,16 @@
 
     let submitting = $state(false);
     let errorMsg = $state('');
+
+    let started = false;
+    onMount(() => track('enquiry_view'));
+    $effect(() => {
+        const touched = !!(name || email || company || message);
+        if (touched && !started) {
+            started = true;
+            track('enquiry_start');
+        }
+    });
 
     async function submitEnquiry() {
         errorMsg = '';
@@ -33,13 +45,15 @@
             errorMsg = 'Sorry, your enquiry cannot be sent. Please try again.';
             return;
         }
+        track('enquiry_submit');
+        flush(true);
         await goto('/enquiry/confirmation');
     }
 </script>
 
 <div class="auth">
     <div class="card panel">
-        <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
+        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
         <h1>General Enquiry</h1>
         <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
             <label>

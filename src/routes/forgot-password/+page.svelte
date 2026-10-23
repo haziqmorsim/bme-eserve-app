@@ -51,7 +51,7 @@
 
 <div class="auth">
     <div class="card panel">
-        <img src="/images/bme-logo.jpg" alt="BME e-Serve" class="logo" />
+        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
         <h1>BME e-Serve App</h1>
         <p class="sub">Forgot Password</p>
 

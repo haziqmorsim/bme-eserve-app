@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!profile || !STAFF.has(profile.role)) throw error(403, 'Forbidden');
 
     const [{ data: quoteRows }, { data: approvalRows }] = await Promise.all([
-        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, quote_items(boiler_code, part_name, part_number)'), 
+        supabase.from('quotes').select('id, reference, status, created_at, reviewed_at, quote_items(boiler_code, part_name, part_number, part_id)'), 
         supabase.from('quote_approvals').select('quote_id, created_at')
     ]);
 
@@ -102,6 +102,31 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         .map((p: any) => ({ code: p.project_no, name: p.name, count: projectCount[p.id] ?? 0 }))
         .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 
+    const partIds = [...new Set(quotes.flatMap((q: any) => (q.quote_items ?? []).map((it: any) => it.part_id)).filter(Boolean))] as string[];
+    const componentByPart: Record<string, string> = {};
+    for (let i = 0; i < partIds.length; i += 200) {
+        const { data: partRows } = await supabase
+            .from('parts')
+            .select('id, components(name)')
+            .in('id', partIds.slice(i, i + 200));
+        for (const p of (partRows ?? []) as any[]) {
+            const c = Array.isArray(p.components) ? p.components[0] : p.components;
+            if (c?.name) componentByPart[p.id] = c.name;
+        }
+    }
+    const componentCount = new Map<string, number>();
+    for (const q of quotes) {
+        const names = new Set<string>();
+        for (const it of ((q as any).quote_items ?? []) as any[]) {
+            const n = it.part_id ? componentByPart[it.part_id] : null;
+            if (n) names.add(n);
+        }
+        for (const n of names) componentCount.set(n, (componentCount.get(n) ?? 0) + 1);
+    }
+    const volumeByComponent = [...componentCount.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
     const TOP_PARTS = 10;
     const partGroups = new Map<string, { count: number; names: Map<string, number> }>();
     for (const q of quotes) {
@@ -161,6 +186,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         avgResolutionMs, 
         volumeByBoiler, 
         volumeByProject, 
+        volumeByComponent, 
         volumeByPart, 
         partsTotal, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 

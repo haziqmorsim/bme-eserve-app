@@ -7,6 +7,7 @@
     import { hasImage } from "$lib/parts";
     import { ImageOff } from "@lucide/svelte";
     import { untrack } from "svelte";
+    import { track } from "$lib/tracking";
 
     let { data } = $props();
     let notes = $state('');
@@ -234,6 +235,7 @@
 
         await supabase.functions.invoke('notify-admin', { body: { quote_id: quote.id } });
 
+        track('request_submitted', { label: quote.reference ?? null, items: $quoteItems.length });
         clearCart();
         done = true;
         submitting = false;

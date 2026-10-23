@@ -11,6 +11,7 @@
     import { live } from "$lib/stores/live.svelte";
     import { untrack } from "svelte";
     import { logActivity } from "$lib/activity";
+    import { identify, pageView, endPage, flush } from "$lib/tracking";
     import { quoteItems } from "$lib/stores/quote";
     import { toMap, bool } from "$lib/settings";
     import { isStaffRole } from "$lib/roles";
@@ -56,7 +57,20 @@
     let maintenanceOn = $derived(bool(settingsMap, 'maintenance_mode', false));
     let isStaff = $derived(isStaffRole(data.profile?.role));
 
+    identify(
+        untrack(() => (data.profile ? { id: data.profile.id, role: data.profile.role } : null)),
+        untrack(() => data.session?.access_token ?? null)
+    );
+    $effect(() => {
+        identify(
+            data.profile ? { id: data.profile.id, role: data.profile.role } : null,
+            data.session?.access_token ?? null
+        );
+    });
+
     async function handleTimeout() {
+        endPage();
+        flush(true);
         if (data.profile?.id) {
             await logActivity(
                 supabase,
@@ -115,19 +129,17 @@
         const url = nav.to?.url;
         const path = url?.pathname;
         if (!path || !path.startsWith('/app')) return;
-        if (path === '/app' && !url?.searchParams.has('boiler')) return;
 
         const meta: Record<string, string> = {};
         const tab = url?.searchParams.get('tab');
         if (tab) meta.tab = tab;
-        const boilerCode = (page.data as any)?.boiler?.code;
-        if (path === '/app' && boilerCode) meta.boiler = String(boilerCode);
+        if (path === '/app') {
+            const boilerCode = (page.data as any)?.boiler?.code;
+            if (url?.searchParams.has('boiler') && boilerCode) meta.boiler = String(boilerCode);
+            else if (!url?.searchParams.has('boiler')) meta.view = 'boilers';
+        }
 
-        logActivity(
-            data.supabase,
-            data.profile ? { id: data.profile.id, role: data.profile.role } : null,
-            { event_type: 'page_view', path, meta: Object.keys(meta).length ? meta : null }
-        );
+        pageView(path, Object.keys(meta).length ? meta : null);
     });
 </script>
 

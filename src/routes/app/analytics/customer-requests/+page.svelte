@@ -21,16 +21,18 @@
 
 	let maxBoiler = $derived(Math.max(1, ...data.volumeByBoiler.map((b: any) => b.count)));
 	let maxProject = $derived(Math.max(1, ...data.volumeByProject.map((p: any) => p.count)));
+	let maxComponent = $derived(Math.max(1, ...data.volumeByComponent.map((c: any) => c.count)));
 	let maxPart = $derived(Math.max(1, ...data.volumeByPart.map((p: any) => p.count)));
 </script>
 
 {#if data.total === 0}
 	<div class="card empty">No request data available yet.</div>
 {:else}
+	<div class="cr-root">
 	<div class="stats">
 		<div class="card stat">
 			<span class="stat-label">Total requests</span>
-			<span class="stat-value">{data.total}</span>
+			<span class="stat-value total">{data.total}</span>
 			<span class="stat-sub">+{data.newThisWeek} this week</span>
 		</div>
 		<div class="card stat">
@@ -71,18 +73,15 @@
 		<div class="aging-stats">
 			<div class="ag ontrack">
 				<span class="ag-n">{data.openAging.onTrack}</span>
-				<span class="ag-l">On track</span>
-				<span class="ag-t">&lt; {data.slaThresholds.warnHours}h</span>
+				<span class="ag-l">On track · &lt; {data.slaThresholds.warnHours}h</span>
 			</div>
 			<div class="ag aging">
 				<span class="ag-n">{data.openAging.aging}</span>
-				<span class="ag-l">Aging</span>
-				<span class="ag-t">&ge; {data.slaThresholds.warnHours}h</span>
+				<span class="ag-l">Aging · &ge; {data.slaThresholds.warnHours}h</span>
 			</div>
 			<div class="ag overdue">
 				<span class="ag-n">{data.openAging.overdue}</span>
-				<span class="ag-l">Overdue</span>
-				<span class="ag-t">&ge; {data.slaThresholds.overdueHours}h</span>
+				<span class="ag-l">Overdue · &ge; {data.slaThresholds.overdueHours}h</span>
 			</div>
 		</div>
 
@@ -100,20 +99,20 @@
 		{/if}
 	</div>
 
-	<div class="grid3">
+	<div class="grid2">
 		<div class="card section">
 			<h2>Requests by project</h2>
 			{#if data.volumeByProject.length === 0}
 				<p class="hint">No project data.</p>
 			{:else}
 				<div class="bars">
-					{#each data.volumeByProject as p (p.code)}
+					{#each data.volumeByProject as p, i (p.code)}
 						<div class="bar-row">
 							<span class="bar-key" title={p.name}>{p.code}</span>
 							<div class="bar-track">
 								<div
-									class="bar-fill blue"
-									style="width: {Math.round((p.count / maxProject) * 100)}%"
+									class="bar-fill"
+									style="width: {Math.round((p.count / maxProject) * 100)}%; background: var(--cat-{(i % 5) + 1})"
 								></div>
 							</div>
 							<span class="bar-val">{p.count}</span>
@@ -128,13 +127,13 @@
 				<p class="hint">No boiler data.</p>
 			{:else}
 				<div class="bars">
-					{#each data.volumeByBoiler as b (b.code)}
+					{#each data.volumeByBoiler as b, i (b.code)}
 						<div class="bar-row">
 							<span class="bar-key">{b.code}</span>
 							<div class="bar-track">
 								<div
-									class="bar-fill blue"
-									style="width: {Math.round((b.count / maxBoiler) * 100)}%"
+									class="bar-fill"
+									style="width: {Math.round((b.count / maxBoiler) * 100)}%; background: var(--cat-{(i % 5) + 1})"
 								></div>
 							</div>
 							<span class="bar-val">{b.count}</span>
@@ -144,19 +143,40 @@
 			{/if}
 		</div>
 		<div class="card section">
+			<h2>Requests by component</h2>
+			{#if data.volumeByComponent.length === 0}
+				<p class="hint">No component data.</p>
+			{:else}
+				<ol class="part-list">
+					{#each data.volumeByComponent as c, i (c.name)}
+						<li class="part-row">
+							<span class="part-name" title={c.name}>{c.name}</span>
+							<span class="bar-val">{c.count}</span>
+							<div class="bar-track">
+								<div
+									class="bar-fill"
+									style="width: {Math.round((c.count / maxComponent) * 100)}%; background: var(--cat-{(i % 5) + 1})"
+								></div>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			{/if}
+		</div>
+		<div class="card section">
 			<h2>Requests by part</h2>
 			{#if data.volumeByPart.length === 0}
 				<p class="hint">No part data.</p>
 			{:else}
 				<ol class="part-list">
-					{#each data.volumeByPart as p (p.name)}
+					{#each data.volumeByPart as p, i (p.name)}
 						<li class="part-row">
 							<span class="part-name" title={p.name}>{p.name}</span>
 							<span class="bar-val">{p.count}</span>
 							<div class="bar-track">
 								<div
-									class="bar-fill blue"
-									style="width: {Math.round((p.count / maxPart) * 100)}%"
+									class="bar-fill"
+									style="width: {Math.round((p.count / maxPart) * 100)}%; background: var(--cat-{(i % 5) + 1})"
 								></div>
 							</div>
 						</li>
@@ -168,9 +188,29 @@
 			{/if}
 		</div>
 	</div>
+	</div>
 {/if}
 
 <style>
+	/* Chart colours, shared with the User activities page (colour-blind validated order). */
+	.cr-root {
+		--cat-1: #2a78d6;
+		--cat-2: #eb6834;
+		--cat-3: #1baf7a;
+		--cat-4: #eda100;
+		--cat-5: #e87ba4;
+		--tile-red: #e34948;
+	}
+
+	:global(:root[data-theme='dark']) .cr-root {
+		--cat-1: #3987e5;
+		--cat-2: #d95926;
+		--cat-3: #199e70;
+		--cat-4: #c98500;
+		--cat-5: #d55181;
+		--tile-red: #e66767;
+	}
+
 	h2 {
 		margin-top: 5px;
 	}
@@ -208,6 +248,14 @@
 		font-weight: 700;
 		color: var(--bme-ink);
 		line-height: 1.1;
+	}
+
+	.stat-value.total {
+		color: #6250d6;
+	}
+
+	:root[data-theme="dark"] .stat-value.total {
+		color: #9085e9;
 	}
 
 	.stat-value.open {
@@ -317,10 +365,6 @@
 		transition: width 0.3s ease;
 	}
 
-	.bar-fill.blue {
-		background: var(--bme-dark-blue);
-	}
-
 	.bar-val {
 		font-size: 13px;
 		font-weight: 700;
@@ -328,14 +372,14 @@
 		white-space: nowrap;
 	}
 
-	.grid3 {
+	.grid2 {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		margin: 0 0 4px;
 		gap: 5px;
 	}
 
-	.grid3 .section {
+	.grid2 .section {
 		margin-bottom: 0;
 	}
 
@@ -378,58 +422,36 @@
 	.ag {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 3px;
-		padding: 14px 10px;
+		gap: 4px;
+		padding: 12px 14px;
 		border-radius: 10px;
+		border-top: 4px solid var(--tile);
+		background: color-mix(in srgb, var(--tile) 9%, var(--bme-surface));
+		text-align: left;
 	}
 
 	.ag-n {
-		font-size: 26px;
+		font-size: 24px;
 		font-weight: 700;
-		line-height: 1;
+		color: var(--bme-ink);
+		line-height: 1.15;
 	}
 
 	.ag-l {
-		font-size: 13px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
-	}
-
-	.ag-t {
-		font-size: 13px;
-		font-weight: 700;
+		font-size: 12.5px;
+		color: var(--bme-muted);
 	}
 
 	.ag.ontrack {
-		background-color: #e4f3d8;
-		color: #2f5e18;
-	}
-
-	:root[data-theme='dark'] .ag.ontrack {
-		background-color: #1e3212;
-		color: #9adf6c;
+		--tile: var(--cat-3);
 	}
 
 	.ag.aging {
-		background-color: #fff3d6;
-		color: #97700a;
-	}
-
-	:root[data-theme='dark'] .ag.aging {
-		background-color: #3a2f0f;
-		color: #ffcc66;
+		--tile: var(--cat-4);
 	}
 
 	.ag.overdue {
-		background-color: #fbe3e0;
-		color: #8e261b;
-	}
-
-	:root[data-theme='dark'] .ag.overdue {
-		background-color: #3a1c18;
-		color: #ff9d8f;
+		--tile: var(--tile-red);
 	}
 
 	.aging-list {
@@ -465,18 +487,8 @@
 		display: inline-flex;
 	}
 
-	@media (max-width: 1100px) {
-		.grid3 {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-
-		.grid3 .section:nth-child(3) {
-			grid-column: 1 / -1;
-		}
-	}
-
 	@media (max-width: 860px) {
-		.grid3 {
+		.grid2 {
 			grid-template-columns: 1fr;
 		}
 	}
@@ -516,8 +528,7 @@
 			align-items: start;
 		}
 
-		.ag-l,
-		.ag-t {
+		.ag-l {
 			font-size: 12px;
 		}
 

@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
 
         let logoDrawn = false;
         try {
-            const logoUrl = appUrl('/images.bme-logo.jpg');
+            const logoUrl = appUrl('/images.bme-logo.png');
             if (logoUrl) {
                 const res = await fetch(logoUrl);
                 if (res.ok) {

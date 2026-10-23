@@ -40,7 +40,7 @@
             logActivity(
                 supabase, 
                 profile ? { id: profile.id, role: profile.role } : null, 
-                { event_type: 'page_view', path: '/app', meta: { trigger: 'boiler_search'}}
+                { event_type: 'boiler_search', path: '/app', meta: { trigger: 'boiler_search'}}
             );
         }, 700);
     }

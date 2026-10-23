@@ -1,4 +1,5 @@
 import { page } from '$app/state';
+import { trackingIds } from '$lib/tracking';
 
 export type ActivityUser = { id: string; role: string | null } | null | undefined;
 
@@ -16,14 +17,18 @@ export async function logActivity(
     if (!supabase || !user?.id) return;
     if (user.role === 'developer') return;
 
+    const row = {
+        user_id: user.id, 
+        role: user.role ?? null, 
+        event_type: input.event_type, 
+        path: input.path ?? null, 
+        meta: input.meta ?? null
+    };
+
     try {
-        await supabase.from('activity_events').insert({
-            user_id: user.id, 
-            role: user.role ?? null, 
-            event_type: input.event_type, 
-            path: input.path ?? null, 
-            meta: input.meta ?? null
-        });
+        const ids = trackingIds();
+        const { error } = await supabase.from('activity_events').insert(ids ? { ...row, ...ids } : row);
+        if (error && ids) await supabase.from('activity_events').insert(row);
     } catch {
         
     }

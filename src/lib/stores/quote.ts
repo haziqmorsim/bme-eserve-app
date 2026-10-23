@@ -1,5 +1,6 @@
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 import { browser } from "$app/environment";
+import { track } from "$lib/tracking";
 
 export interface QuoteItem {
     partId: string;
@@ -23,6 +24,7 @@ if (browser) {
 }
 
 export function addItem(item: QuoteItem) {
+    track('cart_add', { label: item.partNumber, boiler: item.boilerCode || null, qty: item.quantity });
     quoteItems.update((items) => {
         const existing = items.find((i) => i.partId === item.partId);
         if (existing) {
@@ -33,6 +35,8 @@ export function addItem(item: QuoteItem) {
 }
 
 export function removeItem(partId: string) {
+    const removed = get(quoteItems).find((i) => i.partId === partId);
+    if (removed) track('cart_remove', { label: removed.partNumber });
     quoteItems.update((items) => items.filter((i) => i.partId !== partId));
 }
 

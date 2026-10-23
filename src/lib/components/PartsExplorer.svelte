@@ -365,6 +365,8 @@
 								<button
 									type="button"
 									class="thumb"
+									data-event="image_view"
+									data-event-label={p.part_number}
 									onclick={() => (lightbox = p)}
 									title="View image"
 									aria-label="View image of {p.name}"

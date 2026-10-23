@@ -2,6 +2,7 @@
     import { enhance } from "$app/forms";
     import { untrack } from "svelte";
     import Announcement from "$lib/components/Announcement.svelte";
+    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
     let { data, form } = $props();
     let loading = $state(false);
@@ -24,7 +25,10 @@
     <div class="card panel">
         <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
         <h1>BME e-Serve App</h1>
-        <p class="sub">Sign In</p>
+        <div class="sub-row">
+            <p class="sub">Sign In</p>
+            <ThemeToggle variant="segmented" fontSize={16} compact />
+        </div>
 
         <form method="POST" use:enhance={({ cancel }) => {
             if (!validate()) {
@@ -94,8 +98,18 @@
         text-align: center;
     }
 
+    .sub-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 15px 0;
+    }
+
     .sub {
-        margin: 0 0 15px;
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.5;
         color: var(--bme-muted);
     }
 
