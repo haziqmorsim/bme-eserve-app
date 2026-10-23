@@ -33,11 +33,13 @@ function buildInvitationEmail(
         ? `<img src="${esc(logoUrl)}" alt="BME e-Serve" width="120" style="display:block;height:auto;border:0;margin:0 auto 6px;" />`
         : '';
 
+    const trackedUrl = signInUrl ? `${signInUrl}?utm_source=email` : '';
+
     const button = signInUrl
         ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 18px;">
                 <tr>
                     <td align="center" bgcolor="${BRAND.blue}" style="border-radius:10px;">
-                        <a href="${esc(signInUrl)}" target="_blank" rel="noopener"
+                        <a href="${esc(trackedUrl)}" target="_blank" rel="noopener"
                             style="display:inline-block;padding:13px 30px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">
                             Sign In
                         </a>
@@ -93,7 +95,7 @@ function buildInvitationEmail(
 								signInUrl
 									? `<p style="margin:0;color:${BRAND.muted};font-size:12px;line-height:1.5;word-break:break-all;">
                                 If the button does not work, copy and paste this link into your browser:<br />
-                                <a href="${esc(signInUrl)}" target="_blank" rel="noopener" style="color:${BRAND.blue};">${esc(signInUrl)}</a>
+                                <a href="${esc(trackedUrl)}" target="_blank" rel="noopener" style="color:${BRAND.blue};">${esc(signInUrl)}</a>
                             </p>`
 									: ''
 							}

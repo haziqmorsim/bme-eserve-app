@@ -3,6 +3,7 @@
     import { Check, X } from "@lucide/svelte";
     import Toaster from "$lib/components/Toaster.svelte";
     import { addToast } from "$lib/stores/toast";
+    import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 
     let { data } = $props();
     let { supabase } = $derived(data);
@@ -57,115 +58,132 @@
     }
 </script>
 
-<div class="auth">
-    <div class="card panel">
-        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
-        <h1>BME e-Serve App</h1>
-        <p class="sub">Change Password</p>
+<div class="shell">
+    <AuthBrandPanel />
 
-        {#if done}
-            <div class="sent">
-                <p>Your password has been changed successfully.</p>
-                <p class="hint">Redirecting to the sign-in page...</p>
-            </div>
-        {:else}
-            <p class="lead">For security, please replace your temporary password before continuing.</p>
+    <main class="pane">
+        <div class="card panel">
+            <h2>Change password</h2>
 
-            <label>
-                <span>New Password</span>
-                <input type="password" bind:value={pw} autocomplete="new-password" />
-            </label>
-            <label>
-                <span>Confirm Password</span>
-                <input type="password" bind:value={confirm} autocomplete="new-password" />
-            </label>
-            <ul class="rules">
-                <li class:ok={checks.length}>
-                    <span class="ic">{#if checks.length}<Check size={15} />{:else}<X size={15} />{/if}</span>
-                    At least 8 characters
-                </li>
-                <li class:ok={checks.upper}>
-                    <span class="ic">{#if checks.upper}<Check size={15} />{:else}<X size={15} />{/if}</span>
-                    At least one capital letter
-                </li>
-                <li class:ok={checks.number}>
-                    <span class="ic">{#if checks.number}<Check size={15} />{:else}<X size={15} />{/if}</span>
-                    At least one number
-                </li>
-                <li class:ok={checks.symbol}>
-                    <span class="ic">{#if checks.symbol}<Check size={15} />{:else}<X size={15} />{/if}</span>
-                    At least one symbol
-                </li>
-                <li class:ok={match} class:muted={confirm.length === 0}>
-                    <span class="ic">{#if match}<Check size={15} />{:else}<X size={15} />{/if}</span>
-                    Passwords match
-                </li>
-            </ul>
+            {#if done}
+                <div class="sent">
+                    <p>Your password has been changed successfully.</p>
+                    <p class="hint">Redirecting to the sign-in page...</p>
+                </div>
+            {:else}
+                <p class="sub">For security, please replace your temporary password before continuing.</p>
 
-            {#if err}<p class="err">{err}</p>{/if}
+                <label>
+                    <span>New Password</span>
+                    <input type="password" bind:value={pw} autocomplete="new-password" />
+                </label>
+                <label>
+                    <span>Confirm Password</span>
+                    <input type="password" bind:value={confirm} autocomplete="new-password" />
+                </label>
+                <ul class="rules">
+                    <li class:ok={checks.length}>
+                        <span class="ic">{#if checks.length}<Check size={15} />{:else}<X size={15} />{/if}</span>
+                        At least 8 characters
+                    </li>
+                    <li class:ok={checks.upper}>
+                        <span class="ic">{#if checks.upper}<Check size={15} />{:else}<X size={15} />{/if}</span>
+                        At least one capital letter
+                    </li>
+                    <li class:ok={checks.number}>
+                        <span class="ic">{#if checks.number}<Check size={15} />{:else}<X size={15} />{/if}</span>
+                        At least one number
+                    </li>
+                    <li class:ok={checks.symbol}>
+                        <span class="ic">{#if checks.symbol}<Check size={15} />{:else}<X size={15} />{/if}</span>
+                        At least one symbol
+                    </li>
+                    <li class:ok={match} class:muted={confirm.length === 0}>
+                        <span class="ic">{#if match}<Check size={15} />{:else}<X size={15} />{/if}</span>
+                        Passwords match
+                    </li>
+                </ul>
 
-            <button type="button" class="btn-primary" onclick={submit} disabled={busy} style="width: 100%; margin-top: 6px;">{busy ? 'Changing...' : 'Change Password'}</button>
+                {#if err}<p class="err" role="alert">{err}</p>{/if}
 
-            <form action="/logout" method="POST" class="back-form">
-                <button type="submit" class="link-btn">Back to sign in</button>
-            </form>
-        {/if}
-    </div>
+                <button type="button" class="btn-primary submit" onclick={submit} disabled={busy}>
+                    {busy ? 'Changing...' : 'Change password'}
+                </button>
+
+                <form action="/logout" method="POST" class="back-form">
+                    <button type="submit" class="link-btn">Back to sign in</button>
+                </form>
+            {/if}
+        </div>
+    </main>
 </div>
 
 <Toaster />
 
 <style>
-    .auth {
+    .shell {
         min-height: 100vh;
         display: grid;
+        grid-template-columns: minmax(340px, 5fr) 7fr;
+        background: var(--bme-page-bg);
+    }
+
+    .pane {
+        display: grid;
         place-items: center;
-        padding: 24px;
-        background: radial-gradient(1200px 500px at 80% -10%, rgba(63, 123, 179, 0.16), transparent), var(--bme-bg);
+        padding: 32px 24px;
     }
 
     .panel {
         width: 100%;
-        max-width: 400px;
-        padding: 36px 32px;
+        max-width: 440px;
+        padding: 34px 36px 28px;
+        border-radius: 16px;
     }
 
-    .logo {
-        display: block;
-        height: 100px;
-        margin: 0 auto 10px;
-    }
-
-    h1 {
-        margin: 0 0 4px;
-        font-size: 24px;
-        text-align: center;
+    h2 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.2;
+        color: var(--bme-ink);
     }
 
     .sub {
-        margin: 0 0 22px;
-        color: var(--bme-muted);
-        text-align: center;
-    }
-
-    .lead {
+        margin: 6px 0 24px;
         font-size: 14px;
         color: var(--bme-muted);
-        margin: 0 0 18px;
-        text-align: center;
+    }
+
+    .err {
+        color: var(--bme-red);
+        font-size: 14px;
+        margin: 4px 0 10px;
+    }
+
+    .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 8px;
     }
 
     label {
         display: block;
-        margin-bottom: 14px;
+        margin-bottom: 16px;
     }
 
-    label span {
+    label > span:first-child {
         display: block;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         margin-bottom: 6px;
         color: var(--bme-ink);
+    }
+
+    input {
+        height: 44px;
     }
 
     .rules {
@@ -186,16 +204,16 @@
         margin-bottom: 6px;
     }
 
-    .rules li:last-child {
-        margin-bottom: 0;
+    .rules li:last-child { 
+        margin-bottom: 0; 
     }
 
-    .rules li.ok {
-        color: var(--bme-green);
+    .rules li.ok { 
+        color: var(--bme-green); 
     }
 
-    .rules li.muted {
-        color: var(--bme-muted);
+    .rules li.muted { 
+        color: var(--bme-muted); 
     }
 
     .rules .ic {
@@ -203,13 +221,8 @@
         flex-shrink: 0;
     }
 
-    .err {
-        color: var(--bme-red);
-        font-size: 14px;
-        margin: 4px 0 10px;
-    }
-
     .sent {
+        margin-top: 20px;
         background: rgba(108, 179, 63, 0.10);
         border: 1px solid rgba(108, 179, 63, 0.35);
         border-radius: 10px;
@@ -232,13 +245,16 @@
     }
 
     .back-form {
-        margin-top: 18px;
+        margin: 22px 0 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
         text-align: center;
     }
 
     .link-btn {
         background: none;
         border: none;
+        padding: 0;
         font: inherit;
         font-size: 13px;
         font-weight: 600;
@@ -250,13 +266,21 @@
         text-decoration: underline;
     }
 
-    @media (max-width: 640px) {
-        .panel {
-            padding: 26px 20px;
+    @media (max-width: 860px) {
+        .shell {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
         }
 
-        .logo {
-            height: 72px;
+        .pane {
+            align-items: start;
+            padding: 20px 16px 28px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .panel {
+            padding: 26px 20px 22px;
         }
     }
 </style>

@@ -200,6 +200,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
                 ? `u:${e.user_id}|${String(e.created_at).slice(0, 10)}`
                 : null;
 
+    // ---------- day buckets ----------
     const todayShift = new Date(now + MYT_OFFSET_MS);
     todayShift.setUTCHours(0, 0, 0, 0);
     const todayMidnightUtc = todayShift.getTime() - MYT_OFFSET_MS;
@@ -213,6 +214,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const dayOf = (ts: string) => dayIndex[dayStartUtc(ts)];
 
+    // ---------- behaviour breakdowns (day / user / page) ----------
     const daily = days.map(() => emptyCounts());
     const byUser: Record<string, number[]> = {};
     const byPage: Record<string, number[]> = {};
@@ -243,6 +245,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }));
     const topPages = topN(Object.entries(byPage), total, 8).map(([label, values]) => ({ name: label, sub: null, values }));
 
+    // ---------- traffic & engagement ----------
     const visitors = new Set<string>();
     const signedInUsers = new Set<string>();
     const sessions = new Set<string>();
@@ -265,6 +268,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         values: [dailyVisitors[i].size, dailySessions[i].size]
     }));
 
+    // Per tracked session: ordered events for bounce, exits, funnels and journeys.
     const bySession = new Map<string, any[]>();
     for (const e of ev as any[]) {
         if (!e.session_id) continue;
@@ -287,6 +291,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     }
     const bounceRate = sessionsWithViews ? Math.round((bounced / sessionsWithViews) * 100) : null;
 
+    // Page engagement: time on page and scroll depth come from page_leave events.
     type PageStat = { views: number; users: Set<string>; time: number; timeN: number; scroll: number; scrollN: number };
     const pageStats: Record<string, PageStat> = {};
     const stat = (label: string) => (pageStats[label] ??= { views: 0, users: new Set(), time: 0, timeN: 0, scroll: 0, scrollN: 0 });
@@ -336,6 +341,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         .slice(0, 10)
         .map(([label, h]) => ({ label, ...h }));
 
+    // Traffic sources & devices from landing events (one per browser-tab visit).
     const sourceCount: Record<string, number> = {};
     const deviceCount: Record<string, number> = {};
     for (const e of ev as any[]) {
@@ -347,19 +353,28 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         const device = str(m.device) || 'desktop';
         deviceCount[device] = (deviceCount[device] ?? 0) + 1;
     }
-    const foldOther = (counts: Record<string, number>, max: number) => {
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const head = sorted.slice(0, max - 1);
-        const tailSum = sorted.slice(max - 1).reduce((s, [, n]) => s + n, 0);
-        if (sorted.length > max - 1 && tailSum) head.push(['Other', tailSum]);
-        return head.map(([label, value]) => ({ label, value }));
-    };
-    const trafficSources = foldOther(sourceCount, 5);
+    const knownSources = Object.values(SOURCE_LABELS);
+    const customSources = Object.entries(sourceCount).filter(([label]) => !knownSources.includes(label));
+    const trafficSources = [
+        ...knownSources.map((label) => ({ label, value: sourceCount[label] ?? 0 })),
+        ...(customSources.length
+            ? [
+                  customSources.length === 1
+                      ? { label: customSources[0][0], value: customSources[0][1] }
+                      : { label: 'Other', value: customSources.reduce((sum, [, n]) => sum + n, 0) }
+              ]
+            : [])
+    ]
+        .map((it, i) => ({ ...it, i }))
+        .sort((x, y) => y.value - x.value || x.i - y.i)
+        .map(({ label, value }) => ({ label, value }));
     const deviceOrder = ['desktop', 'tablet', 'mobile'];
-    const devices = deviceOrder
-        .filter((d) => deviceCount[d])
-        .map((d) => ({ label: d.charAt(0).toUpperCase() + d.slice(1), value: deviceCount[d] }));
+    const devices = deviceOrder.map((d) => ({
+        label: d.charAt(0).toUpperCase() + d.slice(1),
+        value: deviceCount[d] ?? 0
+    }));
 
+    // ---------- conversion funnels ----------
     let fParts = 0, fCart = 0, fCartView = 0, fSubmit = 0;
     for (const list of bySession.values()) {
         const viewedParts = list.some((e) => e.event_type === 'page_view' && pageLabel(e.path, metaOf(e)) === 'Parts');
@@ -389,6 +404,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         { label: 'Sent the enquiry', value: leadVisitors('enquiry_submit') }
     ];
 
+    // ---------- clicks, CTAs & custom events ----------
     const clickCount: Record<string, { count: number; cta: boolean }> = {};
     let ctaClicks = 0;
     let totalClicks = 0;
@@ -426,6 +442,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         topDownloads: toList(downloadCount, 5)
     };
 
+    // ---------- headline numbers ----------
     const conversionRate = fCart ? Math.round((fSubmit / fCart) * 100) : null;
     const summary = {
         uniqueVisitors: visitors.size,
@@ -441,6 +458,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         conversionRate
     };
 
+    // ---------- session journeys ("replay" of the navigation path) ----------
     const stepOf = (e: any): Step | null => {
         const m = metaOf(e);
         const t = new Date(e.created_at).getTime();
@@ -503,6 +521,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
             };
         });
 
+    // ---------- recent activity feed ----------
     const quoteRef: Record<string, string> = {};
     for (const q of quotes) quoteRef[q.id] = (q as any).reference;
 
