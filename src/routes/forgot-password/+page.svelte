@@ -1,6 +1,7 @@
 <script lang="ts">
     import Toaster from "$lib/components/Toaster.svelte";
     import { addToast } from "$lib/stores/toast";
+    import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 
     let { data } = $props();
     let { supabase } = $derived(data);
@@ -49,96 +50,107 @@
     }
 </script>
 
-<div class="auth">
-    <div class="card panel">
-        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
-        <h1>BME e-Serve App</h1>
-        <p class="sub">Forgot Password</p>
+<div class="shell">
+    <AuthBrandPanel />
 
-        {#if sent}
-            <div class="sent">
-                <p>A password reset link has been sent to <strong>{email.trim()}</strong>.</p>
-                <p class="hint">The link expires in 30 minutes.</p>
-            </div>
-        {:else}
-            <p class="lead">Enter your e-mail address and a link will be sent to reset your password.</p>
-            <label>
-                <span>E-mail</span>
-                <input type="email" bind:value={email} onkeydown={onKey} required autocomplete="username" />
-            </label>
+    <main class="pane">
+        <div class="card panel">
+            <h2>Forgot password</h2>
 
-            {#if err}<p class="err">{err}</p>{/if}
+            {#if sent}
+                <div class="sent">
+                    <p>A password reset link has been sent to <strong>{email.trim()}</strong>.</p>
+                    <p class="hint">The link expires in 30 minutes.</p>
+                </div>
+            {:else}
+                <p class="sub">Enter your e-mail address and a link will be sent to reset your password.</p>
+                <label>
+                    <span>E-mail</span>
+                    <input type="email" bind:value={email} onkeydown={onKey} required autocomplete="username" />
+                </label>
 
-            <button type="button" class="btn-primary" onclick={submit} disabled={busy} style="width: 100%; margin-top: 6px;">
-                {busy ? 'Sending...' : 'Send Reset Link'}
-            </button>
-        {/if}
+                {#if err}<p class="err" role="alert">{err}</p>{/if}
 
-        <p class="back"><a href="/login">&larr; Back to sign in</a></p>
-    </div>
+                <button type="button" class="btn-primary submit" onclick={submit} disabled={busy}>
+                    {busy ? 'Sending...' : 'Send Reset Link'}
+                </button>
+            {/if}
+
+            <p class="back"><a href="/login">&larr; Back to sign in</a></p>
+        </div>
+    </main>
 </div>
 
 <Toaster />
 
 <style>
-    .auth {
+    .shell {
         min-height: 100vh;
         display: grid;
-        place-items: center;
-        padding: 24px;
-        background: radial-gradient(1200px 500px at 80% -10%, rgba(63, 123, 179, 0.16), transparent), var(--bme-bg);
+        grid-template-columns: minmax(340px, 5fr) 7fr;
+        background: var(--bme-page-bg);
     }
- 
+
+    .pane {
+        display: grid;
+        place-items: center;
+        padding: 32px 24px;
+    }
+
     .panel {
         width: 100%;
-        max-width: 400px;
-        padding: 36px 32px;
+        max-width: 440px;
+        padding: 34px 36px 28px;
+        border-radius: 16px;
     }
- 
-    .logo {
-        display: block;
-        height: 100px;
-        margin: 0 auto 10px;
-    }
- 
-    h1 {
-        margin: 0 0 4px;
-        font-size: 24px;
-        text-align: center;
-    }
- 
-    .sub {
-        margin: 0 0 22px;
-        color: var(--bme-muted);
-        text-align: center;
-    }
- 
-    .lead {
-        font-size: 14px;
-        color: var(--bme-muted);
-        margin: 0 0 18px;
-    }
- 
-    label {
-        display: block;
-        margin-bottom: 14px;
-    }
- 
-    label span {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 6px;
+
+    h2 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.2;
         color: var(--bme-ink);
     }
- 
+
+    .sub {
+        margin: 6px 0 24px;
+        font-size: 14px;
+        color: var(--bme-muted);
+    }
+
     .err {
         color: var(--bme-red);
         font-size: 14px;
         margin: 4px 0 10px;
     }
- 
+
+    .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 8px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    label > span:first-child {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--bme-ink);
+    }
+
+    input {
+        height: 44px;
+    }
+
     .sent {
+        margin-top: 20px;
         background: rgba(108, 179, 63, 0.10);
         border: 1px solid rgba(108, 179, 63, 0.35);
         border-radius: 10px;
@@ -146,42 +158,52 @@
         font-size: 14px;
         color: var(--bme-ink);
     }
- 
-    .sent p { 
-        margin: 0 0 8px; 
+
+    .sent p {
+        margin: 0 0 8px;
     }
 
-    .sent p:last-child { 
-        margin-bottom: 0; 
+    .sent p:last-child {
+        margin-bottom: 0;
     }
 
-    .sent .hint { 
-        color: var(--bme-muted); 
-        font-size: 13px; 
+    .sent .hint {
+        color: var(--bme-muted);
+        font-size: 13px;
     }
- 
+
     .back {
-        margin-top: 20px;
+        margin: 22px 0 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
         font-size: 13px;
         text-align: center;
     }
- 
+
     .back a {
         font-weight: 600;
         color: var(--bme-dark-blue);
     }
- 
-    .back a:hover { 
-        text-decoration: underline; 
+
+    .back a:hover {
+        text-decoration: underline;
     }
- 
-    @media (max-width: 480px) {
-        .panel { 
-            padding: 26px 20px; 
+
+    @media (max-width: 860px) {
+        .shell {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
         }
 
-        .logo { 
-            height: 72px; 
+        .pane {
+            align-items: start;
+            padding: 20px 16px 28px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .panel {
+            padding: 26px 20px 22px;
         }
     }
 </style>

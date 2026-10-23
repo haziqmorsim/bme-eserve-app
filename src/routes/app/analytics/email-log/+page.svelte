@@ -170,11 +170,11 @@
 	}
 
 	.s-val.success {
-		color: #2f5e18;
+		color: #1baf7a;
 	}
 
 	:root[data-theme="dark"] .s-val.s-val.success {
-		color: #9adf6c;
+		color: #199e70;
 	}
 
 	.stat.alert .s-val {

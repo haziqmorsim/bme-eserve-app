@@ -367,13 +367,12 @@
             {#if attachErr}<span class="attach-err">{attachErr}</span>{/if}
             <span class="attach-hint">Max total files size: 10 MB. Supported file types: .pdf, .doc, .docx, .csv, .xls, .xlsx, .png, .jpg, .jpeg, .webp, .txt</span>
         </div>
+        {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
+
+        <button class="btn-primary submit" onclick={submitQuote} disabled={submitting}>
+            {submitting ? 'Submitting...' : 'Submit'}
+        </button>
     </div>
-
-    {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
-
-    <button class="btn-primary submit" onclick={submitQuote} disabled={submitting}>
-        {submitting ? 'Submitting...' : 'Submit'}
-    </button>
 {/if}
 
 <style>
@@ -687,8 +686,10 @@
     }
 
     .submit { 
-        width: 100%; 
-        padding: 14px; 
+        display: flex;
+        margin-left: auto;
+        margin-top: 10px;
+        padding: 10px 18px; 
         font-size: 16px; 
     }
 

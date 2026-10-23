@@ -1,69 +1,111 @@
 <script lang="ts">
     import { CircleCheck } from "@lucide/svelte";
+    import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 </script>
 
-<div class="auth">
-    <div class="card panel">
-        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
-        <div class="check"><CircleCheck size={48} /></div>
-        <h1>Enquiry Sent</h1>
-        <p class="msg">Your enquiry has been sent successfully. You will receive a confirmation e-mail from us.</p>
-        <a href="/login" class="btn-primary back">Back to Sign In</a>
-    </div>
+<div class="shell">
+    <AuthBrandPanel />
+
+    <main class="pane">
+        <div class="card panel">
+            <div class="check"><CircleCheck size={52} /></div>
+            <h2>Enquiry sent</h2>
+            <p class="msg">Your enquiry has been sent successfully. You will receive a confirmation e-mail from us.</p>
+            <a href="/login" class="btn-primary submit back-btn">Back to sign in</a>
+        </div>
+    </main>
 </div>
 
 <style>
-    .auth {
+    .shell {
         min-height: 100vh;
         display: grid;
+        grid-template-columns: minmax(340px, 5fr) 7fr;
+        background: var(--bme-page-bg);
+    }
+
+    .pane {
+        display: grid;
         place-items: center;
-        padding: 24px;
-        background: radial-gradient(1200px, 500px at 80% -10%, rgba(63, 123, 179, 0.16), transpaernt), var(--bme-bg);
+        padding: 32px 24px;
     }
 
     .panel {
         width: 100%;
         max-width: 440px;
-        padding: 40px 32px;
-        text-align: center;
+        padding: 34px 36px 28px;
+        border-radius: 16px;
     }
 
-    .logo {
-        display: block;
-        height: 88px;
-        margin: 0 auto 14px;
+    h2 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.2;
+        color: var(--bme-ink);
+    }
+
+    /* .sub {
+        margin: 6px 0 24px;
+        font-size: 14px;
+        color: var(--bme-muted);
+    }
+
+    .err {
+        color: var(--bme-red);
+        font-size: 14px;
+        margin: 4px 0 10px;
+    } */
+
+    .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 8px;
+    }
+
+    .panel {
+        text-align: center;
+        padding-top: 40px;
+        padding-bottom: 36px;
     }
 
     .check {
         display: inline-flex;
         color: var(--bme-green);
-        margin-bottom: 8px;
-    }
-
-    h1 {
-        margin: 0 0 10px;
-        font-size: 24px;
+        margin-bottom: 10px;
     }
 
     .msg {
-        color: var(--bme-muted);
+        margin: 10px 0 26px;
         font-size: 15px;
         line-height: 1.6;
-        margin: 0 0 24px;
+        color: var(--bme-muted);
     }
 
-    .back {
-        display: inline-block;
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         text-decoration: none;
+    }
+
+    @media (max-width: 860px) {
+        .shell {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
+        }
+
+        .pane {
+            align-items: start;
+            padding: 20px 16px 28px;
+        }
     }
 
     @media (max-width: 480px) {
         .panel {
-            padding: 30px 22px;
-        }
-
-        .logo {
-            height: 68px;
+            padding: 26px 20px 22px;
         }
     }
 </style>

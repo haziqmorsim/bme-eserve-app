@@ -263,11 +263,11 @@
 	}
 
 	.stat-value.closed {
-		color: #2f5e18;
+		color: #1baf7a;
 	}
 
 	:root[data-theme='dark'] .stat-value.closed {
-		color: #9adf6c;
+		color: #199e70;
 	}
 
 	.stat-sub {

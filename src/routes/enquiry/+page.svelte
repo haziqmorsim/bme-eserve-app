@@ -2,6 +2,7 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { track, flush } from "$lib/tracking";
+    import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 
     let { data } = $props();
 
@@ -51,108 +52,150 @@
     }
 </script>
 
-<div class="auth">
-    <div class="card panel">
-        <img src="/images/bme-logo.png" alt="BME e-Serve" class="logo" />
-        <h1>General Enquiry</h1>
-        <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
+<div class="shell">
+    <AuthBrandPanel />
+
+    <main class="pane">
+        <div class="card panel">
+            <h2>General enquiry</h2>
+            <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
+
             <label>
-                Name <span class="required">*</span>
+                <span>Name <i class="required">*</i></span>
                 <input type="text" bind:value={name} required autocomplete="name" />
             </label>
             <label>
-                E-mail Address <span class="required">*</span>
+                <span>E-mail Address <i class="required">*</i></span>
                 <input type="email" bind:value={email} required autocomplete="email" />
             </label>
             <label>
-                Company <span class="required">*</span>
+                <span>Company <i class="required">*</i></span>
                 <input type="text" bind:value={company} required autocomplete="organization" />
             </label>
             <label>
-                Message <span class="required">*</span>
+                <span>Message <i class="required">*</i></span>
                 <textarea rows="5" bind:value={message} required placeholder="How can we help?"></textarea>
             </label>
 
-            {#if errorMsg}<p class="err">{errorMsg}</p>{/if}
+            {#if errorMsg}<p class="err" role="alert">{errorMsg}</p>{/if}
 
-            <button type="button" class="btn-primary" onclick={submitEnquiry} disabled={submitting} style="width: 100%; margin-top: 6px;">{submitting ? 'Sending...' : 'Send Enquiry'}</button>
+            <button type="button" class="btn-primary submit" onclick={submitEnquiry} disabled={submitting}>
+                {submitting ? 'Sending...' : 'Send Enquiry'}
+            </button>
 
-            <p class="note"><a href="/login">Back to Sign In</a></p>
-    </div>
+            <p class="back"><a href="/login">&larr; Back to sign in</a></p>
+        </div>
+    </main>
 </div>
 
 <style>
-    .auth {
+    .shell {
         min-height: 100vh;
         display: grid;
-        place-items: center;
-        padding: 24px;
-        background: radial-gradient(1200px 500px at 80% -10%, rgba(63, 123, 179, 0.16), transparent), var(--bme-bg);
-    }
- 
-    .panel {
-        width: 100%;
-        max-width: 460px;
-        padding: 36px 32px;
-    }
- 
-    .logo {
-        display: block;
-        height: 100px;
-        margin-bottom: 10px;
-        margin-left: auto;
-        margin-right: auto;
-    }
- 
-    h1 {
-        margin: 0 0 4px;
-        font-size: 24px;
-        text-align: center;
-    }
- 
-    .sub {
-        margin: 0 0 22px;
-        color: var(--bme-muted);
-        text-align: center;
-    }
- 
-    label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 14px;
-    }
- 
-    label > span {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 4px;
+        grid-template-columns: minmax(340px, 5fr) 7fr;
+        background: var(--bme-page-bg);
     }
 
-    input, textarea {
-        margin-top: 8px;
+    .pane {
+        display: grid;
+        place-items: center;
+        padding: 32px 24px;
     }
- 
+
+    .panel {
+        width: 100%;
+        max-width: 480px;
+        padding: 34px 36px 28px;
+        border-radius: 16px;
+    }
+
+    h2 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.2;
+        color: var(--bme-ink);
+    }
+
+    .sub {
+        margin: 6px 0 24px;
+        font-size: 14px;
+        color: var(--bme-muted);
+    }
+
     .err {
         color: var(--bme-red);
         font-size: 14px;
         margin: 4px 0 10px;
     }
- 
-    .note {
-        margin-top: 20px;
+
+    .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 8px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    label > span:first-child {
+        display: block;
         font-size: 13px;
-        color: var(--bme-muted);
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--bme-ink);
+    }
+
+    input {
+        height: 44px;
+    }
+
+    .required {
+        font-style: normal;
+        color: var(--bme-red);
+    }
+
+    textarea {
+        resize: vertical;
+        min-height: 110px;
+    }
+
+    .back {
+        margin: 22px 0 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--bme-border);
+        font-size: 13px;
         text-align: center;
     }
- 
-    .note a {
+
+    .back a {
         font-weight: 600;
         color: var(--bme-dark-blue);
     }
 
+    .back a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 860px) {
+        .shell {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
+        }
+
+        .pane {
+            align-items: start;
+            padding: 20px 16px 28px;
+        }
+    }
+
     @media (max-width: 480px) {
-        .panel { padding: 26px 20px; }
-        .logo { height: 72px; }
+        .panel {
+            padding: 26px 20px 22px;
+        }
     }
 </style>
