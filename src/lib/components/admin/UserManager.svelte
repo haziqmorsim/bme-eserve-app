@@ -10,7 +10,17 @@
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { users, supabase, projects = [], customerProjects = [] }: { users: any[]; supabase: SupabaseClient, projects?: any[], customerProjects?: any[] } = $props();
+    let {
+        users,
+        supabase,
+        projects = [],
+        customerProjects = []
+    }: {
+        users: any[];
+        supabase: SupabaseClient;
+        projects?: any[];
+        customerProjects?: any[];
+    } = $props();
 
     const ROLES = ROLE_OPTIONS;
     function roleLabel(r: string): string {
@@ -115,7 +125,7 @@
         };
         err = ''; fieldErr = {}; editing = u.id;
     }
-    function cancel() { editing = null; err = ''; fieldErr = {}; }
+    function cancel() { if (busy) return; editing = null; err = ''; fieldErr = {}; }
 
     async function fnError(error: any, resp: any, fallback: string): Promise<string> {
         if (resp?.error) return resp.error;
@@ -174,7 +184,13 @@
                 ? await fnError(invErr, inv, 'Unknown error.')
                 : 'sent';
         }
-        busy = false;
+
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
+        editing = null;
 
         if (inviteResult === 'sent') {
             addToast(`User added successfully. Invitation e-mail sent to ${body.email}.`);
@@ -183,8 +199,6 @@
         } else {
             addToast(action === 'create' ? 'User added successfully' : 'User updated successfully');
         }
-        editing = null;
-        await invalidateAll();
     }
 
     async function confirmDelete() {
@@ -192,12 +206,15 @@
         const { data: resp, error } = await supabase.functions.invoke('admin-users', {
             body: { action: 'delete', id: deleting.id }
         });
-        busy = false;
-        if (error || resp?.error) { err = await fnError(error, resp, 'Delete failed.'); return; }
+        if (error || resp?.error) { busy = false; err = await fnError(error, resp, 'Delete failed.'); return; }
         logAction('user_deleted', { name: activityLabel(deleting.full_name || deleting.email) });
-        addToast('User deleted successfully');
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
         deleting = null;
-        await invalidateAll();
+        addToast('User deleted successfully');
     }
 </script>
 

@@ -13,7 +13,12 @@
 	import SortHeader from './SortHeader.svelte';
 	import { logAction, activityLabel } from '$lib/activity';
 
-	let { parts, components, boilers, supabase }: {
+	let {
+		parts,
+		components,
+		boilers,
+		supabase
+	}: {
 		parts: any[];
 		components: any[];
 		boilers: any[];
@@ -146,6 +151,7 @@
 		editing = p.id;
 	}
 	function cancel() {
+		if (busy) return;
 		editing = null;
 		err = '';
 		fieldErr = {};
@@ -195,29 +201,38 @@
 			editing === 'new'
 				? await supabase.from('parts').insert(payload)
 				: await supabase.from('parts').update(payload).eq('id', editing);
-		busy = false;
 		if (resp.error) {
+			busy = false;
 			err = resp.error.message;
 			return;
 		}
 		logAction(editing === 'new' ? 'part_created' : 'part_updated', { name: activityLabel(payload.name) });
-		addToast(editing === 'new' ? 'Part added successfully' : 'Part updated successfully');
+		const message = editing === 'new' ? 'Part added successfully' : 'Part updated successfully';
+		try {
+			await invalidateAll();
+		} finally {
+			busy = false;
+		}
 		editing = null;
-		await invalidateAll();
+		addToast(message);
 	}
 
 	async function confirmDelete() {
 		busy = true;
 		const { error } = await supabase.from('parts').delete().eq('id', deleting.id);
-		busy = false;
 		if (error) {
+			busy = false;
 			err = error.message;
 			return;
 		}
 		logAction('part_deleted', { name: activityLabel(deleting.name) });
-		addToast('Part deleted successfully');
+		try {
+			await invalidateAll();
+		} finally {
+			busy = false;
+		}
 		deleting = null;
-		await invalidateAll();
+		addToast('Part deleted successfully');
 	}
 
 	async function onPickImage(e: Event) {

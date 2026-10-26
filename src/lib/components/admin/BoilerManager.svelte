@@ -105,7 +105,7 @@
         };
         err = ''; fieldErr = {}; previewFailed = []; editing = b.id;
     }
-    function cancel() { editing = null; err = ''; fieldErr = {}; }
+    function cancel() { if (busy) return; editing = null; err = ''; fieldErr = {}; }
 
     function validate(): boolean {
         const e: Record<string, string> = {};
@@ -156,12 +156,16 @@
         if (!boilerId) { busy = false; err = 'Something went wrong saving the boiler.'; return; }
 
         const projErr = await syncProjects(boilerId);
-        busy = false;
-        if (projErr) { err = projErr; return; }
+        if (projErr) { busy = false; err = projErr; return; }
         logAction(editing === 'new' ? 'boiler_created' : 'boiler_updated', { name: activityLabel(payload.name ? `${payload.code} – ${payload.name}` : payload.code) });
-        addToast(editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully');
+        const message = editing === 'new' ? 'Boiler added successfully' : 'Boiler updated successfully';
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
         editing = null;
-        await invalidateAll();
+        addToast(message);
     }
 
     async function onPickImage(e: Event) {
@@ -196,12 +200,15 @@
     async function confirmDelete() {
         busy = true;
         const { error } = await supabase.from('boilers').delete().eq('id', deleting.id);
-        busy = false;
-        if (error) { err = error.message; return; }
+        if (error) { busy = false; err = error.message; return; }
         logAction('boiler_deleted', { name: activityLabel(deleting.name ? `${deleting.code} – ${deleting.name}` : deleting.code) });
-        addToast('Boiler deleted successfully');
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
         deleting = null;
-        await invalidateAll();
+        addToast('Boiler deleted successfully');
     }
 </script>
 

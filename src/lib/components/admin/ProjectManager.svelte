@@ -9,7 +9,10 @@
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
 
-    let { projects, supabase }: { projects: any[]; supabase: SupabaseClient } = $props();
+    let { projects, supabase }: { 
+        projects: any[]; 
+        supabase: SupabaseClient 
+    } = $props();
 
     const pageSize = 20;
     let search = $state('');
@@ -66,6 +69,7 @@
     }
 
     function cancel() {
+        if (busy) return;
         editing = null;
         err = '';
         fieldErr = {};
@@ -96,29 +100,38 @@
         const resp = editing === 'new' 
             ? await supabase.from('projects').insert(payload) 
             : await supabase.from('projects').update(payload).eq('id', editing);
-        busy = false;
         if (resp.error) {
+            busy = false;
             err = resp.error.message;
             return;
         }
         logAction(editing === 'new' ? 'project_created' : 'project_updated', { name: activityLabel(payload.name ? `${payload.project_no} – ${payload.name}` : payload.project_no) });
-        addToast(editing === 'new' ? 'Project added successfully' : 'Project updated successfully');
+        const message = editing === 'new' ? 'Project added successfully' : 'Project updated successfully';
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
         editing = null;
-        await invalidateAll();
+        addToast(message);
     }
 
     async function confirmDelete() {
         busy = true;
         const { error } = await supabase.from('projects').delete().eq('id', deleting.id);
-        busy = false;
         if (error) {
+            busy = false;
             err = error.message;
             return;
         }
         logAction('project_deleted', { name: activityLabel(deleting.name ? `${deleting.project_no} – ${deleting.name}` : deleting.project_no) });
-        addToast('Project deleted successfully');
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
         deleting = null;
-        await invalidateAll();
+        addToast('Project deleted successfully');
     }
 </script>
 
