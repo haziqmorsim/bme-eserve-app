@@ -243,7 +243,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         sub: person[id]?.role ?? null,
         values
     }));
-    const topPages = topN(Object.entries(byPage), total, 8).map(([label, values]) => ({ name: label, sub: null, values }));
+    // Exclude sign-in page from most-visited pages.
+    const topPages = topN(Object.entries(byPage).filter(([label]) => label !== pageLabel('/login', null)), total, 8).map(([label, values]) => ({ name: label, sub: null, values }));
 
     // ---------- traffic & engagement ----------
     const visitors = new Set<string>();

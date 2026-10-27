@@ -296,7 +296,7 @@
     th,
     td {
         padding: 6px 8px;
-        text-align: right;
+        text-align: center;
         border-bottom: 1px solid var(--bme-border);
         white-space: nowrap;
         font-variant-numeric: tabular-nums;

@@ -5,6 +5,7 @@
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
 	import { hasImage, isPlaceholder, textLines } from '$lib/parts';
+	import { tick } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { Funnel, Search, Check } from '@lucide/svelte';
@@ -79,9 +80,22 @@
 
 	const selectedCount = $derived(selected.size);
 
+	let sideEl = $state<HTMLElement | null>(null);
+
+	async function scrollToParts() {
+		await tick();
+		const el = sideEl;
+		if (!el) return;
+		const top = el.getBoundingClientRect().top;
+		if (top >= 0 && top < window.innerHeight * 0.5) return;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+	}
+
 	function onSectionSelect(key: string, componentIds: string[]) {
 		selected = new Set(componentIds);
 		activeKey = key;
+		scrollToParts();
 	}
 
 	$effect(() => {
@@ -229,7 +243,7 @@
 		/>
 	</div>
 
-	<div class="side">
+	<div class="side" bind:this={sideEl}>
 		<input
 			class="search"
 			type="search"
@@ -498,6 +512,7 @@
 	}
 
 	.side {
+		scroll-margin-top: 10px;
 		margin-top: 10px;
 		display: flex;
 		flex-direction: column;

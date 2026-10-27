@@ -25,11 +25,14 @@
 
     let search = $state('');
 
+    let listOpen = $state(false);
+
     let searchLogged = false;
     let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
     function onSearchInput() {
         clearTimeout(searchTimer);
+        if (search.trim()) listOpen = true;
         if (!search.trim()) {
             searchLogged = false;
             return;
@@ -142,6 +145,16 @@
     {#if customerNoBoilers}
         <p class="no-boilers">No boilers assigned yet.</p>
     {:else}
+        <button
+            type="button"
+            class="expand-all"
+            onclick={() => (listOpen = !listOpen)}
+            aria-expanded={listOpen}
+        >
+            <span>{listOpen ? 'Collapse All' : 'Expand All'}</span>
+            <span class="chev" class:rot={listOpen}><ChevronDown size={16} /></span>
+        </button>
+
         <input
             type="search" 
             class="boiler-search" 
@@ -150,6 +163,7 @@
             oninput={onSearchInput}
         />
 
+        <div class="list-wrap" class:collapsed={!listOpen}>
         {#if totalMatches === 0}
             <p class="no-results">No boilers found.</p>
         {:else}
@@ -173,7 +187,7 @@
                             <ul class="boilers">
                                 {#each g.boilers as boiler (boiler.id)}
                                     <li>
-                                        <a href={`/app?boiler=${boiler.id}&project=${g.id}&tab=parts`} class:active={boiler.id === activeBoilerId && g.id === resolvedActiveProjectId}>
+                                        <a href={`/app?boiler=${boiler.id}&project=${g.id}&tab=parts`} onclick={() => (listOpen = false)} class:active={boiler.id === activeBoilerId && g.id === resolvedActiveProjectId}>
                                             <strong>{boiler.code}</strong>
                                             {#if boiler.name}<span>{boiler.name}</span>{/if}
                                         </a>
@@ -185,6 +199,7 @@
                 {/each}
             </div>
         {/if}
+        </div>
     {/if}
 </aside>
 
@@ -332,9 +347,39 @@
         color: var(--bme-muted);
     }
 
+    .expand-all {
+        display: none;
+    }
+
     @media (max-width: 860px) {
         .sidebar {
             height: fit-content;
+        }
+
+        .expand-all {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--bme-dark-blue);
+            border-radius: 8px;
+            background: none;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--bme-dark-blue);
+            cursor: pointer;
+        }
+
+        .expand-all:hover {
+            background: var(--bme-hover);
+        }
+
+        .list-wrap.collapsed {
+            display: none;
         }
     }
 </style>

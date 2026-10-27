@@ -116,6 +116,8 @@ Deno.serve(async (req) => {
             });
             if (pErr) return json(400, { error: pErr.message });
 
+            await admin.from('user_invitations').upsert({ user_id: created.user.id, temp_password: password });
+
             const bErr = await syncProjectsAndBoilers(admin, created.user.id, role, body.project_ids);
             if (bErr) return json(400, { error: bErr });
 

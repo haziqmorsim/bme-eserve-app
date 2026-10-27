@@ -32,7 +32,7 @@
             <span>Page</span>
             <select bind:value={selected} data-track-ignore>
                 {#each maps as m, i (m.label)}
-                    <option value={i}>{m.label} ({m.samples} visit(s))</option>
+                    <option value={i}>{m.label} - {m.samples} visit(s)</option>
                 {/each}
             </select>
         </label>

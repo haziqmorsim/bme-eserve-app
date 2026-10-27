@@ -4,7 +4,11 @@
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import Modal from './Modal.svelte';
 	import Pagination from './Pagination.svelte';
-	import { Search, Plus } from '@lucide/svelte';
+	import { Search, Plus, Trash2 } from '@lucide/svelte';
+	import { untrack } from 'svelte';
+	import { RowSelection } from '$lib/selection.svelte';
+	import RowCheckbox from './RowCheckbox.svelte';
+	import BulkDeleteModal from './BulkDeleteModal.svelte';
 	import { page as pageStore } from '$app/stores';
 	import { toMap, num } from '$lib/settings';
 	import { hasImage } from '$lib/parts';
@@ -112,6 +116,21 @@
 		search;
 		sort;
 		page = 1;
+	});
+
+	const sel = new RowSelection();
+	let bulkDeleting = $state(false);
+	let pageIds = $derived(paged.map((r: any) => r.id));
+	let allOnPage = $derived(pageIds.length > 0 && pageIds.every((id: string) => sel.has(id)));
+	let someOnPage = $derived(pageIds.some((id: string) => sel.has(id)));
+	let selectedItems = $derived(parts.filter((r: any) => sel.has(r.id)));
+	$effect(() => {
+		const valid = new Set<string>(parts.map((r: any) => r.id));
+		untrack(() => sel.prune(valid));
+	});
+	$effect(() => {
+		search;
+		untrack(() => sel.clear());
 	});
 
 	function blank() {
@@ -277,6 +296,45 @@
 		if (p.price_min != null && p.price_max != null) return `RM${p.price_min} – RM${p.price_max}`;
 		return '—';
 	}
+
+	async function confirmBulkDelete() {
+		busy = true;
+		err = '';
+		const items = [...selectedItems];
+		const { data: removed, error } = await supabase
+			.from('parts')
+			.delete()
+			.in('id', items.map((x: any) => x.id))
+			.select('id');
+		if (error) {
+			busy = false;
+			err = error.message;
+			return;
+		}
+		const gone = new Set<string>((removed ?? []).map((r: any) => r.id));
+		for (const x of items.filter((i: any) => gone.has(i.id))) {
+			logAction('part_deleted', { name: activityLabel(x.name) });
+		}
+		try {
+			await invalidateAll();
+		} finally {
+			busy = false;
+		}
+		sel.clear();
+		bulkDeleting = false;
+		reportBulk(gone.size, items.length);
+	}
+
+	function reportBulk(done: number, asked: number) {
+		if (done === 0) {
+			addToast('No parts were deleted. You may not have permission.', 'error');
+		} else if (done < asked) {
+			addToast(`${done} of ${asked} parts deleted. The rest could not be deleted.`, 'error', 9000);
+		} else {
+			addToast(`${done} ${done === 1 ? 'project' : 'parts'} deleted successfully`);
+		}
+	}
+
 </script>
 
 <div class="adm-bar">
@@ -284,9 +342,16 @@
 		<span class="search-ic"><Search size={16} /></span>
 		<input class="adm-search" type="search" placeholder="Search parts..." bind:value={search} />
 	</div>
-	<button class="btn-primary" onclick={startNew}>
-		<Plus size={16} /> Add Part
-	</button>
+	<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+		{#if sel.count > 0}
+			<button class="btn-danger" style="display: inline-flex; align-items: center; gap: 8px;" onclick={() => { err = ''; bulkDeleting = true; }}>
+				<Trash2 size={16} /> Delete selected ({sel.count})
+			</button>
+		{/if}
+		<button class="btn-primary" onclick={startNew}>
+			<Plus size={16} /> Add Part
+		</button>
+	</div>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
@@ -296,6 +361,14 @@
 		<table class="adm-table">
 			<thead>
 				<tr>
+					<th style="width: 40px; text-align: center;">
+						<RowCheckbox
+							checked={allOnPage}
+							indeterminate={someOnPage && !allOnPage}
+							label="Select all rows on this page"
+							onchange={(on) => sel.setMany(pageIds, on)}
+						/>
+					</th>
 					<SortHeader label="Part No." key="part_number" {sort} onsort={setSort} />
 					<SortHeader label="Part Name" key="name" {sort} onsort={setSort} />
 					<SortHeader label="Boiler" key="boiler" {sort} onsort={setSort} />
@@ -306,7 +379,14 @@
 			</thead>
 			<tbody>
 				{#each paged as p (p.id)}
-					<tr>
+					<tr style={sel.has(p.id) ? 'background: var(--bme-hover);' : undefined}>
+						<td style="width: 40px; text-align: center; vertical-align: middle;">
+							<RowCheckbox
+								checked={sel.has(p.id)}
+								label="Select {p.part_number}"
+								onchange={(on) => sel.toggle(p.id, on)}
+							/>
+						</td>
 						<td style="text-align: center; vertical-align: middle;"
 							><strong>{p.part_number}</strong></td
 						>
@@ -446,6 +526,18 @@
 			</div>
 		</div>
 	</Modal>
+{/if}
+
+{#if bulkDeleting}
+	<BulkDeleteModal
+		title="Delete Selected Parts"
+		noun="part"
+		labels={selectedItems.map((x: any) => x.part_number)}
+		{busy}
+		{err}
+		onconfirm={confirmBulkDelete}
+		onclose={() => (bulkDeleting = false)}
+	/>
 {/if}
 
 <style>

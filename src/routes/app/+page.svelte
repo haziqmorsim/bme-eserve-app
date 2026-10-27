@@ -2,8 +2,23 @@
     import BoilerList from "$lib/components/BoilerList.svelte";
     import Dashboard from "$lib/components/Dashboard.svelte";
     import PartsExplorer from "$lib/components/PartsExplorer.svelte";
+    import BoilerBlueprint from "$lib/components/BoilerBlueprint.svelte";
+    import { afterNavigate } from "$app/navigation";
+    import { tick } from "svelte";
 
     let { data } = $props();
+
+    let contentEl = $state<HTMLElement | null>(null);
+
+    afterNavigate(async (nav) => {
+        if (nav.type !== 'link' || !data.boiler) return;
+        if (!window.matchMedia('(max-width: 860px)').matches) return;
+        await tick();
+        setTimeout(() => {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            contentEl?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        }, 60);
+    });
 </script>
 
 <div class="layout">
@@ -17,11 +32,16 @@
         supabase={data.supabase}
         profile={data.profile} />
 
-    <div class="content">
+    <div class="content" bind:this={contentEl}>
         {#if !data.boiler}
             <div class="card empty">
-                <h2>Select a boiler</h2>
-                <p>Choose a boiler from the list to view its dashboard and order parts.</p>
+                <div class="empty-bp" aria-hidden="true">
+                    <BoilerBlueprint />
+                </div>
+                <div class="empty-text">
+                    <h2>Select a boiler</h2>
+                    <p>Choose a boiler from the list to view its dashboard and order parts.</p>
+                </div>
             </div>
         {:else}
             <div class="tabbar">
@@ -77,20 +97,44 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
+        scroll-margin-top: 10px;
     }
 
     .empty {
+        position: relative;
+        overflow: hidden;
         flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        padding: 48px;
+        justify-content: flex-start;
+        padding: 36px 48px;
         text-align: center;
     }
 
+    .empty-text {
+        position: relative;
+        z-index: 1;
+        margin-top: 30px;
+    }
+
+    .empty-text h2 {
+        margin: 0 0 6px;
+    }
+
     .empty p {
+        margin: 0;
         color: var(--bme-muted);
+    }
+
+    .empty-bp {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: min(100%, 760px);
+        transform: translateX(-50%);
+        color: color-mix(in srgb, var(--bme-dark-blue) 34%, transparent);
+        pointer-events: none;
     }
 
     .tabbar {
@@ -122,13 +166,26 @@
     }
 
     @media (max-width: 860px) {
+        :global(main:has(> .layout)) {
+            display: flex;
+            flex-direction: column;
+        }
+
         .layout {
             grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
+            flex: 1;
             min-height: 0;
         }
 
         .empty {
-            flex: none;
+            flex: 1;
+            min-height: 380px;
+            padding: 28px 20px;
+        }
+
+        .empty-bp {
+            width: 100%;
         }
     }
 

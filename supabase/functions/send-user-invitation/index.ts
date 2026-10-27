@@ -140,10 +140,10 @@ Deno.serve(async (req) => {
 
         const body = await req.json().catch(() => ({}));
         const email = typeof body.email === 'string' ? body.email.trim() : '';
-        const password = typeof body.password === 'string' ? body.password : '';
-        if (!email || !password) {
-            return json(400, { error: 'E-mail and temporary password are required.' });
-        }
+        let password = typeof body.password === 'string' ? body.password : '';
+        const reset = body.reset === true;
+        if (!email) return json(400, { error: 'E-mail is required.' });
+        if (reset && !password) return json(400, { error: 'A temporary password is required.' });
 
         const escapedEmail = email.replace(/[%_\\]/g, (ch) => `\\${ch}`);
         const { data: target } = await admin
@@ -154,6 +154,25 @@ Deno.serve(async (req) => {
         if (!target) return json(404, { error: 'No user with this e-mail address exists.' });
         if (!target.must_change_password) {
             return json(400, { error: 'This user has already signed in, so an invitation can no longer be sent.' });
+        }
+
+        if (reset) {
+            const { error: pwErr } = await admin.auth.admin.updateUserById(target.id, { password });
+            if (pwErr) return json(400, { error: pwErr.message });
+            await admin.from('user_invitations').upsert({ user_id: target.id, temp_password: password });
+        } else if (!password) {
+            const { data: stored } = await admin
+                .from('user_invitations')
+                .select('temp_password')
+                .eq('user_id', target.id)
+                .maybeSingle();
+            if (!stored?.temp_password) {
+                return json(409, {
+                    error: 'The original temporary password was not saved for this user.',
+                    code: 'no_stored_password'
+                });
+            }
+            password = stored.temp_password;
         }
 
         const base = (
@@ -168,6 +187,11 @@ Deno.serve(async (req) => {
         await sendEmail(email, SUBJECT, buildInvitationEmail(email, password, signInUrl, logoUrl), undefined, {
             kind: 'user_invitation'
         });
+
+        await admin
+            .from('user_invitations')
+            .update({ last_sent_at: new Date().toISOString() })
+            .eq('user_id', target.id);
 
         return json(200, { ok: true });
     } catch(e) {

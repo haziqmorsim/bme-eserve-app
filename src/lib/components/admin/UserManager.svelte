@@ -4,7 +4,11 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { Search, Plus } from "@lucide/svelte";
+    import { Search, Plus, Trash2 } from "@lucide/svelte";
+    import { untrack } from "svelte";
+    import { RowSelection } from "$lib/selection.svelte";
+    import RowCheckbox from "./RowCheckbox.svelte";
+    import BulkDeleteModal from "./BulkDeleteModal.svelte";
     import { ROLE_OPTIONS, isCustomerRole, hasJobDetails, PAGE_OPTIONS, defaultPages, availablePages, userPages, STAFF_ONLY_PAGES } from "$lib/roles";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
@@ -14,12 +18,14 @@
         users,
         supabase,
         projects = [],
-        customerProjects = []
+        customerProjects = [],
+        currentUserId = ''
     }: {
         users: any[];
         supabase: SupabaseClient;
         projects?: any[];
         customerProjects?: any[];
+        currentUserId?: string;
     } = $props();
 
     const ROLES = ROLE_OPTIONS;
@@ -69,6 +75,14 @@
     let editing = $state<string | 'new' | null>(null);
     let deleting = $state<any | null>(null);
     let busy = $state(false);
+
+    let resending = $state(false);
+    let needTempPassword = $state(false);
+    let newTempPassword = $state('');
+    let editingUser = $derived(
+        editing && editing !== 'new' ? (users.find((u: any) => u.id === editing) ?? null) : null
+    );
+    let canResend = $derived(!!editingUser && !editingUser.last_sign_in_at && !!editingUser.email);
     let err = $state('');
     let form = $state<any>({});
     let fieldErr = $state<Record<string, string>>({});
@@ -107,6 +121,21 @@
 
     $effect(() => { search; sort; page = 1; });
 
+    const sel = new RowSelection();
+    let bulkDeleting = $state(false);
+    let pageIds = $derived(paged.filter((r: any) => r.id !== currentUserId).map((r: any) => r.id));
+    let allOnPage = $derived(pageIds.length > 0 && pageIds.every((id: string) => sel.has(id)));
+    let someOnPage = $derived(pageIds.some((id: string) => sel.has(id)));
+    let selectedItems = $derived(users.filter((r: any) => sel.has(r.id)));
+    $effect(() => {
+        const valid = new Set<string>(users.map((r: any) => r.id));
+        untrack(() => sel.prune(valid));
+    });
+    $effect(() => {
+        search;
+        untrack(() => sel.clear());
+    });
+
     function blank() {
         return {
             full_name: '', email: '', password: '', company: '', role: '',
@@ -123,9 +152,9 @@
             project_ids: [...(assignedByUser[u.id] ?? [])],
             pages: userPages(u)
         };
-        err = ''; fieldErr = {}; editing = u.id;
+        err = ''; fieldErr = {}; needTempPassword = false; newTempPassword = ''; editing = u.id;
     }
-    function cancel() { if (busy) return; editing = null; err = ''; fieldErr = {}; }
+    function cancel() { if (busy || resending) return; editing = null; err = ''; fieldErr = {}; }
 
     async function fnError(error: any, resp: any, fallback: string): Promise<string> {
         if (resp?.error) return resp.error;
@@ -134,6 +163,42 @@
             if (body?.error) return body.error;
         } catch { /* body not JSON */ }
         return error?.message ?? fallback;
+    }
+
+    async function resendInvitation() {
+        if (!editingUser || resending || busy) return;
+        const email: string = editingUser.email;
+        if (needTempPassword && !newTempPassword.trim()) {
+            err = 'Enter a temporary password.';
+            return;
+        }
+        resending = true;
+        err = '';
+
+        const payload: any = { email };
+        if (needTempPassword) {
+            payload.password = newTempPassword;
+            payload.reset = true;
+        }
+        const { data: resp, error } = await supabase.functions.invoke('send-user-invitation', { body: payload });
+        if (error || resp?.error) {
+            let code: string | undefined = resp?.code;
+            if (!code) {
+                try { code = (await (error as any)?.context?.json?.())?.code; } catch { /* body not JSON */ }
+            }
+            if (code === 'no_stored_password') {
+                needTempPassword = true;
+                err = 'The original temporary password was not saved for this user. Enter a new temporary password below; it will be set on the account and sent in the invitation e-mail.';
+            } else {
+                err = await fnError(error, resp, 'Could not send the invitation e-mail.');
+            }
+            resending = false;
+            return;
+        }
+        resending = false;
+        needTempPassword = false;
+        newTempPassword = '';
+        addToast(`Invitation e-mail resent to ${email}.`);
     }
 
     function validate(): boolean {
@@ -216,6 +281,39 @@
         deleting = null;
         addToast('User deleted successfully');
     }
+
+    async function confirmBulkDelete() {
+        busy = true;
+        err = '';
+        const items = selectedItems.filter((x: any) => x.id !== currentUserId);
+        const failed: string[] = [];
+        let done = 0;
+        for (const x of items) {
+            const { data: resp, error } = await supabase.functions.invoke('admin-users', {
+                body: { action: 'delete', id: x.id }
+            });
+            if (error || resp?.error) {
+                failed.push(`${x.full_name ?? x.email}: ${await fnError(error, resp, 'Delete failed.')}`);
+                continue;
+            }
+            done++;
+            sel.toggle(x.id, false);
+            logAction('user_deleted', { name: activityLabel(x.full_name || x.email) });
+        }
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
+        if (failed.length === 0) {
+            bulkDeleting = false;
+            addToast(`${done} ${done === 1 ? 'user' : 'users'} deleted successfully`);
+            return;
+        }
+        err = `${failed.length} could not be deleted — ${failed.join('; ')}`;
+        if (done > 0) addToast(`${done} ${done === 1 ? 'user' : 'users'} deleted successfully`);
+    }
+
 </script>
 
 <div class="adm-bar">
@@ -223,9 +321,16 @@
         <span class="search-ic"><Search size={16} /></span>
         <input class="adm-search" type="search" placeholder="Search users..." bind:value={search} />
     </div>
-    <button class="btn-primary" onclick={startNew}>
-        <Plus size={16} /> Add User
-    </button>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        {#if sel.count > 0}
+            <button class="btn-danger" style="display: inline-flex; align-items: center; gap: 8px;" onclick={() => { err = ''; bulkDeleting = true; }}>
+                <Trash2 size={16} /> Delete selected ({sel.count})
+            </button>
+        {/if}
+        <button class="btn-primary" onclick={startNew}>
+            <Plus size={16} /> Add User
+        </button>
+    </div>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
@@ -235,6 +340,14 @@
         <table class="adm-table">
             <thead>
                 <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <RowCheckbox
+                            checked={allOnPage}
+                            indeterminate={someOnPage && !allOnPage}
+                            label="Select all rows on this page"
+                            onchange={(on) => sel.setMany(pageIds, on)}
+                        />
+                    </th>
                     <SortHeader label="Name" key="full_name" {sort} onsort={setSort} />
                     <SortHeader label="Email" key="email" {sort} onsort={setSort} />
                     <SortHeader label="Company" key="company" {sort} onsort={setSort} />
@@ -247,7 +360,16 @@
             </thead>
             <tbody>
                 {#each paged as u (u.id)}
-                    <tr>
+                    <tr style={sel.has(u.id) ? 'background: var(--bme-hover);' : undefined}>
+                        <td style="width: 40px; text-align: center; vertical-align: middle;">
+                            <RowCheckbox
+                                checked={sel.has(u.id)}
+                                disabled={u.id === currentUserId}
+                                title={u.id === currentUserId ? 'You cannot delete your own account' : undefined}
+                                label="Select {u.full_name ?? u.email}"
+                                onchange={(on) => sel.toggle(u.id, on)}
+                            />
+                        </td>
                         <td style="vertical-align: middle;"><strong>{u.full_name ?? '—'}</strong></td>
                         <td style="text-align: center; vertical-align: middle;">{u.email ?? '—'}</td>
                         <td style="text-align: center; vertical-align: middle;">{u.company ?? '—'}</td>
@@ -349,10 +471,20 @@
                     <span>Send user invitation e-mail automatically</span>
                 </label>
             {/if}
+            {#if canResend && needTempPassword}
+                <label class="full">New Temporary Password <span class="required">*</span>
+                    <input type="text" bind:value={newTempPassword} autocomplete="off" />
+                </label>
+            {/if}
             {#if err}<p class="adm-err">{err}</p>{/if}
             <div class="adm-form-actions">
-                <button class="btn-ghost" onclick={cancel} disabled={busy}>Cancel</button>
-                <button class="btn-primary" onclick={save} disabled={busy}>{busy ? 'Saving...' : 'Save'}</button>
+                {#if canResend}
+                    <button class="btn-ghost" style="margin-right: auto;" onclick={resendInvitation} disabled={busy || resending}>
+                        {resending ? 'Sending...' : needTempPassword ? 'Set Password & Resend' : 'Resend Invitation E-mail'}
+                    </button>
+                {/if}
+                <button class="btn-ghost" onclick={cancel} disabled={busy || resending}>Cancel</button>
+                <button class="btn-primary" onclick={save} disabled={busy || resending}>{busy ? 'Saving...' : 'Save'}</button>
             </div>
         </div>
     </Modal>
@@ -369,6 +501,18 @@
             </div>
         </div>
     </Modal>
+{/if}
+
+{#if bulkDeleting}
+    <BulkDeleteModal
+        title="Delete Selected Users"
+        noun="user"
+        labels={selectedItems.map((x: any) => x.full_name ?? x.email)}
+        {busy}
+        {err}
+        onconfirm={confirmBulkDelete}
+        onclose={() => (bulkDeleting = false)}
+    />
 {/if}
 
 <style>

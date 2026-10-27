@@ -119,7 +119,7 @@
     </section>
 {:else if tab === 'users'}
     <section>
-        <UserManager users={data.users} projects={data.projects} customerProjects={data.customerProjects} supabase={data.supabase} />
+        <UserManager users={data.users} projects={data.projects} customerProjects={data.customerProjects} supabase={data.supabase} currentUserId={data.profile?.id ?? ''} />
     </section>
 {:else if tab === 'general'}
     <section>

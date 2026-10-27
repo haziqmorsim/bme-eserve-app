@@ -4,7 +4,11 @@
     import type { SupabaseClient } from "@supabase/supabase-js";
     import Modal from "./Modal.svelte";
     import Pagination from "./Pagination.svelte";
-    import { Search, Plus } from "@lucide/svelte";
+    import { Search, Plus, Trash2 } from "@lucide/svelte";
+    import { untrack } from "svelte";
+    import { RowSelection } from "$lib/selection.svelte";
+    import RowCheckbox from "./RowCheckbox.svelte";
+    import BulkDeleteModal from "./BulkDeleteModal.svelte";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
     import { hasImage } from "$lib/parts";
@@ -87,6 +91,21 @@
     let paged = $derived(filtered.slice((curPage - 1) * pageSize, curPage * pageSize));
 
     $effect(() => { search; sort; page = 1; });
+
+    const sel = new RowSelection();
+    let bulkDeleting = $state(false);
+    let pageIds = $derived(paged.map((r: any) => r.id));
+    let allOnPage = $derived(pageIds.length > 0 && pageIds.every((id: string) => sel.has(id)));
+    let someOnPage = $derived(pageIds.some((id: string) => sel.has(id)));
+    let selectedItems = $derived(boilers.filter((r: any) => sel.has(r.id)));
+    $effect(() => {
+        const valid = new Set<string>(boilers.map((r: any) => r.id));
+        untrack(() => sel.prune(valid));
+    });
+    $effect(() => {
+        search;
+        untrack(() => sel.clear());
+    });
 
     function blank() {
         return {
@@ -210,6 +229,45 @@
         deleting = null;
         addToast('Boiler deleted successfully');
     }
+
+    async function confirmBulkDelete() {
+        busy = true;
+        err = '';
+        const items = [...selectedItems];
+        const { data: removed, error } = await supabase
+            .from('boilers')
+            .delete()
+            .in('id', items.map((x: any) => x.id))
+            .select('id');
+        if (error) {
+            busy = false;
+            err = error.message;
+            return;
+        }
+        const gone = new Set<string>((removed ?? []).map((r: any) => r.id));
+        for (const x of items.filter((i: any) => gone.has(i.id))) {
+            logAction('boiler_deleted', { name: activityLabel(x.name ? `${x.code} – ${x.name}` : x.code) });
+        }
+        try {
+            await invalidateAll();
+        } finally {
+            busy = false;
+        }
+        sel.clear();
+        bulkDeleting = false;
+        reportBulk(gone.size, items.length);
+    }
+
+    function reportBulk(done: number, asked: number) {
+        if (done === 0) {
+            addToast('No boilers were deleted. You may not have permission.', 'error');
+        } else if (done < asked) {
+            addToast(`${done} of ${asked} boilers deleted. The rest could not be deleted.`, 'error', 9000);
+        } else {
+            addToast(`${done} ${done === 1 ? 'project' : 'boilers'} deleted successfully`);
+        }
+    }
+
 </script>
 
 <div class="adm-bar">
@@ -217,9 +275,16 @@
         <span class="search-ic"><Search size={16} /></span>
         <input class="adm-search" type="search" placeholder="Search boilers..." bind:value={search} />
     </div>
-    <button class="btn-primary" onclick={startNew}>
-        <Plus size={16} /> Add Boiler
-    </button>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        {#if sel.count > 0}
+            <button class="btn-danger" style="display: inline-flex; align-items: center; gap: 8px;" onclick={() => { err = ''; bulkDeleting = true; }}>
+                <Trash2 size={16} /> Delete selected ({sel.count})
+            </button>
+        {/if}
+        <button class="btn-primary" onclick={startNew}>
+            <Plus size={16} /> Add Boiler
+        </button>
+    </div>
 </div>
 
 <div class="card" style="padding:14px; overflow:hidden;">
@@ -229,6 +294,14 @@
         <table class="adm-table">
             <thead>
                 <tr>
+                    <th style="width: 40px; text-align: center;">
+                        <RowCheckbox
+                            checked={allOnPage}
+                            indeterminate={someOnPage && !allOnPage}
+                            label="Select all rows on this page"
+                            onchange={(on) => sel.setMany(pageIds, on)}
+                        />
+                    </th>
                     <SortHeader label="Boiler Code" key="code" {sort} onsort={setSort} />
                     <SortHeader label="Boiler Name" key="name" {sort} onsort={setSort} />
                     <SortHeader label="Description" key="description" {sort} onsort={setSort} />
@@ -238,7 +311,14 @@
             </thead>
             <tbody>
                 {#each paged as b (b.id)}
-                    <tr>
+                    <tr style={sel.has(b.id) ? 'background: var(--bme-hover);' : undefined}>
+                        <td style="width: 40px; text-align: center; vertical-align: middle;">
+                            <RowCheckbox
+                                checked={sel.has(b.id)}
+                                label="Select {b.code}"
+                                onchange={(on) => sel.toggle(b.id, on)}
+                            />
+                        </td>
                         <td style="text-align: center; vertical-align: middle;"><strong>{b.code}</strong></td>
                         <td style="vertical-align: middle;">{b.name ?? '-'}</td>
                         <td style="vertical-align: middle;">{b.description ?? '-'}</td>
@@ -355,6 +435,19 @@
             </div>
         </div>
     </Modal>
+{/if}
+
+{#if bulkDeleting}
+    <BulkDeleteModal
+        title="Delete Selected Boilers"
+        noun="boiler"
+        labels={selectedItems.map((x: any) => x.code)}
+        note="This also removes their components, parts, and project assignments."
+        {busy}
+        {err}
+        onconfirm={confirmBulkDelete}
+        onclose={() => (bulkDeleting = false)}
+    />
 {/if}
 
 <style>
