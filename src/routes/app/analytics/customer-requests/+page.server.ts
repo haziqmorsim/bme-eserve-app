@@ -94,13 +94,19 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         }
     }
 
-    const volumeByBoiler = allBoilers
+    const TOP_N = 10;
+
+    const allBoilerVolumes = allBoilers
         .map((b: any) => ({ code: b.code, count: boilerCount[b.code] ?? 0 }))
         .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+    const volumeByBoiler = allBoilerVolumes.slice(0, TOP_N);
+    const boilersTotal = allBoilerVolumes.length;
 
-    const volumeByProject = allProjects
+    const allProjectVolumes = allProjects
         .map((p: any) => ({ code: p.project_no, name: p.name, count: projectCount[p.id] ?? 0 }))
         .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+    const volumeByProject = allProjectVolumes.slice(0, TOP_N);
+    const projectsTotal = allProjectVolumes.length;
 
     const partIds = [...new Set(quotes.flatMap((q: any) => (q.quote_items ?? []).map((it: any) => it.part_id)).filter(Boolean))] as string[];
     const componentByPart: Record<string, string> = {};
@@ -123,11 +129,12 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         }
         for (const n of names) componentCount.set(n, (componentCount.get(n) ?? 0) + 1);
     }
-    const volumeByComponent = [...componentCount.entries()]
+    const allComponentVolumes = [...componentCount.entries()]
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    const volumeByComponent = allComponentVolumes.slice(0, TOP_N);
+    const componentsTotal = allComponentVolumes.length;
 
-    const TOP_PARTS = 10;
     const partGroups = new Map<string, { count: number; names: Map<string, number> }>();
     for (const q of quotes) {
         for (const it of ((q as any).quote_items ?? []) as any[]) {
@@ -145,7 +152,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         count: g.count
     }));
     allParts.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, undefined, { numeric: true }));
-    const volumeByPart = allParts.slice(0, TOP_PARTS);
+    const volumeByPart = allParts.slice(0, TOP_N);
     const partsTotal = allParts.length;
 
     const latestApproval: Record<string, string> = {};
@@ -185,8 +192,11 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         closed, 
         avgResolutionMs, 
         volumeByBoiler, 
+        boilersTotal, 
         volumeByProject, 
+        projectsTotal, 
         volumeByComponent, 
+        componentsTotal, 
         volumeByPart, 
         partsTotal, 
         openAging: { onTrack, aging: agingCount, overdue: overdueCount }, 

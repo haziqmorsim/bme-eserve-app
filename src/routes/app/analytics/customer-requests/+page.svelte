@@ -112,13 +112,16 @@
 							<div class="bar-track">
 								<div
 									class="bar-fill"
-									style="width: {Math.round((p.count / maxProject) * 100)}%; background: var(--cat-{(i % 5) + 1})"
+									style="width: {Math.round((p.count / maxProject) * 100)}%; background: var(--cat-{(i % 2) + 1})"
 								></div>
 							</div>
 							<span class="bar-val">{p.count}</span>
 						</div>
 					{/each}
 				</div>
+				<p class="hint">
+					Top {data.volumeByProject.length} of {data.projectsTotal} projects, counted across all requests.
+				</p>
 			{/if}
 		</div>
 		<div class="card section">
@@ -133,13 +136,16 @@
 							<div class="bar-track">
 								<div
 									class="bar-fill"
-									style="width: {Math.round((b.count / maxBoiler) * 100)}%; background: var(--cat-{(i % 5) + 1})"
+									style="width: {Math.round((b.count / maxBoiler) * 100)}%; background: var(--cat-{(i % 2) + 1})"
 								></div>
 							</div>
 							<span class="bar-val">{b.count}</span>
 						</div>
 					{/each}
 				</div>
+				<p class="hint">
+					Top {data.volumeByBoiler.length} of {data.boilersTotal} boilers, counted across all requests.
+				</p>
 			{/if}
 		</div>
 		<div class="card section">
@@ -155,12 +161,15 @@
 							<div class="bar-track">
 								<div
 									class="bar-fill"
-									style="width: {Math.round((c.count / maxComponent) * 100)}%; background: var(--cat-{(i % 5) + 1})"
+									style="width: {Math.round((c.count / maxComponent) * 100)}%; background: var(--cat-{(i % 2) + 1})"
 								></div>
 							</div>
 						</li>
 					{/each}
 				</ol>
+				<p class="hint">
+					Top {data.volumeByComponent.length} of {data.componentsTotal} requested components, counted across all requests.
+				</p>
 			{/if}
 		</div>
 		<div class="card section">
@@ -176,7 +185,7 @@
 							<div class="bar-track">
 								<div
 									class="bar-fill"
-									style="width: {Math.round((p.count / maxPart) * 100)}%; background: var(--cat-{(i % 5) + 1})"
+									style="width: {Math.round((p.count / maxPart) * 100)}%; background: var(--cat-{(i % 2) + 1})"
 								></div>
 							</div>
 						</li>

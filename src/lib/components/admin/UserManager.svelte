@@ -29,6 +29,12 @@
     } = $props();
 
     const ROLES = ROLE_OPTIONS;
+
+    function deleteBlock(u: any): string | null {
+        if (u.role === 'developer') return 'Developer accounts cannot be deleted';
+        if (u.id === currentUserId) return 'You cannot delete your own account';
+        return null;
+    }
     function roleLabel(r: string): string {
         return ROLES.find((x) => x.value === r)?.label ?? r ?? '—';
     }
@@ -123,7 +129,7 @@
 
     const sel = new RowSelection();
     let bulkDeleting = $state(false);
-    let pageIds = $derived(paged.filter((r: any) => r.id !== currentUserId).map((r: any) => r.id));
+    let pageIds = $derived(paged.filter((r: any) => !deleteBlock(r)).map((r: any) => r.id));
     let allOnPage = $derived(pageIds.length > 0 && pageIds.every((id: string) => sel.has(id)));
     let someOnPage = $derived(pageIds.some((id: string) => sel.has(id)));
     let selectedItems = $derived(users.filter((r: any) => sel.has(r.id)));
@@ -285,7 +291,7 @@
     async function confirmBulkDelete() {
         busy = true;
         err = '';
-        const items = selectedItems.filter((x: any) => x.id !== currentUserId);
+        const items = selectedItems.filter((x: any) => !deleteBlock(x));
         const failed: string[] = [];
         let done = 0;
         for (const x of items) {
@@ -364,8 +370,8 @@
                         <td style="width: 40px; text-align: center; vertical-align: middle;">
                             <RowCheckbox
                                 checked={sel.has(u.id)}
-                                disabled={u.id === currentUserId}
-                                title={u.id === currentUserId ? 'You cannot delete your own account' : undefined}
+                                disabled={!!deleteBlock(u)}
+                                title={deleteBlock(u) ?? undefined}
                                 label="Select {u.full_name ?? u.email}"
                                 onchange={(on) => sel.toggle(u.id, on)}
                             />
@@ -380,7 +386,12 @@
                         <td>
                             <div class="adm-actions">
                                 <button class="adm-link" onclick={() => startEdit(u)}>Edit</button>
-                                <button class="adm-link danger" onclick={() => (deleting = u)}>Delete</button>
+                                <button
+                                    class="adm-link danger"
+                                    onclick={() => (deleting = u)}
+                                    disabled={!!deleteBlock(u)}
+                                    title={deleteBlock(u) ?? undefined}
+                                >Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -516,6 +527,15 @@
 {/if}
 
 <style>
+    .adm-link:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .adm-link:disabled:hover {
+        background: none;
+    }
+
     .searchbar {
         width: 280px;
         position: relative;

@@ -329,7 +329,6 @@
 			<p class="hint" in:fade={{ duration: 150 }}>No parts match your selection.</p>
 		{:else}
 			<div class="parts">
-				<!-- <p class="indicative">All prices are indicative.</p> -->
 				{#each filtered as p (p.id)}
 					<div
 						class="part card"
@@ -370,9 +369,6 @@
 									</button>
 								{/if}
 							{/if}
-							<!-- <div class="price">
-								{priceLabel(p)}
-							</div> -->
 						</div>
 						<div class="actions">
 							{#if hasImage(p.image_url)}
@@ -800,14 +796,9 @@
 		padding: 24px 0;
 	}
 
-	/* .indicative {
-		color: var(--bme-muted);
-		margin: 0;
-	} */
-
 	.parts {
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
 		gap: 12px;
 	}
 
@@ -1036,6 +1027,11 @@
 	}
 
 	@media (max-width: 640px) {
+		.parts {
+			display: flex;
+			flex-direction: column;
+		}
+		
 		.part {
 			flex-direction: column;
 			align-items: stretch;

@@ -10,5 +10,8 @@
     "python.analysis.include": [
         "services/forecast"
     ],
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.experiments.optOutFrom": ["pythonTerminalEnvVarActivation"],
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.terminal.activateEnvironment": true
 }
