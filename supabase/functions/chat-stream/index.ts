@@ -1,4 +1,4 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const MODEL = 'claude-sonnet-4-6';
@@ -7,7 +7,7 @@ const MAX_IMG_BYTES = 5 * 1024 * 1024;
 
 type Block = 
     | { type: 'text'; text: string; } 
-    | { type: 'image'; source { type: 'base64'; media_type: string; data: string; } };
+    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string; } };
 type InMsg = { role: 'user' | 'assistant'; content: string | Block[] };
 
 const IMAGE_ANALYSIS_GUIDE = `
@@ -46,7 +46,7 @@ ${IMAGE_ANALYSIS_GUIDE}
 let catalogCache: { text: string; at: number } | null = null;
 const CATALOG_TTL_MS = 5 * 60 * 1000;
 
-async function getPartsCatalogContext(admin: ReturnType<typeof createClient>): Promise<string> {
+async function getPartsCatalogContext(admin: SupabaseClient): Promise<string> {
     if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) return catalogCache.text;
 
     try {
@@ -79,7 +79,7 @@ async function getPartsCatalogContext(admin: ReturnType<typeof createClient>): P
 function sanitize(messages: InMsg[]): InMsg[] {
     const cleaned = messages.slice(-20).map((m) => {
         if (typeof m.content === 'string') return { role: m.role, content: m.content };
-        const blocks = (m.content as Blocks[]).filter((b) => {
+        const blocks = (m.content as Block[]).filter((b) => {
             if (b?.type === 'text') return typeof b.text === 'string';
             if (b?.type === 'image' && b.source?.type === 'base64') {
                 if(!ALLOWED.has(b.source.media_type)) return false;
@@ -88,7 +88,7 @@ function sanitize(messages: InMsg[]): InMsg[] {
             } 
             return false;
         });
-        return { role: m.role, content: block.length ? blocks : '(empty' };
+        return { role: m.role, content: blocks.length ? blocks : '(empty)' };
     });
     while (cleaned.length && cleaned[0].role !== 'user') cleaned.shift();
     return cleaned;
@@ -96,11 +96,11 @@ function sanitize(messages: InMsg[]): InMsg[] {
 
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-    if (req.method === 'POST') {
+    if (req.method !== 'POST') {
         return new Response('Method not allowed', { status: 405, headers: corsHeaders });
     }
 
-    let body: { message?. InMsg[] };
+    let body: { messages?: InMsg[] };
     try {
         body = await req.json();
     } catch {
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
             model: MODEL, 
-            max_token: 1024, 
+            max_tokens: 1024, 
             system, 
             messages, 
             stream: true
@@ -138,6 +138,52 @@ Deno.serve(async (req) => {
     if (!anthropicRes.ok || !anthropicRes.body) {
         const errText = await anthropicRes.text().catch(() => '');
         console.error('Anthropic API error:', anthropicRes.status, errText);
-        return new Response('Upstream error', { status: 502, headers: corsheaders });
+        return new Response('Upstream error', { status: 502, headers: corsHeaders });
     }
+
+    const upstream = anthropicRes.body;
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            const reader = upstream.getReader();
+            let buffer = '';
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() ?? '';
+                    for (const line of lines) {
+                        if (!line.startsWith('data:')) continue;
+                        const payload = line.slice(5).trim();
+                        if (!payload) continue;
+                        try {
+                            const evt = JSON.parse(payload);
+                            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+                                controller.enqueue(encoder.encode(evt.delta.text));
+                            }
+                        } catch {
+                            // ignore a malformed or partial event
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Stream error:', e);
+                controller.enqueue(encoder.encode('[Connection interrupted]'));
+            } finally {
+                controller.close();
+            }
+        }
+    });
+
+    return new Response(stream, {
+        headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache'
+        }
+    });
 })

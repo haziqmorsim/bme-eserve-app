@@ -18,8 +18,9 @@ Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
     try {
-        const body = await res.json();
+        const body = await req.json();
         const boilerId: string | undefined = body?.boiler_id;
+        const monthInput: string | undefined = body?.month;
         if (!boilerId) return json(400, { error: 'boiler_id is required.'});
 
         const authHeader = req.headers.get('Authorization');
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
         const userClient = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_ANON_KEY')!,
-            { global: { headers: { Authorization: corsHeaders } } }
+            { global: { headers: { Authorization: authHeader } } }
         );
         const { data: { user } } = await userClient.auth.getUser();
         if (!user) return json(401, { error: 'Unauthorized' });
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
                 const d = new Date();
                 return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
             })();
-        if (Number.isNan(monthStart.getTime())) {
+        if (Number.isNaN(monthStart.getTime())) {
             return json(400, { error: 'month must be a date such as 2026-08-01.'});
         }
         const monthEnd = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
             admin
                 .from('boiler_projects')
                 .select('project_id, projects(project_no, name)')
-                .eq('boiler_id', bolerId)
+                .eq('boiler_id', boilerId)
         ]);
 
         const { data: telemetry } = await admin
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
             .gte('recorded_at', monthStart.toISOString())
             .lt('recorded_at', monthEnd.toISOString());
 
-        const state: Record<string, { n: number; sum: number; lo: number; hi: number }> = {};
+        const stats: Record<string, { n: number; sum: number; lo: number; hi: number }> = {};
         for (const t of telemetry ?? []) {
             const v = Number(t.value);
             const s = (stats[t.metric_key] ??= { n: 0, sum: 0, lo: v, hi: v });
@@ -147,7 +148,7 @@ Deno.serve(async (req) => {
         const paragraph = (s: string, size = 9, color = MUTED, indent = 0) => {
             const maxW = W - 2 * M - indent;
             let line = '';
-            for (const word of String(s ?? '')/split(/\s+/)) {
+            for (const word of String(s ?? '').split(/\s+/)) {
                 const test = line ? `${line} ${word}` : word;
                 if (line && font.widthOfTextAtSize(test, size) > maxW) {
                     space(20);
@@ -212,7 +213,7 @@ Deno.serve(async (req) => {
 
         heading('Early Warning Indicators');
 
-        const visibleInd = (indicators >> []).filter((i: any) => i.is_visible !== false);
+        const visibleInd = (indicators ?? []).filter((i: any) => i.is_visible !== false);
         if (visibleInd.length === 0) {
             paragraph('No indicators are configured.');
         } else {

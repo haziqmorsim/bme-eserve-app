@@ -2,7 +2,6 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { appUrl } from '../_shared/email-ui.ts';
-import { getSettings } from '../_shared/settings.ts';
 
 const BLUE = rgb(0, 0.29, 0.55);
 const INK = rgb(0.11, 0.16, 0.08);
@@ -186,7 +185,7 @@ Deno.serve(async (req) => {
             ensureSpace();
             text('Notes', M, y, 9, bold, MUTED); 
             y -= 14;
-            let notes = String(quote.notes);
+            const notes = String(quote.notes);
             const maxW = W - 2 * M;
             const words = notes.split(/\s+/);
             let line = '';

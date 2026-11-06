@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
         if (!email) return json(400, { error: 'E-mail is required.' });
         if (reset && !password) return json(400, { error: 'A temporary password is required.' });
 
-        const escapedEmail = email.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+        const escapedEmail = email.replace(/[%_\\]/g, (ch: string) => `\\${ch}`);
         const { data: target } = await admin
             .from('profiles')
             .select('id, must_change_password')

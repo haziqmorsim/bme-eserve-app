@@ -5,7 +5,6 @@ import {
 	reminderHours,
 	serviceClient,
 	hoursAgoIso,
-	hoursBetween,
 	guard,
 	notifyRecipients,
 	reminderEmail
@@ -55,13 +54,11 @@ Deno.serve(async (req) => {
 		const profileById: Record<string, any> = {};
 		for (const p of profiles ?? []) profileById[p.id] = p;
 
-		const now = Date.now();
 		let emailed = 0;
 
 		for (const c of overdue) {
 			const recipient = profileById[c.user_id];
 			const items: CartItem[] = Array.isArray(c.items) ? c.items : [];
-			const hrs = hoursBetween(c.updated_at, now);
 
 			await notifyRecipients(
 				admin,

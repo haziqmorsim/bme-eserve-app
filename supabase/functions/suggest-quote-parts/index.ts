@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
             }
         }
 
-        const userIds = [...new Set(owmers.map((o: any) => o.user_id))];
+        const userIds = [...new Set(owners.map((o: any) => o.user_id))];
         const { data: existing } = await admin
             .from('notifications')
             .select('user_id, data, response, responded_at')

@@ -1,4 +1,4 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 export interface Attachment {
 	filename: string;
@@ -30,7 +30,7 @@ function normaliseRecipients(to: string): string {
 	return list.join(';');
 }
 
-let logClient: ReturnType<typeof createClient> | null = null;
+let logClient: SupabaseClient | null = null;
 
 function getLogClient() {
 	if (logClient) return logClient;
