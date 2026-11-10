@@ -56,8 +56,8 @@ export const PAGE_OPTIONS: Array<{ key: PageKey; label: string; href: string }> 
     { key: 'profile', label: 'Profile', href: '/app/profile' },
     { key: 'requests', label: 'Requests', href: '/app/requests' },
     { key: 'enquiries', label: 'Enquiries', href: '/app/enquiries' },
-    { key: 'analytics', label: 'Analytics', href: '/app/analytics' },
-    { key: 'others', label: 'Others', href: '/app/others' }
+    { key: 'analytics', label: 'Analytics', href: '/app/analytics' }
+    // { key: 'others', label: 'Others', href: '/app/others' }
 ];
 
 const ALL_PAGES: PageKey[] = PAGE_OPTIONS.map((p) => p.key);
@@ -85,6 +85,31 @@ export function userPages(profile: PageProfile): PageKey[] {
 
 export function canAccessPage(profile: PageProfile, key: PageKey): boolean {
     return userPages(profile).includes(key);
+}
+
+export type ProjectTab = 'dashboard' | 'parts';
+
+export const PROJECT_TAB_OPTIONS: Array<{ key: ProjectTab; label: string }> = [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'parts', label: 'Spare Parts' }
+];
+
+const ALL_PROJECT_TABS: ProjectTab[] = PROJECT_TAB_OPTIONS.map((t) => t.key);
+
+export const DEFAULT_CUSTOMER_TABS: readonly ProjectTab[] = ['parts'];
+
+export function defaultProjectTabs(role: string | null | undefined): ProjectTab[] {
+    return isCustomerRole(role) ? [...DEFAULT_CUSTOMER_TABS] : [...ALL_PROJECT_TABS];
+}
+
+type TabProfile = { role?: string | null; project_tabs?: string[] | null } | null | undefined;
+
+export function userProjectTabs(profile: TabProfile): ProjectTab[] {
+    if (!profile) return [];
+    if (!isCustomerRole(profile.role)) return [...ALL_PROJECT_TABS];
+    const ticked = Array.isArray(profile.project_tabs) ? profile.project_tabs : [...DEFAULT_CUSTOMER_TABS];
+    const tabs = ALL_PROJECT_TABS.filter((k) => ticked.includes(k));
+    return tabs.length ? tabs : [...DEFAULT_CUSTOMER_TABS];
 }
 
 export function firstPageHref(profile: PageProfile): string | null {

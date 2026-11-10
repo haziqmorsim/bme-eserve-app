@@ -9,7 +9,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabas
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, company, role, department, position, pages, region_id, must_change_password, whats_new_seen_version')
+        .select('id, full_name, company, role, department, position, pages, project_tabs, region_id, must_change_password, whats_new_seen_version')
         .eq('id', user.id)
         .single();
 

@@ -29,7 +29,7 @@
 <Modal {title} onclose={() => { if (!busy) onclose(); }}>
     <div class="modal-confirm">
         <p>
-            Are you sure you want to <strong>{labels.length}</strong>
+            Are you sure you want to delete <strong>{labels.length}</strong>
             {labels.length === 1 ? noun : `${noun}s`}?
         </p>
         <ul class="bulk-list">

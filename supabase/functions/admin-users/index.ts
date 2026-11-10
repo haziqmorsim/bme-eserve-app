@@ -18,6 +18,15 @@ function normalisePages(role: string, pages: unknown): string[] {
     return allowed.filter((p) => pages.includes(p));
 }
 
+const ALL_TABS = ['dashboard', 'parts'];
+const DEFAULT_CUSTOMER_TABS = ['parts'];
+function normaliseTabs(role: string, tabs: unknown): string[] {
+    if (!CUSTOMER_ROLES.includes(role)) return [...ALL_TABS];
+    if (!Array.isArray(tabs)) return [...DEFAULT_CUSTOMER_TABS];
+    const picked = ALL_TABS.filter((t) => tabs.includes(t));
+    return picked.length ? picked : [...DEFAULT_CUSTOMER_TABS];
+}
+
 function jobField(role: string, value: unknown): string | null {
     if (CUSTOMER_ROLES.includes(role)) return null;
     const s = typeof value === 'string' ? value.trim() : '';
@@ -111,6 +120,7 @@ Deno.serve(async (req) => {
                 department: jobField(role, body.department),
                 position: jobField(role, body.position),
                 pages: normalisePages(role, body.pages),
+                project_tabs: normaliseTabs(role, body.project_tabs),
                 email,
                 must_change_password: true
             });
@@ -133,7 +143,7 @@ Deno.serve(async (req) => {
                 const { error: uErr } = await admin.auth.admin.updateUserById(id, { email });
                 if (uErr) return json(400, { error: uErr.message });
             }
-            const { error: pErr } = await admin.from('profiles').update({
+            const profileUpdate: Record<string, unknown> = {
                 full_name: full_name ?? null,
                 company: company ?? null,
                 department: jobField(role, body.department),
@@ -141,7 +151,11 @@ Deno.serve(async (req) => {
                 pages: normalisePages(role, body.pages),
                 email: email ?? null,
                 role,
-            }).eq('id', id);
+            };
+            if (Array.isArray(body.project_tabs) || !CUSTOMER_ROLES.includes(role)) {
+                profileUpdate.project_tabs = normaliseTabs(role, body.project_tabs);
+            }
+            const { error: pErr } = await admin.from('profiles').update(profileUpdate).eq('id', id);
             if (pErr) return json(400, { error: pErr.message });
 
             const bErr = await syncProjectsAndBoilers(admin, id, role, body.project_ids);

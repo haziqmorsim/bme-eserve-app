@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         supabase.from('parts').select('*, components(name, boiler_id)').order('part_number'),
         supabase
             .from('profiles')
-            .select('id, full_name, company, email, department, position, role, pages')
+            .select('id, full_name, company, email, department, position, role, pages, project_tabs')
             .order('full_name'), 
         supabase.from('customer_projects').select('user_id, project_id'), 
         supabase.rpc('user_last_sign_ins'), 

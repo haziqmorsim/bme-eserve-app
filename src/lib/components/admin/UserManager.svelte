@@ -9,7 +9,7 @@
     import { RowSelection } from "$lib/selection.svelte";
     import RowCheckbox from "./RowCheckbox.svelte";
     import BulkDeleteModal from "./BulkDeleteModal.svelte";
-    import { ROLE_OPTIONS, isCustomerRole, hasJobDetails, PAGE_OPTIONS, defaultPages, availablePages, userPages, STAFF_ONLY_PAGES } from "$lib/roles";
+    import { ROLE_OPTIONS, isCustomerRole, hasJobDetails, PAGE_OPTIONS, defaultPages, availablePages, userPages, STAFF_ONLY_PAGES, PROJECT_TAB_OPTIONS, defaultProjectTabs, userProjectTabs } from "$lib/roles";
     import { nextSort, sortRows, type SortState } from "$lib/table-sort";
     import SortHeader from "./SortHeader.svelte";
     import { logAction, activityLabel } from "$lib/activity";
@@ -70,9 +70,16 @@
         form.pages = PAGE_OPTIONS.map((p) => p.key).filter((k) => set.has(k));
     }
 
+    function toggleTab(key: string) {
+        const set = new Set<string>(form.project_tabs ?? []);
+        if (set.has(key)) set.delete(key); else set.add(key);
+        form.project_tabs = PROJECT_TAB_OPTIONS.map((t) => t.key).filter((k) => set.has(k));
+    }
+
     function onRoleChange(e: Event) {
         form.role = (e.currentTarget as HTMLSelectElement).value;
         form.pages = defaultPages(form.role || 'customer');
+        form.project_tabs = defaultProjectTabs(form.role || 'customer');
     }
 
     const pageSize = 20;
@@ -146,6 +153,7 @@
         return {
             full_name: '', email: '', password: '', company: '', role: '',
             department: '', position: '', project_ids: [], pages: defaultPages('customer'),
+            project_tabs: defaultProjectTabs('customer'),
             send_invite: false
         };
     }
@@ -156,7 +164,8 @@
             company: u.company ?? '', role: u.role ?? '',
             department: u.department ?? '', position: u.position ?? '',
             project_ids: [...(assignedByUser[u.id] ?? [])],
-            pages: userPages(u)
+            pages: userPages(u),
+            project_tabs: userProjectTabs(u)
         };
         err = ''; fieldErr = {}; needTempPassword = false; newTempPassword = ''; editing = u.id;
     }
@@ -217,6 +226,9 @@
         if (isCustomerRole(form.role || 'customer') && (form.project_ids ?? []).length === 0) {
             e.project_ids = 'At least one project is required.';
         }
+        if (isCustomerRole(form.role || 'customer') && (form.project_tabs ?? []).length === 0) {
+            e.project_tabs = 'Select at least one tab.';
+        }
         if (!(form.pages ?? []).some((k: string) => allowedPages.has(k))) {
             e.pages = 'Select at least one page.';
         }
@@ -239,6 +251,9 @@
         body.position = isCustomer ? null : form.position?.trim() || null;
         body.pages = (form.pages ?? []).filter((k: string) => allowedPages.has(k));
         body.project_ids = isCustomer ? (form.project_ids ?? []) : [];
+        body.project_tabs = isCustomer
+            ? (form.project_tabs ?? [])
+            : PROJECT_TAB_OPTIONS.map((t) => t.key);
         if (action === 'create') body.password = form.password;
         else body.id = editing;
 
@@ -448,6 +463,19 @@
                     <p class="project-hint">{(form.project_ids ?? []).length} selected.</p>
                     {#if fieldErr.project_ids}<span class="field-err">{fieldErr.project_ids}</span>{/if}
                 </div>
+                <div class="project-field">
+                    <span class="pf-label">Project Tabs <span class="required">*</span></span>
+                    <div class="project-picker page-picker" class:invalid={fieldErr.project_tabs}>
+                        {#each PROJECT_TAB_OPTIONS as t (t.key)}
+                            <label class="project-item">
+                                <input type="checkbox" checked={(form.project_tabs ?? []).includes(t.key)} onchange={() => toggleTab(t.key)} />
+                                <span>{t.label}</span>
+                            </label>
+                        {/each}
+                    </div>
+                    <p class="project-hint">Tabs this customer can see on each boiler. Staff and developer accounts always see both.</p>
+                    {#if fieldErr.project_tabs}<span class="field-err">{fieldErr.project_tabs}</span>{/if}
+                </div>
             {/if}
             <div class="project-field">
                 <span class="pf-label">Accessible Page(s) <span class="required">*</span></span>
@@ -596,8 +624,8 @@
     }
 
     .project-picker {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 2px;
         overflow-y: auto;
         border: 1px solid var(--bme-border);

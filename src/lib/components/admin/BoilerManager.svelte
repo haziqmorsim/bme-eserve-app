@@ -28,6 +28,10 @@
         return m;
     });
 
+    let sortedProjects = $derived(
+        [...projects].sort((a: any, b: any) => (a.project_no ?? '').localeCompare(b.project_no ?? ''))
+    );
+
     function toggleProject(id: string) {
         const set = new Set<string>(form.project_ids ?? []);
         if (set.has(id)) set.delete(id); else set.add(id);
@@ -405,10 +409,10 @@
                     {#if projects.length === 0}
                         <p class="project-empty">No projects have been added yet.</p>
                     {:else}
-                        {#each projects as p (p.id)}
+                        {#each sortedProjects as p (p.id)}
                             <label class="project-item">
                                 <input type="checkbox" checked={(form.project_ids ?? []).includes(p.id)} onchange={() => toggleProject(p.id)} />
-                                <span><strong>{p.project_no}</strong> — {p.name} {#if p.location}<span class="pj-loc">({p.location})</span>{/if}</span>
+                                <span><strong>{p.project_no}</strong> {#if p.name} — {p.name}{/if}</span>
                             </label>
                         {/each}
                     {/if}
@@ -554,8 +558,8 @@
     }
 
     .project-picker {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 2px;
         max-height: 220px;
         overflow-y: auto;
@@ -579,10 +583,6 @@
         width: auto;
         margin: 0;
         cursor: pointer;
-    }
-
-    .pj-loc {
-        color: var(--bme-muted);
     }
 
     .project-empty {

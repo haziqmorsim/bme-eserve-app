@@ -70,4 +70,5 @@ export interface Profile {
     department: string | null;
     position: string | null;
     pages: string[];
+    project_tabs: string[];
 }

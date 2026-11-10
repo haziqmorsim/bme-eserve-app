@@ -45,8 +45,12 @@
             </div>
         {:else}
             <div class="tabbar">
-                <!-- <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a> -->
-                <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
+                {#if data.projectTabs.includes('dashboard')}
+                    <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=dashboard`} class="tab" class:active={data.tab === 'dashboard'}>Dashboard</a>
+                {/if}
+                {#if data.projectTabs.includes('parts')}
+                    <a href={`/app?boiler=${data.boilerId}${data.activeProjectId ? `&project=${data.activeProjectId}` : ''}&tab=parts`} class="tab" class:active={data.tab === 'parts'}>Spare Parts</a>
+                {/if}
             </div>
             <div class="panel">
                 {#if data.tab === 'parts'}
@@ -198,6 +202,10 @@
         .tab {
             width: 48%;
             text-align: center;
+        }
+
+        .tab:only-child {
+            width: 100%;
         }
     }
 </style>
