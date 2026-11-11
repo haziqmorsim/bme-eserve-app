@@ -57,7 +57,7 @@ export const load: PageLoad = async ({ parent, url }) => {
     const requestedTab = url.searchParams.get('tab') as ProjectTab | null;
     const tab: ProjectTab = requestedTab && projectTabs.includes(requestedTab)
         ? requestedTab
-        : projectTabs.includes('parts') ? 'parts' : (projectTabs[0] ?? 'parts'); // default to dashboard when iot is up
+        : projectTabs.includes('dashboard') ? 'dashboard' : (projectTabs[0] ?? 'parts');
     const activeProjectId = url.searchParams.get('project');
 
     let boiler: Boiler | null = null;

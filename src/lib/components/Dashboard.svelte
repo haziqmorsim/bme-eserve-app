@@ -497,7 +497,7 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code} {#if resolvedProject}<span class="title-project"> ({resolvedProject.name ?? resolvedProject.project_no})</span>{/if}</h2>
+	<h2 class="title">{boiler.code}</h2>
 	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 
 	<div class="subtabs">

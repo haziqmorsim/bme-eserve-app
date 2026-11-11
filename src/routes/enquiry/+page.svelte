@@ -2,6 +2,7 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { track, flush } from "$lib/tracking";
+    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
     import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 
     let { data } = $props();
@@ -57,7 +58,10 @@
 
     <main class="pane">
         <div class="card panel">
-            <h2>General enquiry</h2>
+            <div class="head">
+                <h2>General enquiry</h2>
+                <ThemeToggle variant="segmented" fontSize={16} compact />
+            </div>
             <p class="sub">Not a customer? Send us a message and our team will get back to you.</p>
 
             <label>
@@ -107,6 +111,13 @@
         max-width: 480px;
         padding: 34px 36px 28px;
         border-radius: 16px;
+    }
+
+    .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
     }
 
     h2 {

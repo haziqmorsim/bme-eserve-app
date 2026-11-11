@@ -187,7 +187,7 @@
                             <ul class="boilers">
                                 {#each g.boilers as boiler (boiler.id)}
                                     <li>
-                                        <a href={`/app?boiler=${boiler.id}&project=${g.id}&tab=parts`} onclick={() => (listOpen = false)} class:active={boiler.id === activeBoilerId && g.id === resolvedActiveProjectId}>
+                                        <a href={`/app?boiler=${boiler.id}&project=${g.id}`} onclick={() => (listOpen = false)} class:active={boiler.id === activeBoilerId && g.id === resolvedActiveProjectId}>
                                             <strong>{boiler.code}</strong>
                                             {#if boiler.name}<span>{boiler.name}</span>{/if}
                                         </a>

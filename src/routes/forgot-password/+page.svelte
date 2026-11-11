@@ -1,6 +1,7 @@
 <script lang="ts">
     import Toaster from "$lib/components/Toaster.svelte";
     import { addToast } from "$lib/stores/toast";
+    import ThemeToggle from "$lib/components/ThemeToggle.svelte";
     import AuthBrandPanel from "$lib/components/AuthBrandPanel.svelte";
 
     let { data } = $props();
@@ -55,7 +56,10 @@
 
     <main class="pane">
         <div class="card panel">
-            <h2>Forgot password</h2>
+           <div class="head">
+                <h2>Forgot password</h2>
+                <ThemeToggle variant="segmented" fontSize={16} compact />
+           </div>
 
             {#if sent}
                 <div class="sent">
@@ -102,6 +106,13 @@
         max-width: 440px;
         padding: 34px 36px 28px;
         border-radius: 16px;
+    }
+
+    .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
     }
 
     h2 {
