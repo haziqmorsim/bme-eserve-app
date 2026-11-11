@@ -35,6 +35,9 @@
                 <ThemeToggle variant="segmented" fontSize={16} compact />
             </div>
             <p class="sub">Use the e-mail and password registered to your account.</p>
+            {#if data.notice}
+                <p class="notice" role="status">{data.notice}</p>
+            {/if}
 
             <form method="POST" use:enhance={({ cancel }) => {
                 if (!validate()) {
@@ -163,7 +166,7 @@
 
     .eye {
         position: absolute;
-        top: 0;
+        top: 10px;
         right: 0;
         height: 44px;
         width: 44px;
@@ -200,6 +203,17 @@
 
     input.invalid:focus {
         outline-color: var(--bme-red);
+    }
+
+    .notice {
+        margin: -10px 0 18px;
+        padding: 9px 12px;
+        border: 1px solid var(--bme-border);
+        border-left: 3px solid var(--bme-dark-blue);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--bme-dark-blue) 7%, var(--bme-surface));
+        font-size: 13.5px;
+        color: var(--bme-ink);
     }
 
     .err {

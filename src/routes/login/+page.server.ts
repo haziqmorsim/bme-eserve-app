@@ -2,7 +2,7 @@ import { fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { toMap, str, bool } from "$lib/settings";
 
-export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase, safeGetSession } }) => {
     const { session } = await safeGetSession();
     if (session) throw redirect(303, '/app');
 
@@ -14,8 +14,16 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
     const m = toMap(settingRows);
     const announcement = bool(m, 'login_announcement_enabled', false) ? str(m, 'login_banner', '') : '';
 
+    const reason = url.searchParams.get('reason');
+    const notice = reason === 'idle'
+        ? 'You were signed out because the app was closed for over an hour.'
+        : reason === 'timeout'
+            ? 'You were signed out because of inactivity.'
+            : '';
+
     return {
         announcement, 
+        notice, 
         title: "Sign In"
     }
 };

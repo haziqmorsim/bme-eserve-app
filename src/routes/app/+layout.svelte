@@ -3,6 +3,7 @@
     import Footer from "$lib/components/Footer.svelte";
     import Toaster from "$lib/components/Toaster.svelte";
     import SessionTimeout from "$lib/components/SessionTimeout.svelte";
+    import ActivityKeeper from "$lib/components/ActivityKeeper.svelte";
     import AppSkeleton from "$lib/components/AppSkeleton.svelte";
     import WhatsNewModal from "$lib/components/WhatsNewModal.svelte";
     import { navigating } from "$app/stores";
@@ -161,6 +162,7 @@
 <Toaster />
 
 <SessionTimeout onTimeout={handleTimeout} />
+<ActivityKeeper />
 
 <WhatsNewModal
     show={whatsNewSnapshot.show}

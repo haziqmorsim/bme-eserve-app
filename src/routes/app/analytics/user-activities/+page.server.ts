@@ -570,6 +570,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
         let detail = '';
         if (e.event_type === 'sign_out' && meta.reason === 'timeout') {
             detail = 'session timed out';
+        } else if (e.event_type === 'sign_out' && meta.reason === 'closed') {
+            detail = 'app closed for over an hour';
         } else if (e.event_type === 'invoice_converted' || e.event_type === 'packing_converted') {
             const names = Array.isArray(meta.names) ? (meta.names.filter((n) => typeof n === 'string') as string[]) : [];
             const files = typeof meta.files === 'number' ? meta.files : names.length;
