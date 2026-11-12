@@ -5,6 +5,7 @@
     let { children } = $props();
 
     const SECTIONS = [
+        { href: '/app/analytics/audit-log', label: 'Audit Log'},
         { href: '/app/analytics/customer-requests', label: 'Customer Requests'},
         // { href: '/app/analytics/forecasts', label: 'Demand Forecasts'},
         { href: '/app/analytics/email-log', label: 'E-mail Deliveries'},

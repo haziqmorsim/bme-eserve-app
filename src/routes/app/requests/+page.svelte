@@ -6,11 +6,14 @@
     import SlaBadge from "$lib/components/SlaBadge.svelte";
     import { levelSince } from "$lib/sla";
     import { roleLabel } from "$lib/roles";
+    import RequestTimeline from "$lib/components/RequestTimeline.svelte";
 
     let { data } = $props();
     let working = $state<string | null>(null);
     let formError = $state<string | null>(null);
     let actionTaken = $state<Record<string, string>>({});
+    let customerMessage = $state<Record<string, string>>({});
+    const MAX_MESSAGE = 1000;
     let isDeveloper = $derived(data.profile?.role === 'developer');
 
     function attachList(q: any): { url: string; name: string }[] {
@@ -50,16 +53,45 @@
 
         working = q.id;
         const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
-            body: { quote_id: q.id, action: 'close', action_taken: text }
+            body: {
+                quote_id: q.id,
+                action: 'close',
+                action_taken: text,
+                customer_message: (customerMessage[q.id] ?? '').trim()
+            }
         });
         working = null;
 
         if (error || resp?.error) {
             addToast(resp?.error ?? error?.message ?? 'Action could not be completed.', 'error');
         } else if (resp?.status === 'closed') {
-            addToast(`${q.reference} closed.`);
+            addToast(`${q.reference} closed.${notifyNote(resp?.notified)}`);
         } else {
             addToast('Action recorded.');
+        }
+
+        await invalidateAll();
+    }
+
+    function notifyNote(state: string | undefined): string {
+        if (state === 'sent') return ' Customer e-mailed.';
+        if (state === 'failed') return ' The customer e-mail could not be sent.';
+        return '';
+    }
+
+    async function startReview(q: any) {
+        working = q.id;
+        const { data: resp, error } = await data.supabase.functions.invoke('approve-quote', {
+            body: { quote_id: q.id, action: 'acknowledge' }
+        });
+        working = null;
+
+        if (error || resp?.error) {
+            addToast(resp?.error ?? error?.message ?? 'Action could not be completed.', 'error');
+        } else if (resp?.already) {
+            addToast(`${q.reference} is already marked as in review.`);
+        } else {
+            addToast(`${q.reference} marked as in review.${notifyNote(resp?.notified)}`);
         }
 
         await invalidateAll();
@@ -85,6 +117,8 @@
                 </div>
                 <small>{when(q.created_at)}</small>
             </div>
+
+            <RequestTimeline createdAt={q.created_at} acknowledgedAt={q.acknowledged_at} />
 
             <div class="customer">
                 {#if q.customer.company || q.customer.full_name}
@@ -151,6 +185,18 @@
                     bind:value={actionTaken[q.id]}
                     disabled={!data.canClose}
                 ></textarea>
+                <small class="field-help">Internal note. Customers do not see this.</small>
+            </label>
+
+            <label class="action-field">
+                <p class="field-label">Message to customer <span class="opt">(optional)</span></p>
+                <textarea
+                    rows="2"
+                    maxlength={MAX_MESSAGE}
+                    placeholder="Shown to the customer and included in the closing e-mail..."
+                    bind:value={customerMessage[q.id]}
+                    disabled={!data.canClose}
+                ></textarea>
             </label>
 
             {#if formError === q.id}
@@ -158,6 +204,11 @@
             {/if}
 
             <div class="actions">
+                {#if !q.acknowledged_at}
+                    <button class="btn-ghost" disabled={!data.canClose || working === q.id} onclick={() => startReview(q)}>
+                        Start review
+                    </button>
+                {/if}
                 <button class="btn-primary" disabled={!data.canClose || working === q.id} onclick={() => close(q)}>
                     {working === q.id ? 'Processing...' : 'Close'}
                 </button>
@@ -351,6 +402,18 @@
 
     .req {
         color: var(--bme-red);
+    }
+
+    .opt {
+        color: var(--bme-muted);
+        font-weight: 400;
+    }
+
+    .field-help {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--bme-muted);
     }
 
     .action-field textarea {

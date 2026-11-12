@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase, safeGet
 
     const { data: quoteRows } = await supabase
         .from('quotes')
-        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, pdf_url, quote_items(*)')
+        .select('id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, acknowledged_at, customer_message, pdf_url, quote_items(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 

@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { sendEmail } from '../_shared/email.ts';
+import { writeAudit } from '../_shared/audit.ts';
 
 const BRAND = {
     blue: '#004b8d',
@@ -192,6 +193,15 @@ Deno.serve(async (req) => {
             .from('user_invitations')
             .update({ last_sent_at: new Date().toISOString() })
             .eq('user_id', target.id);
+
+        await writeAudit(admin, {
+            actorId: user.id,
+            action: reset ? 'password_reset' : 'invitation_resent',
+            entityType: 'user',
+            entityId: target.id,
+            entityLabel: email,
+            details: reset ? { note: 'A new temporary password was set and the invitation was sent again.' } : null
+        });
 
         return json(200, { ok: true });
     } catch(e) {

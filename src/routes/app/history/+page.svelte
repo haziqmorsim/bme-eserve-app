@@ -7,6 +7,7 @@
     import { isActorRole, roleLabel } from "$lib/roles";
     import SearchFilter from "$lib/components/SearchFilter.svelte";
     import { emptyFilters, matches } from "$lib/filters";
+    import RequestTimeline from "$lib/components/RequestTimeline.svelte";
 
     let { data } = $props();
 
@@ -449,6 +450,14 @@
                         </div>
                         <small>Submitted {when(q.created_at)}</small>
                     </div>
+
+                    <RequestTimeline
+                        createdAt={q.created_at}
+                        acknowledgedAt={q.acknowledged_at}
+                        closedAt={q.status === 'closed' ? (q.reviewed_at ?? q.created_at) : null}
+                        message={q.customer_message}
+                    />
+
                     <table>
                         <thead>
                             <tr><th>Part Number</th><th>Part Name</th><th>Boiler</th><th>Quantity</th></tr>

@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     if (!canClose && !isDeveloper) throw error(403, 'Only staff have access.');
 
     const COLUMNS =
-        'id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, user_id, quote_items(*)';
+        'id, reference, status, notes, attachment_url, attachment_name, attachments, created_at, reviewed_at, acknowledged_at, user_id, quote_items(*)';
 
     const { data: openRows } = await supabase
         .from('quotes')

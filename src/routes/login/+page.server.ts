@@ -15,9 +15,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, safeGetSes
     const announcement = bool(m, 'login_announcement_enabled', false) ? str(m, 'login_banner', '') : '';
 
     const reason = url.searchParams.get('reason');
-    const notice = reason === 'idle'
-        ? 'You were signed out because the app was closed for over an hour.'
-        : reason === 'timeout'
+    const notice = reason === 'idle' || reason === 'timeout'
             ? 'You were signed out because of inactivity.'
             : '';
 

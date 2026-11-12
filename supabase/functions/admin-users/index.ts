@@ -1,5 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
+import { diffFields, snapshotFields, writeAudit } from '../_shared/audit.ts';
 
 const ALLOWED_ROLES = ['customer', 'staff', 'developer'];
 const CUSTOMER_ROLES = ['customer'];
@@ -131,6 +132,31 @@ Deno.serve(async (req) => {
             const bErr = await syncProjectsAndBoilers(admin, created.user.id, role, body.project_ids);
             if (bErr) return json(400, { error: bErr });
 
+            await writeAudit(admin, {
+                actorId: user.id,
+                action: 'create',
+                entityType: 'user',
+                entityId: created.user.id,
+                entityLabel: email,
+                details: {
+                    snapshot: {
+                        ...snapshotFields(
+                            {
+                                role,
+                                full_name,
+                                company,
+                                department: jobField(role, body.department),
+                                position: jobField(role, body.position),
+                                pages: normalisePages(role, body.pages),
+                                project_tabs: normaliseTabs(role, body.project_tabs)
+                            },
+                            ['role', 'full_name', 'company', 'department', 'position', 'pages', 'project_tabs']
+                        ),
+                        projects: Array.isArray(body.project_ids) ? body.project_ids.length : 0
+                    }
+                }
+            });
+
             return json(200, { ok: true, id: created.user.id });
         }
 
@@ -138,6 +164,17 @@ Deno.serve(async (req) => {
             const { id, email, full_name, company } = body;
             const role = normaliseRole(body.role);
             if (!id) return json(400, { error: 'Missing id' });
+
+            const AUDITED = ['role', 'full_name', 'company', 'department', 'position', 'email', 'pages', 'project_tabs'];
+            const { data: before } = await admin
+                .from('profiles')
+                .select(AUDITED.join(', '))
+                .eq('id', id)
+                .maybeSingle();
+            const { data: beforeProjects } = await admin
+                .from('customer_projects')
+                .select('project_id')
+                .eq('user_id', id);
 
             if (email) {
                 const { error: uErr } = await admin.auth.admin.updateUserById(id, { email });
@@ -161,16 +198,57 @@ Deno.serve(async (req) => {
             const bErr = await syncProjectsAndBoilers(admin, id, role, body.project_ids);
             if (bErr) return json(400, { error: bErr });
 
+            const { data: afterProjects } = await admin
+                .from('customer_projects')
+                .select('project_id')
+                .eq('user_id', id);
+            const changes = diffFields(
+                (before as Record<string, unknown> | null) ?? null,
+                { ...profileUpdate, email: email ?? null },
+                AUDITED.filter((k) => k in profileUpdate)
+            );
+            const beforeIds = new Set((beforeProjects ?? []).map((r: { project_id: string }) => r.project_id));
+            const afterIds = new Set((afterProjects ?? []).map((r: { project_id: string }) => r.project_id));
+            const added = [...afterIds].filter((p) => !beforeIds.has(p)).length;
+            const removed = [...beforeIds].filter((p) => !afterIds.has(p)).length;
+            if (added || removed) {
+                changes.projects = [`${beforeIds.size} assigned`, `${afterIds.size} assigned (+${added} / -${removed})`];
+            }
+            if (Object.keys(changes).length > 0) {
+                await writeAudit(admin, {
+                    actorId: user.id,
+                    action: 'update',
+                    entityType: 'user',
+                    entityId: id,
+                    entityLabel: (email as string | undefined) ?? ((before as { email?: string } | null)?.email ?? null),
+                    details: { changes }
+                });
+            }
+
             return json(200, { ok: true });
         }
 
         if (action === 'delete') {
             const { id } = body;
             if (!id) return json(400, { error: 'Missing id' });
+            const { data: doomed } = await admin
+                .from('profiles')
+                .select('email, full_name, company, role')
+                .eq('id', id)
+                .maybeSingle();
             await admin.from('customer_projects').delete().eq('user_id', id);
             await admin.from('customer_boilers').delete().eq('user_id', id);
             const { error: dErr } = await admin.auth.admin.deleteUser(id);
             if (dErr) return json(400, { error: dErr.message });
+
+            await writeAudit(admin, {
+                actorId: user.id,
+                action: 'delete',
+                entityType: 'user',
+                entityId: id,
+                entityLabel: doomed?.email ?? doomed?.full_name ?? null,
+                details: { snapshot: snapshotFields(doomed ?? {}, ['role', 'full_name', 'company', 'email']) }
+            });
             return json(200, { ok: true });
         }
 
