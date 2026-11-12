@@ -21,7 +21,7 @@ export async function embedQuery(text: string): Promise<number[] | null> {
         const res = await fetch(VOYAGE_URL, {
             method: 'POST',
             headers: {
-                Authorization: `Beareer ${key}`,
+                Authorization: `Bearer ${key}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({

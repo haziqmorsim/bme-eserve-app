@@ -216,7 +216,11 @@
 			const res = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ messages: payload, sessionId })
+				body: JSON.stringify({
+					messages: payload,
+					sessionId,
+					path: page.url.pathname + page.url.search
+				})
 			});
 			if (res.status === 429) {
 				const reason = await res.text().catch(() => '');

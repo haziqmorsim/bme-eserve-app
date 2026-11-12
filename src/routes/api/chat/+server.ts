@@ -1,9 +1,10 @@
 import { getClient, MODEL, SYSTEM_PROMPT_WEB } from '$lib/server/assistant';
 import { getPartsCatalogContext } from '$lib/server/catalog';
-import { retrieveParts, formatCandidates } from '$lib/server/retrieval';
+import { retrieveParts, formatCandidates, type RetrievedPart } from '$lib/server/retrieval';
 import { logSuggestion } from '$lib/server/suggestions';
 import { describePartImage, extractImages } from '$lib/server/vision';
 import { preprocessImageBlocks } from '$lib/server/imaging';
+import { analyzeMessage, loadNlpUser, nlpPartsAsRetrieved, type NlpResult } from '$lib/server/nlp';
 import type { RequestHandler } from './$types';
 
 type Block =
@@ -32,8 +33,14 @@ function sanitize(messages: InMsg[]): InMsg[] {
 	return cleaned;
 }
 
+function textResponse(text: string, extra: Record<string, string> = {}): Response {
+	return new Response(text, {
+		headers: { 'Content-Type': 'text/plain; charset=utf-8', ...extra }
+	});
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
-	let body: { messages?: InMsg[]; sessionId?: string };
+	let body: { messages?: InMsg[]; sessionId?: string; path?: string };
 	try {
 		body = await request.json();
 	} catch {
@@ -52,6 +59,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					.map((b) => b.text)
 					.join(' ') ?? '';
 
+	const { session } = await locals.safeGetSession();
+	const userId = session?.user?.id ?? null;
+	const hasImage = extractImages(lastUser?.content).length > 0;
+
+	let nlp: NlpResult | null = null;
+	if (userId && caption.trim()) {
+		const nlpUser = await loadNlpUser(locals.supabase, userId);
+		if (nlpUser) {
+			nlp = await analyzeMessage({
+				message: caption,
+				path: typeof body.path === 'string' ? body.path : null,
+				user: nlpUser,
+				hasImage
+			});
+		}
+	}
+
+	if (nlp?.mode === 'direct' && nlp.answer) {
+		return textResponse(nlp.answer, {
+			'x-answer-source': `nlp:${nlp.source ?? nlp.intent}`,
+			'Access-Control-Expose-Headers': 'x-answer-source'
+		});
+	}
+
 	if (lastUser && Array.isArray(lastUser.content)) {
 		lastUser.content = await preprocessImageBlocks(lastUser.content as Block[]);
 	}
@@ -61,15 +92,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const queryText = [caption.trim(), imageDescription ?? ''].filter(Boolean).join(' ');
 
-	const retrieved = queryText ? await retrieveParts(queryText, 8) : [];
-	const catalogueContext = retrieved.length
-		? formatCandidates(retrieved)
-		: await getPartsCatalogContext();
+	const semantic = queryText ? await retrieveParts(queryText, 8) : [];
+	const keyword = nlp ? nlpPartsAsRetrieved(nlp.parts) : [];
 
-	const system = SYSTEM_PROMPT_WEB + catalogueContext;
+	let catalogueContext = '';
+	if (semantic.length) catalogueContext = formatCandidates(semantic);
+	else if (!keyword.length) catalogueContext = await getPartsCatalogContext();
 
-	const { session } = await locals.safeGetSession();
-	const userId = session?.user?.id ?? null;
+	const system = SYSTEM_PROMPT_WEB + (nlp?.context ?? '') + catalogueContext;
+
+	const retrieved: RetrievedPart[] = semantic.length ? semantic : keyword;
 	const suggestionId = retrieved.length ? crypto.randomUUID() : null;
 
 	const stream = getClient().messages.stream({
@@ -97,9 +129,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				if (suggestionId && retrieved.length) {
 					const haystack = full.toLowerCase();
-					const named = retrieved.find((p) =>
-						haystack.includes(p.part_number.toLowerCase())
-					);
+					const named = retrieved.find((p) => haystack.includes(p.part_number.toLowerCase()));
 
 					void logSuggestion({
 						id: suggestionId,
@@ -121,12 +151,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	const headers: Record<string, string> = {
-		'Content-Type': 'text/plain; charset=utf-8'
+		'Content-Type': 'text/plain; charset=utf-8',
+		'x-answer-source': nlp ? `llm+nlp:${nlp.intent}` : 'llm'
 	};
+	const exposed = ['x-answer-source'];
 	if (suggestionId) {
 		headers['x-suggestion-id'] = suggestionId;
-		headers['Access-Control-Expose-Headers'] = 'x-suggestion-id';
+		exposed.push('x-suggestion-id');
 	}
+	headers['Access-Control-Expose-Headers'] = exposed.join(', ');
 
 	return new Response(rs, { headers });
 };

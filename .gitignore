@@ -45,4 +45,8 @@ services/imaging/__pycache__/
 services/worker/.env
 services/worker/.venv
 services/worker/__pycache__/
+services/nlp/.env
+services/nlp/.venv/
+services/nlp/__pycache__/
+services/nlp/nltk_data/
 *.pyc
