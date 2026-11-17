@@ -56,8 +56,8 @@ export const PAGE_OPTIONS: Array<{ key: PageKey; label: string; href: string }> 
     { key: 'profile', label: 'Profile', href: '/app/profile' },
     { key: 'requests', label: 'Requests', href: '/app/requests' },
     { key: 'enquiries', label: 'Enquiries', href: '/app/enquiries' },
-    { key: 'analytics', label: 'Analytics', href: '/app/analytics' }
-    // { key: 'others', label: 'Others', href: '/app/others' }
+    { key: 'analytics', label: 'Analytics', href: '/app/analytics' },
+    { key: 'others', label: 'Others', href: '/app/others' }
 ];
 
 const ALL_PAGES: PageKey[] = PAGE_OPTIONS.map((p) => p.key);
