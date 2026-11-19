@@ -7,11 +7,11 @@
     const SECTIONS = [
         { href: '/app/analytics/audit-log', label: 'Audit Log'},
         { href: '/app/analytics/customer-requests', label: 'Customer Requests'},
-        // { href: '/app/analytics/forecasts', label: 'Demand Forecasts'},
+        { href: '/app/analytics/forecasts', label: 'Demand Forecasts'},
         { href: '/app/analytics/email-log', label: 'E-mail Deliveries'},
-        // { href: '/app/analytics/service-records', label: 'Service Records'},
-        // { href: '/app/analytics/suggestions', label: 'Suggestion Reviews'},
-        // { href: '/app/analytics/training-data', label: 'Training Data'},
+        { href: '/app/analytics/service-records', label: 'Service Records'},
+        { href: '/app/analytics/suggestions', label: 'Suggestion Reviews'},
+        { href: '/app/analytics/training-data', label: 'Training Data'},
         { href: '/app/analytics/user-activities', label: 'User Activities'}
     ];
 

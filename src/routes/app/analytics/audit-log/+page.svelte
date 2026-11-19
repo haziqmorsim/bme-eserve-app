@@ -1,212 +1,231 @@
 <script lang="ts">
-    import SearchFilter from "$lib/components/SearchFilter.svelte";
-    import Pagination from "$lib/components/admin/Pagination.svelte";
-    import { emptyFilters, isActive, matches } from "$lib/filters";
-    import { roleLabel } from "$lib/roles";
+	import SearchFilter from '$lib/components/SearchFilter.svelte';
+	import Pagination from '$lib/components/admin/Pagination.svelte';
+	import Modal from '$lib/components/admin/Modal.svelte';
+	import { emptyFilters, isActive, matches } from '$lib/filters';
+	import { roleLabel } from '$lib/roles';
 
-    let { data } = $props();
+	let { data } = $props();
 
-    const PAGE_SIZE = 25;
+	const PAGE_SIZE = 25;
 
-    type Group = 'all' | 'user' | 'setting' | 'catalogue' | 'faq';
-    const GROUPS: { key: Group; label: string; types: string[] | null }[] = [
-        { key: 'all', label: 'All', types: null },
-        { key: 'user', label: 'Users', types: ['user'] },
-        { key: 'setting', label: 'Settings', types: ['setting'] },
-        { key: 'catalogue', label: 'Catalogue', types: ['project', 'boiler', 'component', 'part', 'region'] },
-        { key: 'faq', label: 'FAQ', types: ['faq'] }
-    ];
+	type Group = 'all' | 'user' | 'setting' | 'catalogue' | 'faq';
+	const GROUPS: { key: Group; label: string; types: string[] | null }[] = [
+		{ key: 'all', label: 'All', types: null },
+		{ key: 'user', label: 'Users', types: ['user'] },
+		{ key: 'setting', label: 'Settings', types: ['setting'] },
+		{ key: 'catalogue', label: 'Catalogue', types: ['project', 'boiler', 'component', 'part', 'region'] },
+		{ key: 'faq', label: 'FAQ', types: ['faq'] }
+	];
 
-    let filters = $state(emptyFilters());
-    let group = $state<Group>('all');
-    let page = $state(1);
-    let open = $state<Record<string, boolean>>({});
+	let filters = $state(emptyFilters());
+	let group = $state<Group>('all');
+	let page = $state(1);
+	let selected = $state<any | null>(null);
 
-    const ACTION_LABEL: Record<string, string> = {
-        create: 'Created',
-        update: 'Updated',
-        delete: 'Deleted',
-        invitation_resent: 'Invitation resent',
-        password_reset: 'Password reset'
-    };
+	const ACTION_LABEL: Record<string, string> = {
+		create: 'Created',
+		update: 'Updated',
+		delete: 'Deleted',
+		invitation_resent: 'Invitation resent',
+		password_reset: 'Password reset'
+	};
 
-    const ENTITY_LABEL: Record<string, string> = {
-        user: 'User',
-        setting: 'Setting',
-        project: 'Project',
-        boiler: 'Boiler',
-        component: 'Component',
-        part: 'Part',
-        faq: 'FAQ',
-        region: 'Region'
-    };
+	const ENTITY_LABEL: Record<string, string> = {
+		user: 'User',
+		setting: 'Setting',
+		project: 'Project',
+		boiler: 'Boiler',
+		component: 'Component',
+		part: 'Part',
+		faq: 'FAQ',
+		region: 'Region'
+	};
 
-    const actionLabel = (a: string) => ACTION_LABEL[a] ?? a;
-    const entityLabel = (e: string) => ENTITY_LABEL[e] ?? e;
-    const when = (ts: string) => new Date(ts).toLocaleString();
+	const actionLabel = (a: string) => ACTION_LABEL[a] ?? a;
+	const entityLabel = (e: string) => ENTITY_LABEL[e] ?? e;
+	const when = (ts: string) => new Date(ts).toLocaleString();
 
-    function show(v: unknown): string {
-        if (v === null || v === undefined || v === '') return '—';
-        if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
-        if (typeof v === 'object') return JSON.stringify(v);
-        return String(v);
-    }
+	function show(v: unknown): string {
+		if (v === null || v === undefined || v === '') return '—';
+		if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
+		if (typeof v === 'object') return JSON.stringify(v);
+		return String(v);
+	}
 
-    function changeRows(d: any): { field: string; from: string; to: string }[] {
-        const ch = d?.changes;
-        if (!ch || typeof ch !== 'object') return [];
-        return Object.entries(ch).map(([field, pair]) => {
-            const [from, to] = Array.isArray(pair) ? pair : [null, pair];
-            return { field, from: show(from), to: show(to) };
-        });
-    }
+	function changeRows(d: any): { field: string; from: string; to: string }[] {
+		const ch = d?.changes;
+		if (!ch || typeof ch !== 'object') return [];
+		return Object.entries(ch).map(([field, pair]) => {
+			const [from, to] = Array.isArray(pair) ? pair : [null, pair];
+			return { field, from: show(from), to: show(to) };
+		});
+	}
 
-    function snapshotRows(d: any): { field: string; value: string }[] {
-        const sn = d?.snapshot;
-        if (!sn || typeof sn !== 'object') return [];
-        return Object.entries(sn).map(([field, value]) => ({ field, value: show(value) }));
-    }
+	function snapshotRows(d: any): { field: string; value: string }[] {
+		const sn = d?.snapshot;
+		if (!sn || typeof sn !== 'object') return [];
+		return Object.entries(sn).map(([field, value]) => ({ field, value: show(value) }));
+	}
 
-    function hasDetails(r: any): boolean {
-        return changeRows(r.details).length > 0 || snapshotRows(r.details).length > 0 || !!r.details?.note;
-    }
+	function hasDetails(r: any): boolean {
+		return changeRows(r.details).length > 0 || snapshotRows(r.details).length > 0 || !!r.details?.note;
+	}
 
-    function inGroup(r: any): boolean {
-        const types = GROUPS.find((g) => g.key === group)?.types;
-        return !types || types.includes(r.entity_type);
-    }
+	function inGroup(r: any): boolean {
+		const types = GROUPS.find((g) => g.key === group)?.types;
+		return !types || types.includes(r.entity_type);
+	}
 
-    const counts = $derived(
-        Object.fromEntries(
-            GROUPS.map((g) => [g.key, g.types ? data.rows.filter((r: any) => g.types!.includes(r.entity_type)).length : data.rows.length])
-        ) as Record<Group, number>
-    );
+	const counts = $derived(
+		Object.fromEntries(
+			GROUPS.map((g) => [g.key, g.types ? data.rows.filter((r: any) => g.types!.includes(r.entity_type)).length : data.rows.length])
+		) as Record<Group, number>
+	);
 
-    const filtered = $derived(
-        data.rows.filter(
-            (r: any) => inGroup(r) && matches(filters, {
-                search: [r.action_name, r.entity_label, r.entity_type, r.action, r.actor_role],
-                date: r.created_at
-            })
-        )
-    );
+	const filtered = $derived(
+		data.rows.filter(
+			(r: any) =>
+				inGroup(r) &&
+				matches(filters, {
+					search: [r.actor_name, r.entity_label, r.entity_type, r.action, r.actor_role],
+					date: r.created_at
+				})
+		)
+	);
 
-    const paged = $derived(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
+	const paged = $derived(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
 
-    $effect(() => {
-        filters.q;
-        filters.from;
-        filters.to;
-        group;
-        page = 1;
-    });
+	$effect(() => {
+		filters.q;
+		filters.from;
+		filters.to;
+		group;
+		page = 1;
+	});
 </script>
 
 <p class="intro">
-    A record of users who changed user accounts, app settings and the boiler, part and FAQ catalogue. Entries cannot be edited or deleted. Secret values are never stored.
+	A record of who changed what: user accounts, app settings and the boiler, part and FAQ catalogue.
+	Entries cannot be edited or deleted. Secret values are never stored.
 </p>
 
 <div class="stats">
-    <div class="card stat">
-        <span class="s-val">{data.stats.changes24h}</span>
-        <span class="s-lbl">Changes (24h)</span>
-        <span class="s-sub">{data.stats.total} in the log overall</span>
-    </div>
-    <div class="card stat">
-        <span class="s-val">{data.stats.userChanges7d}</span>
-        <span class="s-lbl">User Changes (7d)</span>
-        <span class="s-sub">accounts, roles and access</span>
-    </div>
-    <div class="card stat" class:alert={data.stats.deletion7d > 0}>
-        <span class="s-val" class:warn={data.stats.deletion7d}>{data.stats.deletion7d}</span>
-        <span class="s-lbl">Deletions (7d)</span>
-        <span class="s-sub">most recent 500 entries shown</span>
-    </div>
+	<div class="card stat">
+		<span class="s-val changes-24h">{data.stats.changes24h}</span>
+		<span class="s-lbl">Changes (24h)</span>
+		<span class="s-sub">{data.stats.total} in the log overall</span>
+	</div>
+	<div class="card stat">
+		<span class="s-val changes-7d">{data.stats.userChanges7d}</span>
+		<span class="s-lbl">User changes (7d)</span>
+		<span class="s-sub">accounts, roles and access</span>
+	</div>
+	<div class="card stat" class:alert={data.stats.deletions7d > 0}>
+		<span class="s-val deletions-7d" class:warn={data.stats.deletions7d > 0}>{data.stats.deletions7d}</span>
+		<span class="s-lbl">Deletions (7d)</span>
+		<span class="s-sub">most recent 500 entries shown</span>
+	</div>
 </div>
 
 {#if data.rows.length === 0}
-    <div class="card empty">
-        Nothing has been recorded yet. Entries appear here once the audit migration has been applied and an administrator changes something.
-    </div>
+	<div class="card empty">
+		Nothing has been recorded yet. Entries appear here once the audit migration has been applied
+		and an administrator changes something.
+	</div>
 {:else}
-    <SearchFilter 
-        bind:filters
-        showStatus={false}
-        showRegion={false}
-        placeholder="Search by user, item or action..."
-    />
+	<SearchFilter
+		bind:filters
+		showStatus={false}
+		showRegion={false}
+		placeholder="Search by person, item or action..."
+	/>
 
-    <div class="tabbar">
-        {#each GROUPS as g (g.key)}
-            <button class="tab" class:active={group === g.key} onclick={() => (group = g.key)}>
-                {g.label} ({counts[g.key]})
-            </button>
-        {/each}
-    </div>
+	<div class="tabbar">
+		{#each GROUPS as g (g.key)}
+			<button class="tab" class:active={group === g.key} onclick={() => (group = g.key)}>
+				{g.label} ({counts[g.key]})
+			</button>
+		{/each}
+	</div>
 
-    {#if filtered.length === 0}
-        <div class="card empty">
-            {#if isActive(filters)}
-                Nothing matches these filters.
-            {:else}
-                No entries in this category yet.
-            {/if}
-        </div>
-    {:else}
-        <div class="card table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>When</th><th>Who</th><th>Action</th><th>Item</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each paged as r (r.id)}
-                        <tr>
-                            <td class="when">{when(r.created_at)}</td>
-                            <td>
-                                <span class="who">{r.actor_name ?? 'System'}</span>
-                                {#if r.actor_role}<span class="role">{roleLabel(r.actor_role) || r.actor_role}</span>{/if}
-                            </td>
-                            <td>
-                                <span class="badge {r.action}">{actionLabel(r.action)}</span>
-                            </td>
-                            <td>
-                                <span class="type">{entityLabel(r.entity_type)}</span>
-                                <span class="label">{r.entity_label ?? r.entity_id ?? '—'}</span>
-                                {#if hasDetails(r)}
-                                    <button class="more" aria-expanded={!!open[r.id]} onclick={() => (open[r.id] = !open[r.id])}>
-                                        {open[r.id] ? 'Hide details' : 'Show details'}
-                                    </button>
-                                {/if}
-                                {#if open[r.id]}
-                                    <div class="details">
-                                        {#if r.details?.note}<p class="note">{r.details.note}</p>{/if}
-                                        {#each changeRows(r.details) as c (c.field)}
-                                            <p class="line">
-                                                <span class="field">{c.field}</span>
-                                                <span class="old">{c.from}</span>
-                                                <span class="arrow" aria-hidden="true">→</span>
-                                                <span class="new">{c.to}</span>
-                                            </p>
-                                        {/each}
-                                        {#each snapshotRows(r.details) as s (s.field)}
-                                            <p class="line">
-                                                <span class="field">{s.field}</span>
-                                                <span class="new">{s.value}</span>
-                                            </p>
-                                        {/each}
-                                    </div>
-                                {/if}
-                            </td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
-        </div>
+	{#if filtered.length === 0}
+		<div class="card empty">
+			{#if isActive(filters)}
+				Nothing matches these filters.
+			{:else}
+				No entries in this category yet.
+			{/if}
+		</div>
+	{:else}
+		<div class="card table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th>When</th>
+						<th>Who</th>
+						<th>Action</th>
+						<th>Item</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each paged as r (r.id)}
+						<tr>
+							<td class="when">{when(r.created_at)}</td>
+							<td>
+								<span class="who">{r.actor_name ?? 'System'}</span>
+								{#if r.actor_role}<span class="role">{roleLabel(r.actor_role) || r.actor_role}</span>{/if}
+							</td>
+							<td><span class="badge {r.action}">{actionLabel(r.action)}</span></td>
+							<td>
+								<span class="type">{entityLabel(r.entity_type)}</span>
+								<span class="label">{r.entity_label ?? r.entity_id ?? '—'}</span>
+								{#if hasDetails(r)}
+									<button class="more" aria-haspopup="dialog" onclick={() => (selected = r)}>
+										Show details
+									</button>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 
-        <Pagination total={filtered.length} {page} pageSize={PAGE_SIZE} onpage={(p) => (page = p)} />
-    {/if}
+		<Pagination total={filtered.length} {page} pageSize={PAGE_SIZE} onpage={(p) => (page = p)} />
+	{/if}
+{/if}
+
+{#if selected}
+	<Modal title="{actionLabel(selected.action)} {entityLabel(selected.entity_type)}" onclose={() => (selected = null)}>
+		<div class="details">
+			<p class="meta">
+				<strong>{selected.entity_label ?? selected.entity_id ?? '—'}</strong>
+				<span>
+					{selected.actor_name ?? 'System'}{#if selected.actor_role} ({roleLabel(selected.actor_role) || selected.actor_role}){/if}
+					· {when(selected.created_at)}
+				</span>
+			</p>
+			{#if selected.details?.note}<p class="note">{selected.details.note}</p>{/if}
+			{#each changeRows(selected.details) as c (c.field)}
+				<p class="line">
+					<span class="field">{c.field}</span>
+					<span class="old">{c.from}</span>
+					<span class="arrow" aria-hidden="true">→</span>
+					<span class="new">{c.to}</span>
+				</p>
+			{/each}
+			{#each snapshotRows(selected.details) as s (s.field)}
+				<p class="line">
+					<span class="field">{s.field}</span>
+					<span class="new">{s.value}</span>
+				</p>
+			{/each}
+		</div>
+		<div class="modal-actions">
+			<button class="btn-primary" onclick={() => (selected = null)}>Close</button>
+		</div>
+	</Modal>
 {/if}
 
 <style>
@@ -240,6 +259,26 @@
 		font-weight: 700;
 		color: var(--bme-dark-blue);
 		line-height: 1.1;
+	}
+
+	.s-val.changes-24h {
+		color: #6250d6;
+	}
+
+	:root[data-theme="dark"] .s-val.changes-24h {
+		color: #9085e9;
+	}
+
+	.s-val.changes-7d {
+		color: var(--bme-dark-blue);
+	}
+
+	.s-val.deletions-7d {
+		color: #1baf7a;
+	}
+
+	:root[data-theme="dark"] .s-val.deletions-7d {
+		color: #199e70;
 	}
 
 	.s-val.warn {
@@ -421,12 +460,28 @@
 	}
 
 	.details {
-		margin-top: 8px;
 		padding: 10px 12px;
 		background: var(--bme-surface-2);
 		border: 1px solid var(--bme-border);
 		border-radius: 6px;
-		font-size: 0.8rem;
+		font-size: 0.85rem;
+		max-height: 60vh;
+		overflow-y: auto;
+	}
+
+	.meta {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid var(--bme-border);
+		color: var(--bme-ink);
+		overflow-wrap: anywhere;
+	}
+
+	.meta span {
+		font-size: 0.78rem;
+		color: var(--bme-muted);
 	}
 
 	.details p {

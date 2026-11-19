@@ -38,17 +38,17 @@
 <h2>Label Sources</h2>
 <div class="stats">
     <div class="card stat">
-        <span class="s-val">{data.stats.labelsFromChat}</span>
+        <span class="s-val chat">{data.stats.labelsFromChat}</span>
         <span class="s-lbl">From chat</span>
         <span class="s-sub">{data.stats.suggestionsPending} awaiting review of {data.stats.suggestionsTotal}</span>
     </div>
     <div class="card stat">
-        <span class="s-val">{data.stats.labelsFromEnquiries}</span>
+        <span class="s-val enquiries">{data.stats.labelsFromEnquiries}</span>
         <span class="s-lbl">From enquiries</span>
         <span class="s-sub">{data.stats.enquiriesUntagged} untagged of {data.stats.enquiriesTotal}</span>
     </div>
     <div class="card stat">
-        <span class="s-val">{data.stats.serviceIntervals}</span>
+        <span class="s-val intervals">{data.stats.serviceIntervals}</span>
         <span class="s-lbl">Service intervals</span>
         <span class="s-sub">from {data.stats.serviceRecords} records</span>
     </div>
@@ -152,7 +152,6 @@
 </div>
 
 <style>
-
     h2 {
         font-size: 1rem;
         color: var(--bme-dark-blue);
@@ -223,8 +222,28 @@
     .s-val {
         font-size: 1.6rem;
         font-weight: 700;
-        color: var(--bme-dark-blue);
+        color: var(--bme-ink);
         line-height: 1.1;
+    }
+
+    .s-val.chat {
+        color: #6250d6;
+    }
+
+    :root[data-theme="dark"] .s-val.chat {
+        color: #908539;
+    }
+
+    .s-val.enquiries {
+        color: var(--bme-dark-blue);
+    }
+
+    .s-val.intervals {
+        color: #1baf7a;
+    }
+
+    :root[data-theme="dark"] .s-val.intervals {
+        color: #199e70;
     }
 
     .s-lbl {
