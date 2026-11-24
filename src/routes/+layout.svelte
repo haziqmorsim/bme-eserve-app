@@ -4,6 +4,7 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import Chatbot from '$lib/components/Chatbot.svelte';
+    import BackToTop from '$lib/components/BackToTop.svelte';
     import PageSkeleton from '$lib/components/PageSkeleton.svelte';
     import { toMap, bool } from '$lib/settings';
     import { startTracking } from '$lib/tracking';
@@ -33,4 +34,5 @@
 {#if chatbotEnabled}
     <Chatbot {supabase} {user} />
 {/if}
+<BackToTop aboveChat={chatbotEnabled} />
 <PageSkeleton />

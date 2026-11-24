@@ -1,14 +1,16 @@
 <script lang="ts">
 	import type { Boiler, Component, Part } from '$lib/types';
-	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
+	import Boiler3D from '$lib/components/Boiler3D.svelte';
+	import Part3DViewer from '$lib/components/Part3DViewer.svelte';
+	import { supports3D } from '$lib/part-3d/relief';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
+	import { SECTION_COLORS } from '$lib/boiler-3d/legend';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
 	import { hasImage, isPlaceholder, textLines } from '$lib/parts';
 	import { tick } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
-	import { flip } from 'svelte/animate';
-	import { Funnel, Search, Check } from '@lucide/svelte';
+	import { fade } from 'svelte/transition';
+	import { Search, X, ChevronRight, ArrowLeft, Minus, Plus, Image as ImageIcon } from '@lucide/svelte';
 
 	let {
 		boiler,
@@ -27,118 +29,16 @@
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, components));
 
-	let activeKey = $state<string | null>(null);
-	let search = $state('');
-	let qty = $state<Record<string, number>>({});
-	let lightbox = $state<Part | null>(null);
-
 	const UNCATEGORISED = 'Panel/Instrument';
-	let showUncategorised = $state(false);
+	const PANEL_KEY = '__panel';
+	const OTHER_KEY = '__other';
 
-	const uncategorisedId = $derived(
-		components.find((c: Component) => (c.name ?? '') === UNCATEGORISED)?.id ?? null
+	type Group = { name: string; ids: string[]; parts: Part[] };
+	type Sec = { key: string; label: string; color: string; groups: Group[]; partCount: number; in3d: boolean };
+
+	const uncategorisedIds = $derived(
+		new Set(components.filter((c: Component) => (c.name ?? '').trim() === UNCATEGORISED).map((c: Component) => c.id))
 	);
-
-	const uncategorisedCount = $derived(
-		uncategorisedId ? parts.filter((p: Part) => p.component_id === uncategorisedId).length : 0
-	);
-
-	let selected = $state<Set<string>>(new Set());
-	let filterOpen = $state(false);
-	let compSearch = $state('');
-
-	const countByComponent = $derived.by(() => {
-		const m: Record<string, number> = {};
-		for (const p of parts) {
-			const id = (p as Part).component_id;
-			if (id) m[id] = (m[id] ?? 0) + 1;
-		}
-		return m;
-	});
-
-	type ComponentGroup = { name: string; ids: string[]; count: number };
-
-	const groupedComponents = $derived.by(() => {
-		const q = compSearch.trim().toLowerCase();
-		const byName = new Map<string, ComponentGroup>();
-
-		for (const c of components as Component[]) {
-			if (c.id === uncategorisedId) continue;
-			const name = c.name ?? '';
-			let g = byName.get(name);
-			if (!g) {
-				g = { name, ids: [], count: 0 };
-				byName.set(name, g);
-			}
-			g.ids.push(c.id);
-			g.count += countByComponent[c.id] ?? 0;
-		}
-
-		const list = [...byName.values()].filter((g) => !q || g.name.toLowerCase().includes(q));
-		return list.sort((a, b) => a.name.localeCompare(b.name));
-	});
-
-	const selectedCount = $derived(selected.size);
-
-	let sideEl = $state<HTMLElement | null>(null);
-
-	async function scrollToParts() {
-		await tick();
-		const el = sideEl;
-		if (!el) return;
-		const top = el.getBoundingClientRect().top;
-		if (top >= 0 && top < window.innerHeight * 0.5) return;
-		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-	}
-
-	function onSectionSelect(key: string, componentIds: string[]) {
-		selected = new Set(componentIds);
-		activeKey = key;
-		scrollToParts();
-	}
-
-	$effect(() => {
-		if (selected.size > 0) {
-			const hit = sections.find(
-				(s) =>
-					s.componentIds.length > 0 &&
-					s.componentIds.length === selected.size &&
-					s.componentIds.every((id: string) => selected.has(id))
-			);
-			activeKey = hit ? hit.key : null;
-		} else {
-			activeKey = null;
-		}
-	});
-
-	function isGroupChecked(ids: string[]) {
-		return ids.length > 0 && ids.every((id) => selected.has(id));
-	}
-
-	function toggleGroup(ids: string[]) {
-		const next = new Set(selected);
-		const checked = isGroupChecked(ids);
-		for (const id of ids) {
-			if (checked) next.delete(id);
-			else next.add(id);
-		}
-		selected = next;
-	}
-
-	function clearAllFilters() {
-		selected = new Set();
-	}
-
-	const SPEC_LINE_LIMIT = 3;
-	let expandedSpecs = $state<Set<string>>(new Set());
-
-	function toggleSpecs(id: string) {
-		const next = new Set(expandedSpecs);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		expandedSpecs = next;
-	}
 
 	const ordered = $derived(
 		[...parts].sort((a: Part, b: Part) => {
@@ -149,44 +49,181 @@
 		})
 	);
 
-	const filtered = $derived.by(() => {
-		const q = search.trim().toLowerCase();
-		return ordered.filter((p: Part) => {
-			const isUncat = uncategorisedId != null && p.component_id === uncategorisedId;
+	const partsByComp = $derived.by(() => {
+		const m = new Map<string, Part[]>();
+		for (const p of ordered) {
+			if (!p.component_id) continue;
+			const list = m.get(p.component_id);
+			if (list) list.push(p);
+			else m.set(p.component_id, [p]);
+		}
+		return m;
+	});
 
-			if (showUncategorised !== isUncat) return false;
+	const compById = $derived(new Map(components.map((c: Component) => [c.id, c])));
 
-			if (!showUncategorised) {
-				const inComp =
-					selected.size === 0 || (p.component_id != null && selected.has(p.component_id));
-				if (!inComp) return false;
+	function groupsFor(ids: string[]): Group[] {
+		const byName = new Map<string, Group & { order: number }>();
+		for (const id of ids) {
+			const c = compById.get(id);
+			if (!c) continue;
+			const name = (c.name ?? '').trim() || 'Unnamed component';
+			let g = byName.get(name);
+			if (!g) {
+				g = { name, ids: [], parts: [], order: c.sort_order ?? 0 };
+				byName.set(name, g);
 			}
-			if (!q) return true;
-			const comp = components.find((c: Component) => c.id === p.component_id);
+			g.ids.push(id);
+			g.parts.push(...(partsByComp.get(id) ?? []));
+		}
+		return [...byName.values()]
+			.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+			.map(({ name, ids, parts }) => ({ name, ids, parts }));
+	}
+
+	const tree = $derived.by((): Sec[] => {
+		const used = new Set<string>();
+		const list: Sec[] = sections.map((s) => {
+			const ids = s.componentIds.filter((id: string) => !uncategorisedIds.has(id));
+			ids.forEach((id: string) => used.add(id));
+			const groups = groupsFor(ids);
+			return {
+				key: s.key,
+				label: s.label,
+				color: SECTION_COLORS[s.key] ?? '#8a97a5',
+				groups,
+				partCount: groups.reduce((a, g) => a + g.parts.length, 0),
+				in3d: true
+			};
+		});
+		if (uncategorisedIds.size) {
+			const groups = groupsFor([...uncategorisedIds]);
+			list.push({ key: PANEL_KEY, label: 'Panel / Instrument', color: '#8a97a5', groups, partCount: groups.reduce((a, g) => a + g.parts.length, 0), in3d: false });
+		}
+		const rest = components.filter((c: Component) => !used.has(c.id) && !uncategorisedIds.has(c.id)).map((c: Component) => c.id);
+		if (rest.length) {
+			const groups = groupsFor(rest);
+			list.push({ key: OTHER_KEY, label: 'Other components', color: '#8a97a5', groups, partCount: groups.reduce((a, g) => a + g.parts.length, 0), in3d: false });
+		}
+		return list;
+	});
+
+	let secKey = $state<string | null>(null);
+	let groupName = $state<string | null>(null);
+	let partId = $state<string | null>(null);
+	let search = $state('');
+	let qty = $state<Record<string, number>>({});
+	let mediaView = $state<'3d' | 'photo'>('3d');
+
+	const sec = $derived(tree.find((s) => s.key === secKey) ?? null);
+	const group = $derived(sec?.groups.find((g) => g.name === groupName) ?? null);
+	const part = $derived(partId ? (ordered.find((p: Part) => p.id === partId) ?? null) : null);
+	const skipsGroups = $derived(!!sec && sec.key === PANEL_KEY && sec.groups.length === 1);
+	const level = $derived(part ? 4 : group ? 3 : sec ? 2 : 1);
+	const activeKey = $derived(sec?.in3d ? sec.key : null);
+	const panelSec = $derived(tree.find((x) => x.key === PANEL_KEY) ?? null);
+
+	const query = $derived(search.trim().toLowerCase());
+
+	const scopeParts = $derived.by((): Part[] => {
+		if (group) return group.parts;
+		if (sec) return sec.groups.flatMap((g) => g.parts);
+		return ordered;
+	});
+
+	const scopeLabel = $derived(group ? group.name : sec ? sec.label : 'all parts');
+
+	const results = $derived.by(() => {
+		if (!query) return [];
+		return scopeParts.filter((p: Part) => {
+			const comp = compById.get(p.component_id);
 			return (
-				(p.part_number ?? '').toLowerCase().includes(q) ||
-				(p.name ?? '').toLowerCase().includes(q) ||
-				(p.description ?? '').toLowerCase().includes(q) ||
-				(p.specifications ?? '').toLowerCase().includes(q) ||
-				(comp?.name ?? '').toLowerCase().includes(q)
+				(p.part_number ?? '').toLowerCase().includes(query) ||
+				(p.name ?? '').toLowerCase().includes(query) ||
+				(p.description ?? '').toLowerCase().includes(query) ||
+				(p.specifications ?? '').toLowerCase().includes(query) ||
+				(comp?.name ?? '').toLowerCase().includes(query)
 			);
 		});
 	});
 
-	const selectedNames = $derived.by(() => {
-		const names = new Set<string>();
-		for (const c of components as Component[]) {
-			if (selected.has(c.id)) names.add(c.name ?? '');
-		}
-		return [...names];
-	});
+	let bodyEl = $state<HTMLElement | null>(null);
+	let panelEl = $state<HTMLElement | null>(null);
 
-	function priceLabel(p: Part) {
-		if (p.price != null) return `RM${Number(p.price).toFixed(2)}`;
-		if (p.price_min != null && p.price_max != null) {
-			return `RM${Number(p.price_min).toFixed(2)} – RM${Number(p.price_max).toFixed(2)}`;
+	async function afterNav() {
+		await tick();
+		if (bodyEl) bodyEl.scrollTop = 0;
+	}
+
+	function goHome() {
+		secKey = null;
+		groupName = null;
+		partId = null;
+		search = '';
+		afterNav();
+	}
+
+	function goSection(key: string) {
+		const s = tree.find((x) => x.key === key);
+		secKey = key;
+		groupName = s && s.key === PANEL_KEY && s.groups.length === 1 ? s.groups[0].name : null;
+		partId = null;
+		search = '';
+		afterNav();
+	}
+
+	function goGroup(name: string) {
+		groupName = name;
+		partId = null;
+		search = '';
+		afterNav();
+	}
+
+	function goPart(p: Part) {
+		const s = tree.find((x) => x.groups.some((g) => g.parts.some((q) => q.id === p.id)));
+		if (s) {
+			secKey = s.key;
+			groupName = s.groups.find((g) => g.parts.some((q) => q.id === p.id))?.name ?? null;
 		}
-		return 'Price on request';
+		partId = p.id;
+		mediaView = '3d';
+		search = '';
+		afterNav();
+	}
+
+	function goBack() {
+		if (search) search = '';
+		else if (partId) partId = null;
+		else if (groupName && !skipsGroups) groupName = null;
+		else if (secKey) {
+			secKey = null;
+			groupName = null;
+		}
+		afterNav();
+	}
+
+	async function onSectionSelect(key: string) {
+		if (key !== secKey || level !== 2) goSection(key);
+		await tick();
+		const el = panelEl;
+		if (!el || window.matchMedia('(min-width: 861px)').matches) return;
+		const top = el.getBoundingClientRect().top;
+		if (top >= 0 && top < window.innerHeight * 0.6) return;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+	}
+
+	function plural(n: number, word: string) {
+		if (n === 1) return `${n} ${word}`;
+		return `${n} ${word}${/(s|x|ch|sh)$/.test(word) ? 'es' : 's'}`;
+	}
+
+	function firstLine(v: string | null | undefined) {
+		return textLines(v)[0] ?? '';
+	}
+
+	function setQty(id: string, v: number) {
+		qty[id] = Math.max(1, Math.min(9999, Math.round(v) || 1));
 	}
 
 	function handleAdd(p: Part) {
@@ -195,7 +232,7 @@
 			onadd(p, q);
 			return;
 		}
-		const componentName = components.find((c: Component) => c.id === p.component_id)?.name ?? '';
+		const componentName = compById.get(p.component_id)?.name ?? '';
 		addItem({
 			partId: p.id,
 			partNumber: p.part_number,
@@ -207,231 +244,255 @@
 			priceMax: p.price_max ?? p.price ?? 0,
 			quantity: q
 		});
-		addToast('Part added to cart list.');
+		addToast(q > 1 ? `${q} × ${p.name} added to cart list.` : 'Part added to cart list.');
+	}
+
+	function onKey(e: KeyboardEvent) {
+		if (e.key !== 'Escape' || level === 1) return;
+		const t = e.target as HTMLElement | null;
+		if (t?.closest?.('.b3d')) return; // the 3D view closes its own menus
+		goBack();
 	}
 </script>
 
-<svelte:window
-	onkeydown={(e) => e.key === 'Escape' && (lightbox ? (lightbox = null) : (filterOpen = false))}
-	onclick={(e) => {
-		if (filterOpen && !(e.target as HTMLElement)?.closest?.('.filter-wrap')) filterOpen = false;
-	}}
-/>
+<svelte:window onkeydown={onKey} />
 
 <h2 class="title">{boiler.code}</h2>
 {#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 {#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
 
-<div class="explorer">
-	<div class="design card">
-		<div class="design-head">
-			<h3><!--<span class="live-dot" aria-hidden="true"></span>-->Boiler Schematic</h3>
-			<span class="legend">
-				Click a highlighted section to see its spare parts. Dimmed sections have no available
-				parts.
-			</span>
-		</div>
-		<BoilerDesign
-			{def}
-			{sections}
-			mode="parts"
-			boilerCode={boiler.code}
-			imageUrl={boiler.design_image_url}
-			{activeKey}
-			{readings}
-			onselect={onSectionSelect}
-		/>
+<div class="design card">
+	<div class="design-head">
+		<h3>Boiler Schematic</h3>
+		<span class="legend">
+			Drag to rotate, right-drag to move, scroll to zoom. Click a section on the boiler or in the list to see its components and spare parts.
+		</span>
 	</div>
 
-	<div class="side" bind:this={sideEl}>
-		<input
-			class="search"
-			type="search"
-			placeholder="Search part number, name, description…"
-			bind:value={search}
-		/>
+	<div class="explorer">
+		<div class="stage">
+			<Boiler3D
+				{def}
+				{sections}
+				mode="parts"
+				boilerCode={boiler.code}
+				imageUrl={boiler.design_image_url}
+				{activeKey}
+				{readings}
+				extra={panelSec ? { key: panelSec.key, label: panelSec.label, color: panelSec.color } : null}
+				extraActive={secKey === PANEL_KEY}
+				onextra={() => onSectionSelect(PANEL_KEY)}
+				onselect={onSectionSelect}
+			/>
+		</div>
 
-		<div class="category">
-			<div class="filter-wrap">
-				<button
-					type="button"
-					class="filter-trigger"
-					class:on={selectedCount > 0}
-					onclick={() => (filterOpen = !filterOpen)}
-					aria-expanded={filterOpen}
-					disabled={showUncategorised}
-				>
-					<Funnel size={16} />
-					<span>{selectedCount > 0 ? `Components (${selectedCount})` : 'Filter by component'}</span>
-				</button>
+		<aside class="pf" aria-label="Spare parts" bind:this={panelEl}>
+			<div class="pf-top">
+				<nav class="crumbs" aria-label="Breadcrumb">
+					{#if level === 1 && !query}
+						<span class="cur">Sections</span>
+					{:else}
+						<button type="button" onclick={goHome}>Sections</button>
+					{/if}
+					{#if sec}
+						<ChevronRight size={13} class="sep" />
+						{#if level === 2 || (skipsGroups && level === 3)}
+							<span class="cur">{sec.label}</span>
+						{:else}
+							<button type="button" onclick={() => goSection(sec.key)}>{sec.label}</button>
+						{/if}
+					{/if}
+					{#if group && !skipsGroups}
+						<ChevronRight size={13} class="sep" />
+						{#if level === 3}
+							<span class="cur">{group.name}</span>
+						{:else}
+							<button type="button" onclick={() => goGroup(group.name)}>{group.name}</button>
+						{/if}
+					{/if}
+					{#if part}
+						<ChevronRight size={13} class="sep" />
+						<span class="cur">{isPlaceholder(part.part_number) ? part.name : part.part_number}</span>
+					{/if}
+				</nav>
+				<div class="searchbox">
+					<Search size={16} />
+					<input
+						id="pf-search"
+						type="search"
+						placeholder={`Search ${scopeLabel}…`}
+						aria-label={`Search ${scopeLabel}`}
+						autocomplete="off"
+						bind:value={search}
+					/>
+					{#if search}
+						<button type="button" class="clear" onclick={() => (search = '')} aria-label="Clear search"><X size={15} /></button>
+					{/if}
+				</div>
+			</div>
 
-				{#if filterOpen}
-					<div class="filter-pop" transition:fade={{ duration: 120 }}>
-						<div class="fp-search">
-							<Search size={15} />
-							<input type="search" placeholder="Search components…" bind:value={compSearch} />
-						</div>
-
-						<div class="fp-list">
-							{#each groupedComponents as g (g.name)}
-								<button type="button" class="fp-item" onclick={() => toggleGroup(g.ids)}>
-									<span class="box" class:checked={isGroupChecked(g.ids)}
-										>{#if isGroupChecked(g.ids)}<Check size={13} />{/if}</span
-									>
-									<span class="fp-name">{g.name}</span>
-									<span class="fp-count">({g.count})</span>
-								</button>
-							{:else}
-								<p class="fp-empty">No components match.</p>
+			<div class="pf-body" bind:this={bodyEl}>
+				{#if query}
+					<div class="head">
+						<h3>Search results</h3>
+						<p>{plural(results.length, 'match')} for “{search.trim()}” in {scopeLabel}</p>
+					</div>
+					{#if results.length}
+						<ul class="list">
+							{#each results.slice(0, 80) as p (p.id)}
+								{@render partRow(p, true)}
 							{/each}
-						</div>
+						</ul>
+						{#if results.length > 80}<p class="small">Showing the first 80 matches. Add more words to narrow the search.</p>{/if}
+					{:else}
+						<p class="empty">No parts match. Try another word or part number.</p>
+					{/if}
+				{:else if level === 1}
+					<div class="head">
+						<h3>Boiler sections</h3>
+						<p>Choose a section, or click one on the 3D boiler.</p>
+					</div>
+					<ul class="list">
+						{#each tree as s (s.key)}
+							<li>
+								<button type="button" class="row" style:--c={s.color} disabled={s.groups.length === 0} onclick={() => goSection(s.key)}>
+									<i class="bar"></i>
+									<span class="tx">
+										<b>{s.label}</b>
+										<span class="meta">
+											{s.groups.length ? `${plural(s.groups.length, 'component')} · ${plural(s.partCount, 'part')}` : 'No spare parts listed'}
+										</span>
+									</span>
+									<ChevronRight size={18} class="chev" />
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{:else if level === 2 && sec}
+					<button type="button" class="back" onclick={goBack}><ArrowLeft size={14} />All sections</button>
+					<div class="head" style:--c={sec.color}>
+						<h3><i class="sw"></i>{sec.label}</h3>
+						<p>{plural(sec.groups.length, 'component')} · {plural(sec.partCount, 'part')}</p>
+					</div>
+					{#if sec.groups.length}
+						<ul class="list">
+							{#each sec.groups as g (g.name)}
+								<li>
+									<button type="button" class="row" style:--c={sec.color} onclick={() => goGroup(g.name)}>
+										<i class="bar"></i>
+										<span class="tx">
+											<b>{g.name}</b>
+											<span class="meta">{g.parts.length ? plural(g.parts.length, 'part') : 'No parts listed yet'}</span>
+										</span>
+										<ChevronRight size={18} class="chev" />
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<p class="empty">No components are listed for this section yet.</p>
+					{/if}
+				{:else if level === 3 && sec && group}
+					<button type="button" class="back" onclick={goBack}>
+						<ArrowLeft size={14} />{skipsGroups ? 'All sections' : `All ${sec.label} components`}
+					</button>
+					<div class="head" style:--c={sec.color}>
+						<h3><i class="sw"></i>{group.name}</h3>
+						<p>{plural(group.parts.length, 'part')}</p>
+					</div>
+					{#if group.parts.length}
+						<ul class="list">
+							{#each group.parts as p (p.id)}
+								{@render partRow(p, false)}
+							{/each}
+						</ul>
+					{:else}
+						<p class="empty">No parts are listed for this component yet.</p>
+					{/if}
+				{:else if level === 4 && part}
+					{@const specs = textLines(part.specifications)}
+					{@const img = hasImage(part.image_url)}
+					{@const can3d = img && supports3D(part.image_url)}
+					<button type="button" class="back" onclick={goBack}>
+						<ArrowLeft size={14} />All {group?.name ?? ''} parts
+					</button>
+					<div class="detail">
+						<p class="eyebrow">Part</p>
+						<h3 class="pname">{part.name}</h3>
+						<span class="pn">
+							{isPlaceholder(part.part_number) ? 'No part number' : `Part no. ${part.part_number}`}
+						</span>
 
-						<div class="fp-foot">
-							<span class="fp-sel">{selectedCount} Selected</span>
-							<button
-								type="button"
-								class="fp-clear"
-								onclick={clearAllFilters}
-								disabled={selectedCount === 0}>Clear All Filters</button
-							>
+						<div class="media">
+							{#if img && can3d && mediaView === '3d'}
+								{#key part.id}
+									<Part3DViewer src={part.image_url ?? ''} alt={part.name} />
+								{/key}
+							{:else if img}
+								<img src={part.image_url} alt={part.name} />
+							{:else}
+								<div class="noimg"><ImageIcon size={34} /><span>No photo available yet.</span></div>
+							{/if}
+						</div>
+						{#if can3d}
+							<div class="toggle" role="tablist" aria-label="Image view">
+								<button type="button" role="tab" aria-selected={mediaView === '3d'} class:on={mediaView === '3d'} onclick={() => (mediaView = '3d')}>3D view</button>
+								<button type="button" role="tab" aria-selected={mediaView === 'photo'} class:on={mediaView === 'photo'} onclick={() => (mediaView = 'photo')}>Photo</button>
+							</div>
+						{/if}
+
+						<h4>Description</h4>
+						<p class="text" class:blank={isPlaceholder(part.description)}>
+							{isPlaceholder(part.description) ? 'No description yet.' : part.description}
+						</p>
+
+						<h4>Specifications</h4>
+						{#if specs.length}
+							<ul class="specs">
+								{#each specs as line, i (i)}<li>{line}</li>{/each}
+							</ul>
+						{:else}
+							<p class="text blank">No specifications yet.</p>
+						{/if}
+
+						<div class="buy">
+							<div class="qty">
+								<button type="button" onclick={() => setQty(part.id, (qty[part.id] ?? 1) - 1)} aria-label="Decrease quantity"><Minus size={15} /></button>
+								<input
+									id="pf-qty"
+									type="number"
+									min="1"
+									value={qty[part.id] ?? 1}
+									aria-label="Quantity of {part.name}"
+									oninput={(e) => setQty(part.id, +e.currentTarget.value)}
+								/>
+								<button type="button" onclick={() => setQty(part.id, (qty[part.id] ?? 1) + 1)} aria-label="Increase quantity"><Plus size={15} /></button>
+							</div>
+							<button type="button" class="btn-primary add" onclick={() => handleAdd(part)}>Add</button>
 						</div>
 					</div>
 				{/if}
 			</div>
-			<label class="uc-toggle">
-				<input
-					type="checkbox"
-					bind:checked={showUncategorised}
-					disabled={uncategorisedCount === 0}
-					aria-label="Show panel/instrument parts"
-				/>
-				<span class="uc-label">Panel / Instrument Parts ({uncategorisedCount})</span>
-				<span class="uc-track"><span class="uc-thumb"></span></span>
-			</label>
-		</div>
-
-		{#if showUncategorised}
-			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{filtered.length} panel/instrument</strong> part{filtered.length === 1
-					? ''
-					: 's'}
-			</div>
-		{:else if selectedCount > 0}
-			<div class="crumb" in:fade={{ duration: 150 }}>
-				Showing <strong>{selectedNames.join(', ')}</strong> — {filtered.length} part{filtered.length ===
-				1
-					? ''
-					: 's'}
-			</div>
-		{/if}
-
-		{#if filtered.length === 0}
-			<p class="hint" in:fade={{ duration: 150 }}>No parts match your selection.</p>
-		{:else}
-			<div class="parts">
-				{#each filtered as p (p.id)}
-					<div
-						class="part card"
-						in:fly={{ y: 8, duration: 220 }}
-						out:fade={{ duration: 120 }}
-						animate:flip={{ duration: 220 }}
-					>
-						<div class="info">
-							<div class="phead">
-								<span class="pn" class:blank={isPlaceholder(p.part_number)}>
-									{isPlaceholder(p.part_number) ? '' : p.part_number}
-								</span>
-								<span class="sep">{' — '}</span><span class="pname">{p.name}</span>
-							</div>
-							<div class="pdesc" class:blank={isPlaceholder(p.description)}>
-								{isPlaceholder(p.description) ? '(no description)' : p.description}
-							</div>
-							{#if !textLines(p.specifications).length}
-								<div class="pspec blank">(no specifications)</div>
-							{:else}
-								{@const specs = textLines(p.specifications)}
-								{@const isLong = specs.length > SPEC_LINE_LIMIT}
-								{@const isExpanded = expandedSpecs.has(p.id)}
-								<div class="pspec" id="spec-{p.id}">
-									{isLong && !isExpanded
-										? specs.slice(0, SPEC_LINE_LIMIT).join('\n')
-										: specs.join('\n')}
-								</div>
-								{#if isLong}
-									<button
-										type="button"
-										class="pspec-toggle"
-										aria-expanded={isExpanded}
-										aria-controls="spec-{p.id}"
-										onclick={() => toggleSpecs(p.id)}
-									>
-										{isExpanded ? 'Show Less' : 'Show more...'}
-									</button>
-								{/if}
-							{/if}
-						</div>
-						<div class="actions">
-							{#if hasImage(p.image_url)}
-								<button
-									type="button"
-									class="thumb"
-									data-event="image_view"
-									data-event-label={p.part_number}
-									onclick={() => (lightbox = p)}
-									title="View image"
-									aria-label="View image of {p.name}"
-								>
-									<img src={p.image_url} alt={p.name} loading="lazy" />
-								</button>
-							{:else}
-								<button
-									type="button"
-									class="thumb no-image"
-									disabled
-									title="No image available"
-									aria-label="No image available for {p.name}"
-								>
-									No image
-								</button>
-							{/if}
-							<div class="act-row">
-								<input
-									type="number"
-									min="1"
-									value={qty[p.id] ?? 1}
-									aria-label="Quantity of {p.name}"
-									oninput={(e) => (qty[p.id] = Math.max(1, +e.currentTarget.value))}
-								/>
-								<button class="btn-primary" onclick={() => handleAdd(p)}>Add</button>
-							</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
+		</aside>
 	</div>
 </div>
 
-{#if lightbox}
-	<div
-		class="lightbox"
-		onclick={() => (lightbox = null)}
-		role="presentation"
-		transition:fade={{ duration: 150 }}
-	>
-		<div class="lightbox-inner" onclick={(e) => e.stopPropagation()} role="presentation">
-			<img src={lightbox.image_url} alt={lightbox.name} />
-			<div class="lightbox-cap">
-				{#if !isPlaceholder(lightbox.part_number)}<strong>{lightbox.part_number}</strong>{/if}
-				<span>{lightbox.name}</span>
-				<!-- <span class="lb-price">{priceLabel(lightbox)}</span> -->
-			</div>
+{#snippet partRow(p: Part, showWhere: boolean)}
+	<li class="part" in:fade={{ duration: 120 }}>
+		<div class="ptx">
+			<span class="pn" class:blank={isPlaceholder(p.part_number)}>
+				{isPlaceholder(p.part_number) ? 'No part number' : p.part_number}
+			</span>
+			<b>{p.name}</b>
+			{#if showWhere}
+				<span class="where">{compById.get(p.component_id)?.name ?? ''}</span>
+			{:else if firstLine(p.description)}
+				<span class="where">{firstLine(p.description)}</span>
+			{/if}
 		</div>
-		<button class="lightbox-close" onclick={() => (lightbox = null)} aria-label="Close"
-			>&times;</button
-		>
-	</div>
-{/if}
+		<button type="button" class="view" onclick={() => goPart(p)} aria-label="View details of {p.name}">View Details</button>
+	</li>
+{/snippet}
 
 <style>
 	.title {
@@ -445,34 +506,21 @@
 		max-width: 60ch;
 	}
 
-	.explorer {
-		align-items: start;
-	}
-
 	.design {
 		padding: 16px;
-	}
-
-	.design h3 {
-		margin: 0 0 12px;
-		font-size: 14px;
-		color: var(--bme-muted);
 	}
 
 	.design-head {
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 12px;
+		gap: 6px 12px;
 		margin-bottom: 12px;
 		flex-wrap: wrap;
 	}
 
 	.design-head h3 {
 		margin: 0;
-		display: flex;
-		align-items: center;
-		gap: 8px;
 		font-size: 14px;
 		color: var(--bme-darker-blue, #0c3358);
 	}
@@ -482,453 +530,373 @@
 		color: var(--bme-muted);
 	}
 
-	/* .live-dot {
-		display: inline-block;
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background: var(--bme-red, #e0342a);
-		box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.65);
-		animation: live-blink 1.6s ease-in-out infinite;
-	} */
-
-	@keyframes live-blink {
-		0% {
-			opacity: 1;
-			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0.55);
-		}
-		70% {
-			opacity: 0.35;
-			box-shadow: 0 0 0 6px rgba(224, 52, 42, 0);
-		}
-		100% {
-			opacity: 1;
-			box-shadow: 0 0 0 0 rgba(224, 52, 42, 0);
-		}
+	.explorer {
+		--pf-h: 650px;
+		--b3d-h: var(--pf-h);
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 380px;
+		gap: 14px;
+		align-items: stretch;
 	}
 
-	.side {
-		scroll-margin-top: 10px;
-		margin-top: 10px;
+	.stage {
+		min-width: 0;
+	}
+
+	.pf {
+		height: var(--pf-h);
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		border: 1px solid var(--bme-border);
+		border-radius: 12px;
+		background: var(--bme-surface);
+		overflow: hidden;
+		scroll-margin-top: 10px;
 	}
 
-	.search {
-		width: 100%;
-		padding: 10px 14px;
-		border: 1px solid var(--bme-border, #e2e8ef);
-		border-radius: 10px;
-		font-size: 14px;
+	.pf-top {
+		padding: 12px 12px 10px;
+		border-bottom: 1px solid var(--bme-border);
+		background: var(--bme-surface-2);
 	}
 
-	.search:focus {
-		outline: none;
-		border-color: var(--bme-dark-blue, #10456e);
-		box-shadow: 0 0 0 3px rgba(16, 69, 110, 0.12);
-	}
-
-	.category {
+	.crumbs {
 		display: flex;
-		gap: 10px;
-	}
-
-	.filter-wrap {
-		position: relative;
-	}
-
-	.filter-trigger:disabled {
-		opacity: 0.55;
-		cursor: default;
-	}
-
-	.filter-trigger:disabled:hover {
-		border-color: var(--bme-border);
-		cursor: default;
-	}
-
-	.uc-toggle {
-		display: inline-flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 10px;
-		background: #fff;
-		border: 1px solid var(--bme-border, #e2e8ef);
-		color: var(--bme-ink, #1b2733);
-		padding: 9px 16px;
-		border-radius: 10px;
-		font-size: 14px;
+		gap: 2px 3px;
+		margin: 0 0 8px;
+		font-size: 12.5px;
 		font-weight: 600;
-		user-select: none;
+		color: var(--bme-muted);
+		min-width: 0;
 	}
 
-	.uc-toggle input {
-		position: absolute;
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-
-	:root[data-theme='dark'] .uc-toggle {
-		background-color: #1b2733;
-	}
-
-	.uc-track {
-		position: relative;
-		display: inline-block;
-		width: 38px;
-		height: 20px;
-		flex: 0 0 auto;
-		border-radius: 999px;
-		background: var(--bme-border);
+	.crumbs button {
+		padding: 2px 4px;
+		border: 0;
+		border-radius: 4px;
+		background: none;
+		color: var(--bme-dark-blue);
+		font: inherit;
 		cursor: pointer;
-		transition: background 160ms ease;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	.uc-thumb {
-		position: absolute;
-		top: 3px;
-		left: 3px;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: #ffffff;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-		transition: transform 160ms ease;
+	.crumbs button:hover {
+		text-decoration: underline;
 	}
 
-	.uc-toggle input:checked ~ .uc-track {
-		background: var(--bme-dark-blue, #004b8d);
+	.crumbs .cur {
+		padding: 2px 4px;
+		color: var(--bme-ink);
+		overflow-wrap: anywhere;
 	}
 
-	.uc-toggle input:checked ~ .uc-track .uc-thumb {
-		transform: translateX(18px);
+	.crumbs :global(.sep) {
+		color: var(--bme-muted);
+		flex: none;
 	}
 
-	.uc-toggle input:focus-visible ~ .uc-track {
-		outline: 2px solid var(--bme-dark-blue, #004b8d);
-		outline-offset: 2px;
-	}
-
-	.uc-label {
-		font-weight: 600;
-		font-size: 14px;
-		color: var(--bme-ink, #1b2733);
-	}
-
-	.uc-toggle input:disabled ~ .uc-label {
+	.searchbox {
+		position: relative;
+		display: flex;
+		align-items: center;
 		color: var(--bme-muted);
 	}
 
-	.uc-toggle:has(input:disabled) {
+	.searchbox :global(svg:first-child) {
+		position: absolute;
+		left: 11px;
+		pointer-events: none;
+	}
+
+	.searchbox input {
+		width: 100%;
+		height: 40px;
+		padding: 0 36px 0 36px;
+		border: 1px solid var(--bme-border);
+		border-radius: 9px;
+		background: var(--bme-surface);
+		color: var(--bme-ink);
+		font-size: 14px;
+	}
+
+	.searchbox input::-webkit-search-cancel-button {
+		display: none;
+	}
+
+	.searchbox input:focus {
+		outline: none;
+		border-color: var(--bme-dark-blue);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--bme-dark-blue) 18%, transparent);
+	}
+
+	.clear {
+		position: absolute;
+		right: 4px;
+		width: 32px;
+		height: 32px;
+		display: grid;
+		place-items: center;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--bme-muted);
+		cursor: pointer;
+	}
+
+	.clear:hover {
+		background: var(--bme-hover);
+		color: var(--bme-ink);
+	}
+
+	.pf-body {
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+		padding: 12px;
+		overscroll-behavior: contain;
+	}
+
+	.head {
+		margin: 0 0 10px;
+	}
+
+	.head h3 {
+		margin: 0 0 3px;
+		font-size: 17px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--bme-ink);
+	}
+
+	.head p {
+		margin: 0;
+		font-size: 12.5px;
+		color: var(--bme-muted);
+	}
+
+	.head .sw {
+		width: 11px;
+		height: 11px;
+		border-radius: 3px;
+		background: var(--c);
+		flex: none;
+	}
+
+	.list {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 7px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 11px 10px 11px 11px;
+		border: 1px solid var(--bme-border);
+		border-radius: 9px;
+		background: var(--bme-surface);
+		color: var(--bme-ink);
+		text-align: left;
+		font: inherit;
+		cursor: pointer;
+		transition: background 120ms ease, border-color 120ms ease;
+	}
+
+	.row:hover:not(:disabled) {
+		background: var(--bme-hover);
+		border-color: color-mix(in srgb, var(--c) 55%, var(--bme-border));
+	}
+
+	.row:focus-visible,
+	.view:focus-visible,
+	.back:focus-visible,
+	.toggle button:focus-visible {
+		outline: 2px solid var(--bme-dark-blue);
+		outline-offset: 1px;
+	}
+
+	.row:disabled {
 		cursor: default;
 		opacity: 0.6;
 	}
 
-	.filter-trigger {
+	.row .bar {
+		width: 5px;
+		align-self: stretch;
+		border-radius: 3px;
+		background: var(--c);
+		flex: none;
+	}
+
+	.row .tx {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.row b {
+		display: block;
+		font-size: 14.5px;
+		font-weight: 650;
+		line-height: 1.25;
+	}
+
+	.row .meta {
+		display: block;
+		margin-top: 3px;
+		font-size: 12px;
+		color: var(--bme-muted);
+	}
+
+	.row :global(.chev) {
+		color: var(--bme-muted);
+		flex: none;
+	}
+
+	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
-		background: var(--bme-surface, #ffffff);
-		border: 1px solid var(--bme-border, #e2e8ef);
-		color: var(--bme-ink, #1b2733);
-		padding: 9px 16px;
-		border-radius: 10px;
-		font-size: 14px;
-		font-weight: 600;
-		cursor: pointer;
-		transition:
-			border-color 140ms ease,
-			background 140ms ease,
-			color 140ms ease;
-	}
-
-	.filter-trigger:hover {
-		border-color: var(--bme-dark-blue, #10456e);
-	}
-
-	.filter-trigger.on {
-		background: var(--bme-dark-blue, #10456e);
-		color: #fff;
-		border-color: var(--bme-dark-blue, #10456e);
-	}
-
-	.filter-pop {
-		position: absolute;
-		top: calc(100% + 6px);
-		left: 0;
-		z-index: 30;
-		width: min(340px, 88vw);
-		background: var(--bme-surface, #ffffff);
-		border: 1px solid var(--bme-border, #e2e8ef);
-		border-radius: 12px;
-		box-shadow: 0 16px 40px rgba(12, 20, 30, 0.16);
-		padding: 12px;
-	}
-
-	.fp-search {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 12px;
-		border: 1px solid var(--bme-border, #e2e8ef);
-		border-radius: 8px;
-		color: var(--bme-muted);
-	}
-
-	.fp-search input {
-		border: none;
-		outline: none;
-		flex: 1;
-		font: inherit;
-		color: var(--bme-ink, #1b2733);
-		background: transparent;
-	}
-
-	.fp-list {
-		max-height: 240px;
-		overflow-y: auto;
-		margin-top: 8px;
-	}
-
-	.fp-item {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		width: 100%;
+		gap: 5px;
+		margin: 0 0 10px;
+		padding: 3px 0;
+		border: 0;
 		background: none;
-		border: none;
-		cursor: pointer;
-		font: inherit;
-		color: var(--bme-ink, #1b2733);
-		padding: 9px 6px;
-		text-align: left;
-		border-radius: 6px;
-	}
-
-	.fp-item:hover {
-		background: var(--bme-sky, #eef4fb);
-	}
-
-	.fp-name {
-		flex: 1;
-	}
-
-	.fp-count {
-		color: var(--bme-muted);
-		font-size: 13px;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.box {
-		display: inline-grid;
-		place-items: center;
-		width: 18px;
-		height: 18px;
-		flex: 0 0 auto;
-		border: 2px solid var(--bme-border, #cdd7e1);
-		border-radius: 4px;
-		color: #fff;
-	}
-
-	.box.checked {
-		background: var(--bme-dark-blue, #10456e);
-		border-color: var(--bme-dark-blue, #10456e);
-	}
-
-	.fp-empty {
-		color: var(--bme-muted);
-		font-size: 13px;
-		padding: 12px 6px;
-		margin: 0;
-	}
-
-	.fp-foot {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		margin-top: 8px;
-		padding-top: 10px;
-		border-top: 1px solid var(--bme-border, #e2e8ef);
-	}
-
-	.fp-sel {
-		font-size: 13px;
-		color: var(--bme-muted);
-	}
-
-	.fp-clear {
-		background: var(--bme-surface, #ffffff);
-		color: var(--bme-dark-blue, #10456e);
-		border: 1px solid var(--bme-dark-blue, #10456e);
-		cursor: pointer;
-		font: inherit;
-		font-weight: 600;
-		font-size: 13px;
-		padding: 8px 16px;
-		border-radius: 8px;
-		transition:
-			background 140ms ease,
-			color 140ms ease,
-			border-color 140ms ease;
-	}
-
-	.fp-clear:hover:not(:disabled) {
-		background: var(--bme-dark-blue, #10456e);
-		color: #fff;
-	}
-
-	.fp-clear:disabled {
-		opacity: 0.45;
-		cursor: default;
-		border-color: var(--bme-border, #e2e8ef);
-		color: var(--bme-muted);
-	}
-
-	.crumb {
-		font-size: 13px;
-		color: var(--bme-muted);
-	}
-
-	.hint {
-		color: var(--bme-muted);
-		padding: 24px 0;
-	}
-
-	.parts {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 12px;
-	}
-
-	.part {
-		padding: 16px;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-	}
-
-	.info {
-		align-self: flex-start;
-		max-width: 75%;
-	}
-
-	.phead {
-		font-weight: 600;
-		line-height: 1.35;
-	}
-
-	.pn {
-		font-weight: 700;
-		color: var(--bme-darker-blue, #0c3358);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.sep {
-		color: var(--bme-muted);
-		font-weight: 400;
-	}
-
-	.pdesc {
-		font-size: 13.5px;
-		color: var(--bme-ink, #1b2733);
-		margin-top: 3px;
-	}
-
-	.pspec {
-		font-size: 13px;
-		color: var(--bme-muted);
-		margin-top: 4px;
-		white-space: pre-line;
-		line-height: 1.45;
-	}
-
-	.pspec-toggle {
-		display: inline-block;
-		margin-top: 4px;
-		padding: 0;
-		border: none;
-		background: none;
-		font-size: 12.5px;
-		font-weight: 600;
 		color: var(--bme-dark-blue);
+		font: 600 12.5px/1.2 inherit;
+		font-family: inherit;
 		cursor: pointer;
+		text-align: left;
 	}
 
-	.pspec-toggle:hover {
+	.back:hover {
 		text-decoration: underline;
 	}
 
-	/* .price {
-		margin-top: 6px;
-		font-weight: 700;
-	} */
-
-	.actions {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		gap: 12px;
-		flex-shrink: 0;
-	}
-
-	.act-row {
+	.part {
 		display: flex;
 		align-items: center;
-		gap: 20px;
+		gap: 10px;
+		padding: 10px 10px 10px 12px;
+		border: 1px solid var(--bme-border);
+		border-radius: 9px;
+		background: var(--bme-surface);
 	}
 
-	.actions input {
-		width: 64px;
+	.ptx {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.pn {
+		font: 600 11.5px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		color: var(--bme-dark-blue);
+		overflow-wrap: anywhere;
+	}
+
+	.pn.blank {
+		color: var(--bme-muted);
+		font-family: inherit;
+		font-weight: 500;
+		font-style: italic;
+	}
+
+	.ptx b {
+		font-size: 14px;
+		font-weight: 650;
+		line-height: 1.3;
+		color: var(--bme-ink);
+		overflow-wrap: anywhere;
+	}
+
+	.where {
+		font-size: 12px;
+		color: var(--bme-muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.view {
+		flex: none;
+		height: 34px;
+		padding: 0 12px;
+		border: 1px solid color-mix(in srgb, var(--bme-dark-blue) 45%, transparent);
+		border-radius: 7px;
+		background: color-mix(in srgb, var(--bme-dark-blue) 8%, transparent);
+		color: var(--bme-dark-blue);
+		font: 600 12.5px/1 inherit;
+		font-family: inherit;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.view:hover {
+		background: color-mix(in srgb, var(--bme-dark-blue) 16%, transparent);
+	}
+
+	.empty {
+		padding: 22px 8px;
+		margin: 0;
 		text-align: center;
-		padding: 8px;
-		border: 1px solid var(--bme-border, #e2e8ef);
-		border-radius: 8px;
+		color: var(--bme-muted);
+		font-size: 13.5px;
 	}
 
-	.thumb {
+	.small {
+		margin: 10px 0 0;
+		font-size: 12px;
+		color: var(--bme-muted);
+	}
+
+	.eyebrow {
+		margin: 0 0 2px;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		color: var(--bme-muted);
+	}
+
+	.detail .pname {
+		margin: 0;
+		font-size: 19px;
+		line-height: 1.2;
+		color: var(--bme-ink);
+		overflow-wrap: anywhere;
+	}
+
+	.detail > .pn {
+		display: block;
+		margin: 4px 0 12px;
+		font-size: 12.5px;
+	}
+
+	.media {
 		position: relative;
 		width: 100%;
-		aspect-ratio: 4 / 3;
-		padding: 0;
-		border: 1px solid var(--bme-border, #e2e8ef);
-		border-radius: 8px;
+		aspect-ratio: 1 / 1;
+		border: 1px solid var(--bme-border);
+		border-radius: 10px;
 		overflow: hidden;
-		cursor: pointer;
 		background: #fff;
-		flex-shrink: 0;
-		transition:
-			border-color 140ms ease,
-			transform 140ms ease;
 	}
 
-	.thumb:hover {
-		border-color: var(--bme-dark-blue, #10456e);
-		transform: scale(1.03);
-	}
-
-	.thumb.no-image {
-		display: grid;
-		place-items: center;
-		padding: 2px;
-		background: var(--bme-surface-2, #f7faf5);
-		color: var(--bme-muted);
-		font: inherit;
-		font-size: 10px;
-		font-weight: 600;
-		line-height: 1.15;
-		text-align: center;
-		cursor: default;
-	}
-
-	.thumb.no-image:hover {
-		border-color: var(--bme-border, #e2e8ef);
-		transform: none;
-	}
-
-	.thumb img {
+	.media > img {
 		position: absolute;
 		inset: 0;
 		width: 100%;
@@ -937,125 +905,173 @@
 		display: block;
 	}
 
-	.lightbox {
-		position: fixed;
+	.noimg {
+		position: absolute;
 		inset: 0;
-		z-index: 100;
-		background: rgba(12, 20, 30, 0.72);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 24px;
-	}
-
-	.lightbox-inner {
-		background: #fff;
-		border-radius: 14px;
-		overflow: hidden;
-		max-width: min(560px, 90vw);
-		max-height: 85vh;
-		box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-		display: flex;
-		flex-direction: column;
-	}
-
-	.lightbox-inner img {
-		width: 100%;
-		max-height: 60vh;
-		object-fit: contain;
-		background: #f4f6f8;
-		display: block;
-	}
-
-	.lightbox-cap {
-		padding: 14px 18px;
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
+		display: grid;
+		place-content: center;
+		justify-items: center;
 		gap: 8px;
-	}
-
-	.lightbox-cap strong {
-		color: var(--bme-darker-blue, #0c3358);
+		background: var(--bme-surface-2);
+		color: var(--bme-muted);
 		font-size: 13px;
 	}
 
-	.lightbox-cap span {
-		font-size: 14px;
-		color: var(--bme-ink, #1b2733);
+	.toggle {
+		display: flex;
+		gap: 2px;
+		margin-top: 8px;
+		padding: 3px;
+		border-radius: 8px;
+		background: var(--bme-light-grey);
 	}
 
-	/* .lb-price {
-		margin-left: auto;
-		font-weight: 700;
-		color: var(--bme-darker-blue, #0c3358);
-	} */
-
-	.lightbox-close {
-		position: absolute;
-		top: 22px;
-		right: 28px;
-		padding-bottom: 5px;
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		border: none;
-		background: rgba(255, 255, 255, 0.15);
-		color: #fff;
-		font-size: 24px;
-		line-height: 1;
+	.toggle button {
+		flex: 1;
+		height: 30px;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--bme-muted);
+		font: 600 12.5px/1 inherit;
+		font-family: inherit;
 		cursor: pointer;
-		transition: background 140ms ease;
 	}
 
-	.lightbox-close:hover {
-		background: rgba(255, 255, 255, 0.28);
+	.toggle button.on {
+		background: var(--bme-surface);
+		color: var(--bme-dark-blue);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+	}
+
+	.detail h4 {
+		margin: 16px 0 5px;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		color: var(--bme-muted);
+	}
+
+	.text {
+		margin: 0;
+		font-size: 13.5px;
+		line-height: 1.5;
+		color: var(--bme-ink);
+		white-space: pre-line;
+	}
+
+	.text.blank {
+		color: var(--bme-muted);
+		font-style: italic;
+	}
+
+	.specs {
+		margin: 0;
+		padding-left: 18px;
+		font-size: 13.5px;
+		line-height: 1.5;
+		color: var(--bme-ink);
+	}
+
+	.buy {
+		position: sticky;
+		bottom: -12px;
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		margin: 16px -12px -12px;
+		padding: 12px;
+		border-top: 1px solid var(--bme-border);
+		background: var(--bme-surface);
+	}
+
+	.qty {
+		display: inline-flex;
+		align-items: center;
+		border: 1px solid var(--bme-border);
+		border-radius: 8px;
+		overflow: hidden;
+		flex: none;
+	}
+
+	.qty button {
+		width: 36px;
+		height: 38px;
+		display: grid;
+		place-items: center;
+		border: 0;
+		background: var(--bme-surface-2);
+		color: var(--bme-ink);
+		cursor: pointer;
+	}
+
+	.qty button:hover {
+		background: var(--bme-hover);
+	}
+
+	.qty input {
+		width: 52px;
+		height: 38px;
+		border: 0;
+		background: transparent;
+		color: var(--bme-ink);
+		text-align: center;
+		font-size: 14px;
+		-moz-appearance: textfield;
+		appearance: textfield;
+	}
+
+	.qty input::-webkit-inner-spin-button,
+	.qty input::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	.add {
+		flex: 1;
+		height: 40px;
+	}
+
+	@media (max-width: 1180px) {
+		.explorer {
+			grid-template-columns: minmax(0, 1fr) 340px;
+		}
 	}
 
 	@media (max-width: 860px) {
 		.explorer {
+			--b3d-h: 420px;
 			grid-template-columns: 1fr;
 		}
 
-		.category {
-			flex-direction: column;
-		}
-
-		.filter-trigger {
-			width: 100%;
+		.pf {
+			height: auto;
+			max-height: 78vh;
+			min-height: 320px;
 		}
 	}
 
-	@media (max-width: 640px) {
-		.parts {
-			display: flex;
-			flex-direction: column;
+	@media (max-width: 560px) {
+		.design {
+			padding: 12px;
 		}
-		
+
+		.explorer {
+			--b3d-h: 340px;
+			gap: 10px;
+		}
+
+		.pf {
+			max-height: 85vh;
+		}
+
 		.part {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 12px;
+			flex-wrap: wrap;
 		}
 
-		.info {
-			max-width: none;
-		}
-
-		.actions {
-			flex-direction: row;
-			align-items: center;
-			gap: 12px;
-		}
-
-		.thumb {
-			width: 100px;
-			flex: 0 0 100px;
-		}
-
-		.act-row {
-			margin-left: auto;
-			gap: 8px;
+		.view {
+			width: 100%;
 		}
 	}
 </style>

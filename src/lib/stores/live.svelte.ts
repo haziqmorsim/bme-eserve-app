@@ -22,7 +22,7 @@ export type AttentionEvent = {
 
 const LIVE_MS = 5000;
 
-function stepValue(v: number, m: MetricRow): number {
+export function stepValue(v: number, m: MetricRow): number {
     const lo = Number(m.min_normal);
     const hi = Number(m.max_normal);
     const span = Math.max(hi - lo, 0.001);

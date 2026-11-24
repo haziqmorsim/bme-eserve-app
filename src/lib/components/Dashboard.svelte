@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { Boiler } from '$lib/types';
 	import { isStaffRole } from '$lib/roles';
-	import BoilerDesign from '$lib/components/BoilerDesign.svelte';
+	import Boiler3D from '$lib/components/Boiler3D.svelte';
 	import TrendChart from '$lib/components/TrendChart.svelte';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { untrack } from 'svelte';
 	import { page } from '$app/stores';
-	import { live } from '$lib/stores/live.svelte';
+	import { live, stepValue } from '$lib/stores/live.svelte';
 	import { addItem } from '$lib/stores/quote';
 	import { addToast } from '$lib/stores/toast';
 	import { invalidateAll } from '$app/navigation';
@@ -93,6 +93,18 @@
 
 	type SubTab = 'overview' | 'trends' | 'motors' | 'alerts' | 'analytics' | 'indicators' | 'inspection' | 'logsheet' | 'programme' | 'maintenance';
 	const SUB_TABS: SubTab[] = ['overview', 'trends', 'motors', 'alerts', 'analytics', 'indicators', 'inspection', 'logsheet', 'programme', 'maintenance'];
+	const SUB_LABELS: Record<SubTab, string> = {
+		overview: 'Overview',
+		trends: 'Trends',
+		motors: 'Motors',
+		alerts: 'Alerts',
+		analytics: 'Analytics',
+		indicators: 'Indicators',
+		inspection: 'Inspection',
+		logsheet: 'Log Sheet',
+		programme: 'Programme',
+		maintenance: 'Maintenance'
+	};
 
 	const urlSub = $page.url.searchParams.get('sub') as SubTab | null;
 	let sub = $state<SubTab>(urlSub && SUB_TABS.includes(urlSub) ? urlSub : 'overview');
@@ -169,10 +181,45 @@
 		return () => clearInterval(id);
 	});
 
-	const effLatest = $derived.by(() => {
+	const baseLatest = $derived.by(() => {
 		const shared = live.valuesFor(boiler.id);
 		return Object.keys(shared).length ? shared : latest;
 	});
+
+	let simValues = $state<Record<string, { v: number; t: string }> | null>(null);
+	let simKey = $state('');
+
+	$effect(() => {
+		const key = `${boiler.id}|${(metrics as MetricRow[]).map((m) => m.metric_key).join(',')}`;
+		if (key === untrack(() => simKey)) return;
+		simKey = key;
+		const now = new Date().toISOString();
+		const base = untrack(() => baseLatest);
+		const seeded: Record<string, { v: number; t: string }> = {};
+		for (const m of untrack(() => metrics) as MetricRow[]) {
+			const b = base[m.metric_key];
+			if (b) seeded[m.metric_key] = { v: b.v, t: b.t ?? now };
+		}
+		simValues = seeded;
+	});
+
+	$effect(() => {
+		const id = setInterval(() => {
+			if (typeof document !== 'undefined' && document.hidden) return;
+			const cur = untrack(() => simValues);
+			if (!cur) return;
+			const now = new Date().toISOString();
+			const next: Record<string, { v: number; t: string }> = {};
+			for (const m of untrack(() => metrics) as MetricRow[]) {
+				const c = cur[m.metric_key];
+				if (c) next[m.metric_key] = { v: stepValue(c.v, m), t: now };
+			}
+			simValues = next;
+		}, LIVE_MS);
+		return () => clearInterval(id);
+	});
+
+	const effLatest = $derived(simValues && Object.keys(simValues).length ? simValues : baseLatest);
 	const effMotors = $derived(liveMotors ?? motors);
 
 	const visibleOverview = $derived(
@@ -193,13 +240,6 @@
 				colour: m.colour
 			};
 		});
-		// cards.push({
-		// 	key: 'fuel_type',
-		// 	label: 'Fuel Type',
-		// 	value: boiler.fuel_type ?? '—',
-		// 	level: 'normal' as const,
-		// 	colour: 'var(--bme-muted)'
-		// });
 		return cards;
 	});
 
@@ -494,6 +534,13 @@
 	}
 
 	const hasData = $derived(metrics.length > 0 && telemetry.length > 0);
+
+	const subCounts = $derived<Partial<Record<SubTab, number>>>({
+		alerts: alerts.length,
+		indicators: indicatorAlerts,
+		programme: kpis?.actions_overdue ?? 0,
+		maintenance: maintenance.length
+	});
 </script>
 
 <div>
@@ -521,13 +568,19 @@
 		</button>
 	</div>
 
+	<select class="sub-select" bind:value={sub} aria-label="Dashboard section">
+		{#each SUB_TABS as t (t)}
+			<option value={t}>{SUB_LABELS[t]}{subCounts[t] ? ` (${subCounts[t]})` : ''}</option>
+		{/each}
+	</select>
+
 	{#if sub === 'overview'}
 		<div class="card design-card">
 			<div class="design-head">
 				<h3><span class="live-dot" aria-hidden="true"></span>Boiler Schematic</h3>
-				<span class="hint">Hover or tap a section to view its readings.</span>
+				<span class="hint">Drag to rotate, right-drag to move, scroll to zoom. Click a section to view its readings.</span>
 			</div>
-			<BoilerDesign {def} {sections} mode="dashboard" boilerCode={boiler.code} readings={liveReadings} imageUrl={boiler.design_image_url} />
+			<Boiler3D {def} {sections} mode="dashboard" boilerCode={boiler.code} readings={liveReadings} imageUrl={boiler.design_image_url} />
 		</div>
 
 		{#if !hasData}
@@ -996,6 +1049,17 @@
 
 	.stab.active { background: var(--bme-dark-blue); border-color: var(--bme-dark-blue); color: #ffffff; }
 
+	.sub-select {
+		display: none;
+		width: 100%;
+		margin: 0 0 18px;
+		padding: 11px 13px;
+		font-size: 14px;
+		font-weight: 700;
+		border: 1px solid var(--bme-dark-blue);
+		color: var(--bme-dark-blue);
+	}
+
 	.pill {
 		position: absolute;
 		display: inline-flex;
@@ -1364,15 +1428,8 @@
 
 	@media (max-width: 640px) {
 		.grid { grid-template-columns: repeat(2, 1fr); }
-		.subtabs {
-			width: 100%;
-			justify-content: space-between;
-		}
-		.stab {
-			width: 31%;
-			justify-content: center;
-			text-align: center;
-		}
+		.subtabs { display: none; }
+		.sub-select { display: block; }
 		.motors { grid-template-columns: 1fr; }
 	}
 </style>
