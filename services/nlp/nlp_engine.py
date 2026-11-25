@@ -606,7 +606,7 @@ class Engine:
             return text, links, "parts"
 
         if ents["boilers"] and top not in {"pricing", "human"}:
-            text, links = self._boiler_answer(ents["boilers"], ctx, top)
+            text, links = self._boiler_answer(ents["boilers"], ctx, top, proc)
             return text, links, "boiler"
 
         if sure and top in SMALL_TALK and n_content <= 4:
@@ -691,16 +691,27 @@ class Engine:
                 [],
             )
 
+        many = [s for s in self._matched_subs(t, proc) if s.href and s.summary]
+        if len(many) > 1:
+            text = "\n".join(f"- {self._link(s.label, s.href)}: {s.summary}" for s in many)
+            return (
+                f"These are on the **{t.label}** page:\n{text}",
+                [{"label": s.label, "href": s.href} for s in many],
+            )
+
         sub = self._pick_sub(t, proc)
         text = t.how
         if sub and sub.note:
             text = f"{text} Then {sub.note}."
+        if sub and sub.summary:
+            text = f"Open **{t.label}** and choose **{sub.label}**. {sub.summary}" if sub.href else f"{text}\n\n{sub.summary}"
 
         if t.needs_boiler:
             boilers = ctx.boilers
             tab = t.needs_boiler
             extra = sub.param if sub else None
-            label = f"{t.label} → {sub.label}" if sub and sub.param else t.label
+            base_label = TARGET_BY_KEY[tab].label if tab in TARGET_BY_KEY else t.label
+            label = f"{base_label} → {sub.label}" if sub and sub.param else base_label
             if not boilers:
                 return (
                     "Your account doesn't have any boilers assigned yet, so there is nothing to show "
@@ -727,6 +738,10 @@ class Engine:
         if href:
             return f"{text}\n\nOpen: {self._link(label, href)}", [{"label": label, "href": href}]
         return text, []
+
+    def _matched_subs(self, t: Target, proc: Processed) -> list:
+        hay = " " + " ".join(proc.tokens) + " " + " ".join(proc.lemmas) + " "
+        return [sub for sub in t.subs if any(f" {cue}" in hay for cue in sub.cues)]
 
     def _pick_sub(self, t: Target, proc: Processed):
         if not t.subs:
@@ -783,7 +798,7 @@ class Engine:
             )
         return "\n".join(lines) + "\n\n" + tail, links
 
-    def _boiler_answer(self, codes: list[str], ctx: UserContext, top: str):
+    def _boiler_answer(self, codes: list[str], ctx: UserContext, top: str, proc: Processed | None = None):
         by_code = {str(b.get("code", "")).upper(): b for b in ctx.boilers}
         found = [by_code[c] for c in codes if c in by_code]
         missing = [c for c in codes if c not in by_code]
@@ -797,8 +812,12 @@ class Engine:
         if tab == "parts" and "parts" not in ctx.allowed and "dashboard" in ctx.allowed:
             tab = "dashboard"
         label = "Dashboard" if tab == "dashboard" else "Spare Parts"
+        sub = self._pick_sub(TARGET_BY_KEY["dashboard"], proc) if tab == "dashboard" and proc else None
+        extra = sub.param if sub and sub.param else None
+        if extra:
+            label = f"{label} → {sub.label}"
         links = [
-            {"label": f"{b.get('code')} {label}", "href": self._boiler_href(str(b["id"]), tab)} for b in found
+            {"label": f"{b.get('code')} {label}", "href": self._boiler_href(str(b["id"]), tab, extra)} for b in found
         ]
         text = "Here you go: " + " · ".join(self._link(l["label"], l["href"]) for l in links)
         if missing:
@@ -826,7 +845,29 @@ class Engine:
         tab = re.search(r"[?&]tab=(\w+)", ctx.path)
         if t.key == "home" and tab and tab.group(1) in TARGET_BY_KEY:
             t = TARGET_BY_KEY[tab.group(1)]
+        sub = self._sub_for_path(t, ctx.path)
+        if sub:
+            detail = sub.summary or f"{t.summary} {t.how}"
+            return f"You're on **{t.label} → {sub.label}**. {detail}", []
         return f"You're on **{t.label}**. {t.summary} {t.how}", []
+
+    @staticmethod
+    def _sub_for_path(t: Target, path: str):
+        """The sub-page (Analytics page, Others tab, Dashboard sub-tab) the path points at."""
+        clean, _, query = (path or "").partition("?")
+        clean = clean.rstrip("/")
+        params = set(query.split("&")) if query else set()
+        for sub in t.subs:
+            if sub.href:
+                s_path, _, s_query = sub.href.partition("?")
+                if s_query:
+                    if clean == s_path and s_query in params:
+                        return sub
+                elif clean == s_path or clean.startswith(s_path + "/"):
+                    return sub
+            elif sub.param and sub.param in params:
+                return sub
+        return None
 
     @staticmethod
     def _target_for_path(path: str) -> Target | None:
@@ -837,7 +878,7 @@ class Engine:
         return None
 
     def _capabilities(self, ctx: UserContext) -> str:
-        pages = [t for t in TARGETS if t.href and self._can_open(t, ctx) and t.key not in {"password"}]
+        pages = [t for t in TARGETS if t.href and self._can_open(t, ctx) and t.key not in {"password", "model3d"}]
         page_links = ", ".join(self._link(t.label, t.href) for t in pages[:8])
         return (
             "I can help you find your way around BME e-Serve (try \"where is my cart?\" or "
@@ -868,9 +909,13 @@ class Engine:
             if not t.href or not self._can_open(t, ctx) or t.key == "password":
                 continue
             if t.needs_boiler:
-                lines.append(f"- {t.label}: open a boiler from [Home](/app), then its {t.label} tab. {t.summary}")
+                tab_label = TARGET_BY_KEY[t.needs_boiler].label
+                lines.append(f"- {t.label}: open a boiler from [Home](/app), then its {tab_label} tab. {t.summary}")
             else:
                 lines.append(f"- [{t.label}]({t.href}): {t.summary}")
+            for sub in t.subs:
+                if sub.href:
+                    lines.append(f"  - [{sub.label}]({sub.href}){': ' + sub.summary if sub.summary else ''}")
         hidden = [t.label for t in TARGETS if t.href and not self._can_open(t, ctx)]
         if hidden:
             lines.append(f"- Not available to this user (do not offer them): {', '.join(hidden)}")

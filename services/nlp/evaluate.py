@@ -129,6 +129,26 @@ CASES: list[tuple[str, str, str]] = [
     ("compare the 4 inch and 6 inch pressure gauge", "assist", CUSTOMER),
     ("what is a mobrey level control used for", "assist", CUSTOMER),
     ("no", "assist", CUSTOMER),
+    ("where can i see the demand forecast", "nav:analytics@/app/analytics/forecasts", STAFF),
+    ("which parts are predicted to need replacing soon", "nav:analytics@/app/analytics/forecasts|assist", STAFF),
+    ("how do i add a service record for a boiler", "nav:analytics@/app/analytics/service-records", STAFF),
+    ("i replaced a safety valve on site where do i record that", "nav:analytics@/app/analytics/service-records|assist", STAFF),
+    ("where do i review the chatbot part suggestions", "nav:analytics@/app/analytics/suggestions", STAFF),
+    ("where is the training data page", "nav:analytics@/app/analytics/training-data", STAFF),
+    ("how accurate is the assistant now", "nav:analytics@/app/analytics/training-data|assist", STAFF),
+    ("convert a shipping invoice pdf to excel", "nav:others@/app/others?tab=invoice", STAFF),
+    ("where can i extract a packing list", "nav:others@/app/others?tab=packing", STAFF),
+    ("how do i turn invoice pdfs into a spreadsheet", "nav:others", STAFF),
+    ("open the others page", "nav:others", STAFF),
+    ("where is the demand forecast", "nav:analytics", CUSTOMER),
+    ("convert my packing list to excel", "nav:others", CUSTOMER),
+    ("how do i rotate the 3d boiler", "nav:model3d", CUSTOMER),
+    ("can i see the part in 3d", "nav:model3d|assist", CUSTOMER),
+    ("why cant i see a 3d view for this part", "nav:model3d|assist", CUSTOMER),
+    ("how do i zoom in on the boiler model", "nav:model3d", CUSTOMER),
+    ("how do i add 3 of the same part", "nav:parts|nav:cart|assist", CUSTOMER),
+    ("where are the instrument panel parts", "nav:parts|assist", CUSTOMER),
+    ("where can i see live readings for a boiler section", "nav:dashboard|nav:model3d", STAFF),
 ]
 
 def outcome(result: dict, engine: Engine) -> str:
@@ -136,13 +156,18 @@ def outcome(result: dict, engine: Engine) -> str:
         return "assist"
     source = result["source"] or ""
     if source.startswith("faq:"):
-        fid = source[:4]
+        fid = source[4:]
         q = next((f.question for f in engine.faqs if f.id == fid), fid)
         return f"faq:{q}"
     return source
 
-def matches(got: str, expected: str) -> bool:
+def matches(got: str, expected: str, result: dict | None = None) -> bool:
     for exp in expected.split("|"):
+        exp, _, href = exp.partition("@")
+        if href:
+            hrefs = {l.get("href") for l in (result or {}).get("links", [])}
+            if href not in hrefs and f"]({href})" not in ((result or {}).get("answer") or ""):
+                continue
         if exp.startswith("faq~") and got.startswith("faq:") and got[4:].lower().startswith(exp[4:].lower()):
             return True
         if got == exp:
@@ -174,14 +199,14 @@ def main() -> int:
     engine = Engine(faqs, parts, resources)
     users = {
         CUSTOMER: UserContext(CUSTOMER, {"home", "parts", "cart", "history", "profile"}, boilers[:2], "/app"),
-        STAFF: UserContext(STAFF, {"home", "parts", "dashboard", "cart", "history", "profile", "requests", "enquiries", "analytics", "settings"}, boilers, "/app"),
+        STAFF: UserContext(STAFF, {"home", "parts", "dashboard", "cart", "history", "profile", "requests", "enquiries", "analytics", "others", "settings"}, boilers, "/app"),
     }
 
     passed, failures, wrong_direct = 0, [], 0
     for question, expected, role in CASES:
         result = engine.analyze(question, users[role])
         got = outcome(result, engine)
-        ok = matches(got, expected)
+        ok = matches(got, expected, result)
         passed += ok
         if not ok:
             failures.append((question, expected, got, result))

@@ -121,6 +121,75 @@ export async function analyzeMessage(input: {
     }
 }
 
+const FALLBACK_PAGES: Array<{ key: string; line: string; subs?: string[] }> = [
+    { key: 'home', line: '[Home](/app): your projects and boilers. Choose a boiler to open its Spare Parts (and Dashboard, if enabled) tab.' },
+    {
+        key: 'parts',
+        line: 'Spare Parts: open a boiler from [Home](/app), then its Spare Parts tab. Click a section on the 3D boiler or pick it from the Boiler sections list, choose a component and part, set the quantity and click Add. Search by part number, name or description. Parts can show a 3D view or a Photo.'
+    },
+    {
+        key: 'dashboard',
+        line: 'Dashboard: open a boiler from [Home](/app), then its Dashboard tab. Sub-tabs: Overview (3D model, click a section for readings), Trends, Motors, Alerts, Analytics, Indicators, Inspection, Log Sheet, Programme, Maintenance.'
+    },
+    { key: 'cart', line: '[Cart](/app/quotes): check quantities, add notes and attachments (PDF, Word, Excel, CSV, text, PNG/JPG/WEBP, up to 10 MB in total), then Submit a quotation request.' },
+    { key: 'history', line: '[History](/app/history): submitted requests with reference, status, parts and attachments; Request Again adds the parts back to the Cart.' },
+    { key: 'profile', line: '[Profile](/app/profile): Edit Profile for name, company, e-mail, phone and address; Change Password.' },
+    { key: 'requests', line: '[Requests](/app/requests): open customer quotation requests with SLA badges (staff).' },
+    { key: 'enquiries', line: '[Enquiries](/app/enquiries): general enquiries from the sign-in page, Unreplied and Replied tabs (staff).' },
+    {
+        key: 'analytics',
+        line: '[Analytics](/app/analytics): staff reporting pages.',
+        subs: [
+            '[Audit Log](/app/analytics/audit-log): who changed what, and when.',
+            '[Customer Requests](/app/analytics/customer-requests): quotation request statistics.',
+            '[Demand Forecasts](/app/analytics/forecasts): projected monthly demand per project and predicted replacements (weekly estimates).',
+            '[E-mail Deliveries](/app/analytics/email-log): whether app e-mails were sent.',
+            '[Service Records](/app/analytics/service-records): parts replaced, repaired or inspected on customer boilers; Add service record.',
+            '[Suggestion Reviews](/app/analytics/suggestions): confirm or correct the part the assistant suggested.',
+            '[Training Data](/app/analytics/training-data): labelled data and the assistant\'s current accuracy.',
+            '[User Activities](/app/analytics/user-activities): sign-ins and user actions.'
+        ]
+    },
+    {
+        key: 'others',
+        line: '[Others](/app/others): convert PDFs to Excel. Drop PDFs in, click Extract, then Download Excel.',
+        subs: ['[Shipping Invoice](/app/others?tab=invoice)', '[Packing List](/app/others?tab=packing)']
+    },
+    { key: 'settings', line: '[Settings](/app/settings): tabs Projects, Boilers, Parts, Users, General and FAQ (staff).' }
+];
+
+export function fallbackAppMap(user: NlpUser | null, path: string | null): string {
+    const lines = ['', '', 'App map (the NLP service is unavailable; link ONLY these paths, exactly as written):'];
+    if (!user) {
+        lines.push('- The user\'s access could not be checked. Give plain directions and only link [Home](/app), [Cart](/app/quotes), [History](/app/history) and [Profile](/app/profile).');
+        return lines.join('\n');
+    }
+    const allowed = new Set(user.allowed);
+    const hidden: string[] = [];
+    for (const p of FALLBACK_PAGES) {
+        if (!allowed.has(p.key)) {
+            hidden.push(p.key);
+            continue;
+        }
+        lines.push(`- ${p.line}`);
+        for (const sub of p.subs ?? []) lines.push(`  - ${sub}`);
+    }
+    lines.push('- Everyone: [FAQ](/app/faq) and [Privacy Policy](/app/policy) (footer), the bell for notifications, the light/dark toggle, and Sign Out (top right).');
+    if (hidden.length) lines.push(`- Not available to this user (do not offer them): ${hidden.join(', ')}`);
+    lines.push(`- User role: ${user.role}`);
+    if (path) lines.push(`- The user is currently on: ${path.slice(0, 200)}`);
+    if (user.boilers.length) {
+        const shown = user.boilers
+            .slice(0, 8)
+            .map((b) => `${b.code ?? 'Boiler'} [${b.code ?? 'Boiler'} Spare Parts](/app?boiler=${b.id}&tab=parts)`)
+            .join(', ');
+        lines.push(`- Boilers assigned to this user: ${shown}`);
+    } else if (isCustomerRole(user.role)) {
+        lines.push('- This user has no boilers assigned yet.');
+    }
+    return lines.join('\n');
+}
+
 export function nlpPartsAsRetrieved(parts: NlpPart[]): RetrievedPart[] {
     return parts
         .filter((p): p is NlpPart & { id: string; part_number: string } => !!p.id && !!p.part_number)

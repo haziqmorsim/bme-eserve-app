@@ -4,7 +4,7 @@ import { retrieveParts, formatCandidates, type RetrievedPart } from '$lib/server
 import { logSuggestion } from '$lib/server/suggestions';
 import { describePartImage, extractImages } from '$lib/server/vision';
 import { preprocessImageBlocks } from '$lib/server/imaging';
-import { analyzeMessage, loadNlpUser, nlpPartsAsRetrieved, type NlpResult } from '$lib/server/nlp';
+import { analyzeMessage, fallbackAppMap, loadNlpUser, nlpPartsAsRetrieved, type NlpResult, type NlpUser } from '$lib/server/nlp';
 import type { RequestHandler } from './$types';
 
 type Block =
@@ -63,17 +63,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = session?.user?.id ?? null;
 	const hasImage = extractImages(lastUser?.content).length > 0;
 
+	const path = typeof body.path === 'string' ? body.path : null;
+	const nlpUser: NlpUser | null = userId ? await loadNlpUser(locals.supabase, userId) : null;
+
 	let nlp: NlpResult | null = null;
-	if (userId && caption.trim()) {
-		const nlpUser = await loadNlpUser(locals.supabase, userId);
-		if (nlpUser) {
-			nlp = await analyzeMessage({
-				message: caption,
-				path: typeof body.path === 'string' ? body.path : null,
-				user: nlpUser,
-				hasImage
-			});
-		}
+	if (nlpUser && caption.trim()) {
+		nlp = await analyzeMessage({ message: caption, path, user: nlpUser, hasImage });
 	}
 
 	if (nlp?.mode === 'direct' && nlp.answer) {
@@ -99,7 +94,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (semantic.length) catalogueContext = formatCandidates(semantic);
 	else if (!keyword.length) catalogueContext = await getPartsCatalogContext();
 
-	const system = SYSTEM_PROMPT_WEB + (nlp?.context ?? '') + catalogueContext;
+	const appContext = nlp?.context || fallbackAppMap(nlpUser, path);
+	const system = SYSTEM_PROMPT_WEB + appContext + catalogueContext;
 
 	const retrieved: RetrievedPart[] = semantic.length ? semantic : keyword;
 	const suggestionId = retrieved.length ? crypto.randomUUID() : null;

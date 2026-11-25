@@ -15,6 +15,7 @@ class SubLink:
     href: str | None = None
     param: str | None = None
     note: str = ""
+    summary: str = ""
 
 @dataclass(frozen=True)
 class Target:
@@ -65,10 +66,12 @@ TARGETS: tuple[Target, ...] = (
         needs_boiler="parts",
         summary="Each boiler's Spare Parts tab is the parts catalogue for that boiler.",
         how=(
-            "Open a boiler from Home and go to its **Spare Parts** tab. Click a highlighted "
-            "section of the Boiler Schematic to list that section's parts (dimmed sections have "
-            "none), or search by part number, name or description. Click a part's photo to "
-            "enlarge it, and click **Add** to put it in your Cart."
+            "Open a boiler from Home and go to its **Spare Parts** tab. Click a section on the 3D "
+            "Boiler Schematic, or pick it from the **Boiler sections** list (Panel / Instrument and "
+            "Other components are only in the list), then choose a component and a part. The "
+            "breadcrumb at the top takes you back. You can also search by part number, name or "
+            "description. On a part, set the quantity with **-** / **+** and click **Add** to put "
+            "it in your Cart."
         ),
         phrases=(
             "where can i find spare parts",
@@ -86,6 +89,11 @@ TARGETS: tuple[Target, ...] = (
             "search parts by name",
             "the diagram with the highlighted sections",
             "add item to cart",
+            "how do i add more than one of the same part",
+            "where are the panel and instrument parts",
+            "boiler sections list",
+            "go back to all sections",
+            "parts for a component",
         ),
     ),
     Target(
@@ -98,7 +106,8 @@ TARGETS: tuple[Target, ...] = (
         how=(
             "Open a boiler from Home and go to its **Dashboard** tab. The sub-tabs are Overview, "
             "Trends, Motors, Alerts, Analytics, Indicators, Inspection, Log Sheet, Programme "
-            "and Maintenance."
+            "and Maintenance (on a phone, pick them from the drop-down). **Overview** has a 3D "
+            "model of the boiler: click a section to see its live readings."
         ),
         phrases=(
             "where is the boiler dashboard",
@@ -128,6 +137,35 @@ TARGETS: tuple[Target, ...] = (
             SubLink("Log Sheet", ("log sheet", "logsheet", "daily log", "log"), param="sub=logsheet"),
             SubLink("Programme", ("programme", "program", "action", "kpi"), param="sub=programme"),
             SubLink("Maintenance", ("maintenance", "service", "due"), param="sub=maintenance"),
+        ),
+    ),
+    Target(
+        key="model3d",
+        label="3D views",
+        href="/app",
+        access="parts",
+        needs_boiler="parts",
+        summary="Boilers and many parts can be viewed in 3D.",
+        how=(
+            "The boiler's **Spare Parts** tab (and the Dashboard **Overview**) shows a 3D model of "
+            "the boiler: drag to rotate, right-drag to move it, scroll to zoom, and click a section "
+            "to open it. On a part, switch between **3D view** and **Photo** above the picture; "
+            "drag to rotate, scroll or pinch to zoom, and use the reset button to straighten it. "
+            "Some parts only have a photo, so the 3D option isn't shown for them."
+        ),
+        phrases=(
+            "how do i rotate the boiler",
+            "3d model of the boiler",
+            "how to use the 3d view",
+            "zoom in on the boiler",
+            "move the 3d model",
+            "3d view of a part",
+            "switch to the photo",
+            "the 3d view is not showing for a part",
+            "reset the 3d view",
+            "spin the model",
+            "turn the boiler around",
+            "see the part from another angle",
         ),
     ),
     Target(
@@ -283,8 +321,9 @@ TARGETS: tuple[Target, ...] = (
         staff_only=True,
         summary="Analytics holds reporting pages for staff.",
         how=(
-            "Open **Analytics**. Its pages are Audit Log, Customer Requests, E-mail Deliveries "
-            "and User Activities."
+            "Open **Analytics** and pick a page from the list at the top: Audit Log, Customer "
+            "Requests, Demand Forecasts, E-mail Deliveries, Service Records, Suggestion Reviews, "
+            "Training Data and User Activities."
         ),
         phrases=(
             "where are the analytics",
@@ -298,12 +337,106 @@ TARGETS: tuple[Target, ...] = (
             "customer request statistics",
             "reporting",
             "usage statistics",
+            "demand forecast",
+            "which parts will be needed next month",
+            "predicted replacements",
+            "which parts are overdue for replacement",
+            "add a service record",
+            "record a part replacement on a boiler",
+            "log a repair or inspection",
+            "review the assistant's part suggestions",
+            "correct a wrong part suggestion",
+            "check the parts the chatbot suggested to customers",
+            "training data for the assistant",
+            "how accurate is the chatbot",
+            "labelled data",
         ),
         subs=(
-            SubLink("Audit Log", ("audit", "changed", "change log", "who edited"), href="/app/analytics/audit-log"),
-            SubLink("Customer Requests", ("customer request", "request statistic", "funnel"), href="/app/analytics/customer-requests"),
-            SubLink("E-mail Deliveries", ("email", "e-mail", "mail", "deliver", "sent"), href="/app/analytics/email-log"),
-            SubLink("User Activities", ("activity", "activities", "logged in", "login", "sign in", "usage"), href="/app/analytics/user-activities"),
+            SubLink(
+                "Audit Log", ("audit", "changed", "change log", "who edited"), href="/app/analytics/audit-log",
+                summary="Audit Log shows who changed what, and when.",
+            ),
+            SubLink(
+                "Customer Requests", ("customer request", "request statistic", "funnel"),
+                href="/app/analytics/customer-requests",
+                summary="Customer Requests summarises quotation requests over time.",
+            ),
+            SubLink(
+                "Demand Forecasts",
+                ("forecast", "demand", "predict", "prediction", "predicted", "overdue replacement", "replacement", "next month"),
+                href="/app/analytics/forecasts",
+                summary=(
+                    "Demand Forecasts shows the projected monthly demand per project and the predicted "
+                    "replacements (overdue, within 30 days, within 90 days, later), estimated from past "
+                    "orders. They are refreshed by a weekly job and are estimates, so confirm with the "
+                    "customer before acting on low-confidence rows."
+                ),
+            ),
+            SubLink(
+                "E-mail Deliveries", ("email", "e-mail", "mail", "deliver", "sent"), href="/app/analytics/email-log",
+                summary="E-mail Deliveries shows whether the app's e-mails were sent or failed.",
+            ),
+            SubLink(
+                "Service Records",
+                ("service record", "replaced", "repaired", "repair", "inspected", "record a"),
+                href="/app/analytics/service-records",
+                summary=(
+                    "Service Records lists parts that were replaced, repaired or inspected on a "
+                    "customer's boiler. Click **Add service record** and choose the project, boiler and "
+                    "part; these records improve the replacement predictions."
+                ),
+            ),
+            SubLink(
+                "Suggestion Reviews",
+                ("suggestion", "suggested", "review the assistant", "wrong part", "verdict"),
+                href="/app/analytics/suggestions",
+                summary=(
+                    "Suggestion Reviews lets staff confirm or correct the part the assistant "
+                    "suggested. A staff verdict overrides the customer's own thumbs up or down."
+                ),
+            ),
+            SubLink(
+                "Training Data",
+                ("training", "label", "labelled", "accuracy", "baseline", "accurate"),
+                href="/app/analytics/training-data",
+                summary=(
+                    "Training Data shows how much labelled data exists (from chat feedback and tagged "
+                    "enquiries), the current assistant's accuracy, and which parts still lack labels."
+                ),
+            ),
+            SubLink(
+                "User Activities", ("activity", "activities", "logged in", "login", "sign in", "usage"),
+                href="/app/analytics/user-activities",
+                summary="User Activities shows sign-ins and what users did in the app.",
+            ),
+        ),
+    ),
+    Target(
+        key="others",
+        label="Others",
+        href="/app/others",
+        access="others",
+        summary="Others converts shipping invoice and packing list PDFs into Excel files.",
+        how=(
+            "Open **Others** and choose **Shipping Invoice** or **Packing List**. Drop the PDFs in "
+            "(or click **browse files**), click **Extract**, check the rows, then click **Download "
+            "Excel**. Keep the tab open until it finishes; **Start again** clears it."
+        ),
+        phrases=(
+            "convert a shipping invoice to excel",
+            "extract data from an invoice pdf",
+            "packing list to excel",
+            "where is the invoice converter",
+            "turn a pdf into a spreadsheet",
+            "others page",
+            "upload a packing list",
+            "read the freight charges from an invoice",
+            "download the excel file",
+            "invoice extractor",
+        ),
+        subs=(
+            SubLink("Shipping Invoice", ("invoice", "freight"), href="/app/others?tab=invoice"),
+            SubLink("Packing List", ("packing", "packing list"), href="/app/others?tab=packing"),
         ),
     ),
     Target(
@@ -447,6 +580,7 @@ PATH_PREFIXES: tuple[tuple[str, str], ...] = (
     ("/app/enquiries", "enquiries"),
     ("/app/analytics", "analytics"),
     ("/app/settings", "settings"),
+    ("/app/others", "others"),
     ("/app/faq", "faq"),
     ("/app/policy", "policy"),
     ("/app", "home"),
@@ -582,6 +716,17 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
     "schematic": ("diagram",),
     "picture": ("photo", "image"),
     "photo": ("image", "picture"),
+    "excel": ("spreadsheet", "xlsx"),
+    "spreadsheet": ("excel",),
+    "convert": ("extract",),
+    "extract": ("convert",),
+    "invoice": ("shipping",),
+    "forecast": ("predict", "demand"),
+    "predict": ("forecast",),
+    "rotate": ("3d", "view"),
+    "spin": ("rotate",),
+    "zoom": ("3d", "view"),
+    "model": ("3d",),
 }
 
 KEEP_WORDS = frozenset(
@@ -626,11 +771,17 @@ CUES: dict[str, tuple[str, ...]] = {
     "nav:policy": ("privacy", "terms and conditions", "terms of use", "personal data", "data protection"),
     "nav:password": ("password",),
     "nav:faq": ("faq", "frequently asked"),
-    "nav:cart": ("cart", "basket", "checkout", "check out"),
+    "nav:cart": ("cart", "basket", "checkout", "check out", "i added", "added parts", "parts i added", "items i added"),
     "nav:history": ("history", "previous request", "previous requests", "past request", "past requests", "earlier request", "earlier quotation", "request again"),
     "nav:profile": ("profile", "phone number", "phone no", "my address", "company name", "company address", "my details", "personal details"),
     "nav:settings": ("settings", "maintenance mode", "invite", "new user", "add user", "manage user", "user account", "customer account", "announcement", "edit the faq", "chatbot limit"),
-    "nav:analytics": ("analytics", "audit", "audit log", "email log", "logged in", "user activity", "user activities", "report", "reports"),
+    "nav:analytics": (
+        "analytics", "audit", "audit log", "email log", "logged in", "user activity", "user activities", "report", "reports",
+        "forecast", "forecasts", "demand forecast", "predicted replacement", "predicted replacements", "service record",
+        "service records", "suggestion review", "suggestion reviews", "training data",
+    ),
+    "nav:others": ("others page", "shipping invoice", "packing list", "invoice pdf", "pdf to excel", "invoice to excel", "extract invoice"),
+    "nav:model3d": ("3d", "3d view", "3d model", "rotate", "zoom in", "zoom out"),
     "nav:enquiries": ("enquiry", "enquiries"),
     "nav:requests": ("customer request", "customer requests", "pending request", "pending requests", "awaiting review", "waiting for review"),
     "nav:dashboard": ("dashboard", "telemetry", "alert", "alerts", "vibration", "log sheet", "logsheet", "daily log", "inspection", "maintenance schedule", "readings", "indicator", "indicators", "trend", "trends"),
