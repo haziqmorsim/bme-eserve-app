@@ -441,20 +441,6 @@
 							</div>
 						{/if}
 
-						<h4>Description</h4>
-						<p class="text" class:blank={isPlaceholder(part.description)}>
-							{isPlaceholder(part.description) ? 'No description yet.' : part.description}
-						</p>
-
-						<h4>Specifications</h4>
-						{#if specs.length}
-							<ul class="specs">
-								{#each specs as line, i (i)}<li>{line}</li>{/each}
-							</ul>
-						{:else}
-							<p class="text blank">No specifications yet.</p>
-						{/if}
-
 						<div class="buy">
 							<div class="qty">
 								<button type="button" onclick={() => setQty(part.id, (qty[part.id] ?? 1) - 1)} aria-label="Decrease quantity"><Minus size={15} /></button>
@@ -470,6 +456,20 @@
 							</div>
 							<button type="button" class="btn-primary add" onclick={() => handleAdd(part)}>Add</button>
 						</div>
+
+						<h4>Description</h4>
+						<p class="text" class:blank={isPlaceholder(part.description)}>
+							{isPlaceholder(part.description) ? 'No description yet.' : part.description}
+						</p>
+
+						<h4>Specifications</h4>
+						{#if specs.length}
+							<ul class="specs">
+								{#each specs as line, i (i)}<li>{line}</li>{/each}
+							</ul>
+						{:else}
+							<p class="text blank">No specifications yet.</p>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -975,7 +975,6 @@
 	}
 
 	.buy {
-		position: sticky;
 		bottom: -12px;
 		display: flex;
 		gap: 10px;
