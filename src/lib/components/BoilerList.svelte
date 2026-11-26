@@ -169,6 +169,23 @@
         {:else}
             <div class="project-groups">
                 {#each groups as g (g.id)}
+                    {#if g.boilers.length === 1}
+                        {@const only = g.boilers[0]}
+                        {@const current = only.id === activeBoilerId && g.id === resolvedActiveProjectId}
+                        <div class="proj-group" class:current>
+                            <a
+                                class="proj-head proj-link"
+                                href={`/app?boiler=${only.id}&project=${g.id}`}
+                                onclick={() => (listOpen = false)}
+                                aria-current={current ? 'page' : undefined}
+                            >
+                                <span class="proj-title">
+                                    <strong class:unassigned={g.id === UNASSIGNED}>{g.projectNo}</strong>
+                                    {#if g.projectName}<span class="proj-sub">{g.projectName}</span>{/if}
+                                </span>
+                            </a>
+                        </div>
+                    {:else}
                     <div class="proj-group" class:open={isOpen(g.id)}>
                         <button
                             type="button"
@@ -196,6 +213,7 @@
                             </ul>
                         {/if}
                     </div>
+                    {/if}
                 {/each}
             </div>
         {/if}
@@ -255,6 +273,24 @@
 
     .proj-head:hover {
         background: var(--bme-hover);
+    }
+
+    a.proj-head {
+        box-sizing: border-box;
+        text-decoration: none;
+    }
+
+    .proj-group.current {
+        border-color: var(--bme-darker-blue);
+    }
+
+    .proj-group.current .proj-head {
+        background: var(--bme-darker-blue);
+        color: #ffffff;
+    }
+
+    .proj-group.current .proj-sub {
+        color: #eaeff3;
     }
 
     .proj-title {

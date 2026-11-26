@@ -544,7 +544,11 @@
 </script>
 
 <div>
-	<h2 class="title">{boiler.code}</h2>
+	<h2 class="title">
+		{#if resolvedProject}
+			{resolvedProject.project_no}{#if resolvedProject.name}&nbsp;({resolvedProject.name}){/if}
+		{/if}
+	</h2>
 	{#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
 
 	<div class="subtabs">

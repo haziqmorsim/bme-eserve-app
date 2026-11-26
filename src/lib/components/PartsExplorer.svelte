@@ -9,6 +9,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import { hasImage, isPlaceholder, textLines } from '$lib/parts';
 	import { tick } from 'svelte';
+	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
 	import { Search, X, ChevronRight, ArrowLeft, Minus, Plus, Image as ImageIcon } from '@lucide/svelte';
 
@@ -25,6 +26,20 @@
 		parts?: Part[];
 		onadd?: (part: Part, qty: number) => void;
 	} = $props();
+
+	// Heading shows the project (same rule as the Dashboard tab): the project in the URL, else the first by number.
+	const resolvedProject = $derived.by(() => {
+		const d = $page.data as any;
+		const ids = new Set(
+			((d.boilerProjects ?? []) as any[]).filter((bp) => bp.boiler_id === boiler.id).map((bp) => bp.project_id)
+		);
+		if (!ids.size) return null;
+		const matches = ((d.projects ?? []) as any[]).filter((p) => ids.has(p.id));
+		if (!matches.length) return null;
+		const active = d.activeProjectId as string | null;
+		if (active && ids.has(active)) return matches.find((p) => p.id === active) ?? null;
+		return [...matches].sort((a, b) => a.project_no.localeCompare(b.project_no))[0];
+	});
 
 	const def = $derived(grateFor(boiler.code, boiler.name));
 	const sections = $derived(resolveSections(def, components));
@@ -257,9 +272,12 @@
 
 <svelte:window onkeydown={onKey} />
 
-<h2 class="title">{boiler.code}</h2>
+<h2 class="title">
+	{#if resolvedProject}
+		{resolvedProject.project_no}{#if resolvedProject.name}&nbsp;({resolvedProject.name}){/if}
+	{/if}
+</h2>
 {#if boiler.name}<p class="desc">{boiler.name}</p>{/if}
-{#if boiler.description}<p class="desc">{boiler.description}</p>{/if}
 
 <div class="design card">
 	<div class="design-head">
