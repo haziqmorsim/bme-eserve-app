@@ -1465,7 +1465,25 @@
     }
 
     @container (max-width: 520px) {
-        /* phones: the toolbar stays a slim icon column so its menus fit beside it */
+        .tools {
+            left: 50%;
+            top: auto;
+            bottom: 10px;
+            transform: translateX(-50%);
+            flex-direction: row;
+            align-items: center;
+            max-width: calc(100cqw - 20px);
+        }
+
+        .pop {
+            left: 50%;
+            top: auto;
+            bottom: calc(100% + 8px);
+            transform: translateX(-50%);
+            width: min(250px, calc(100cqw - 20px));
+            max-width: none;
+        }
+
         .tools:hover .tb .tl,
         .tools:hover .tb .cnt {
             max-width: 0;
