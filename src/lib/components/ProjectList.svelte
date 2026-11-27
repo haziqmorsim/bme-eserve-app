@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Boiler, Project, BoilerProject } from "$lib/types";
     import { logActivity } from "$lib/activity";
-    import { ChevronDown } from "@lucide/svelte";
+    import { ChevronDown, ArrowLeftFromLine, ArrowRightFromLine } from "@lucide/svelte";
 
     let {
         boilers, 
@@ -11,7 +11,8 @@
         activeProjectId = null, 
         customerNoBoilers = false, 
         supabase = null, 
-        profile = null
+        profile = null,
+        collapsed = $bindable(false)
     }: {
         boilers: Boiler[];
         projects?: Project[];
@@ -21,6 +22,7 @@
         customerNoBoilers?: boolean;
         supabase?: any;
         profile?: any;
+        collapsed?: boolean;
     } = $props();
 
     let search = $state('');
@@ -93,27 +95,12 @@
         return list;
     });
 
-    function boilerMatches(b: Boiler) {
-        return b.code.toLowerCase().includes(query) || (b.name || '').toLowerCase().includes(query);
-    }
-
+    // Search matches projects only (project number or project name).
     let groups = $derived.by(() => {
         if (!query) return allGroups;
-
-        const result: BoilerGroup[] = [];
-        for (const g of allGroups) {
-            const projectMatches =
-                g.projectNo.toLowerCase().includes(query) || (g.projectName ?? '').toLowerCase().includes(query);
-            if (projectMatches) {
-                result.push(g);
-                continue;
-            }
-            const matchedBoilers = g.boilers.filter(boilerMatches);
-            if (matchedBoilers.length > 0) {
-                result.push({ ...g, boilers: matchedBoilers });
-            }
-        }
-        return result;
+        return allGroups.filter(
+            (g) => g.projectNo.toLowerCase().includes(query) || (g.projectName ?? '').toLowerCase().includes(query)
+        );
     });
 
     let totalMatches = $derived(groups.reduce((n, g) => n + g.boilers.length, 0));
@@ -141,7 +128,7 @@
     }
 </script>
 
-<aside class="card sidebar">
+<aside class="card sidebar" class:collapsed>
     {#if customerNoBoilers}
         <p class="no-boilers">No boilers assigned yet.</p>
     {:else}
@@ -155,17 +142,30 @@
             <span class="chev" class:rot={listOpen}><ChevronDown size={16} /></span>
         </button>
 
-        <input
-            type="search" 
-            class="boiler-search" 
-            placeholder="Search projects or boilers..." 
-            bind:value={search} 
-            oninput={onSearchInput}
-        />
+        <div class="search-row">
+            <input
+                type="search" 
+                class="boiler-search" 
+                placeholder="Search projects..." 
+                aria-label="Search projects"
+                bind:value={search} 
+                oninput={onSearchInput}
+            />
+            <button
+                type="button"
+                class="collapse-btn"
+                onclick={() => (collapsed = !collapsed)}
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? 'Expand project list' : 'Collapse project list'}
+                title={collapsed ? 'Expand project list' : 'Collapse project list'}
+            >
+                {#if collapsed}<ArrowRightFromLine size={22} />{:else}<ArrowLeftFromLine size={22} />{/if}
+            </button>
+        </div>
 
         <div class="list-wrap" class:collapsed={!listOpen}>
         {#if totalMatches === 0}
-            <p class="no-results">No boilers found.</p>
+            <p class="no-results">No projects found.</p>
         {:else}
             <div class="project-groups">
                 {#each groups as g (g.id)}
@@ -222,8 +222,62 @@
 </aside>
 
 <style>
-    .boiler-search {
+    .search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin-bottom: 14px;
+    }
+
+    .boiler-search {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+    }
+
+    .collapse-btn {
+        display: none;
+        flex: 0 0 auto;
+        width: 40px;
+        height: 40px;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid var(--bme-border);
+        border-radius: 8px;
+        background: var(--bme-surface);
+        color: var(--bme-dark-blue);
+        cursor: pointer;
+    }
+
+    .collapse-btn:hover {
+        background: var(--bme-hover);
+        border-color: var(--bme-dark-blue);
+    }
+
+    .collapse-btn:focus-visible {
+        outline: 2px solid var(--bme-dark-blue);
+        outline-offset: 2px;
+    }
+
+    @media (min-width: 861px) {
+        .collapse-btn {
+            display: inline-flex;
+        }
+
+        .sidebar.collapsed {
+            padding: 16px 8px;
+        }
+
+        .sidebar.collapsed .search-row {
+            margin-bottom: 0;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .boiler-search,
+        .sidebar.collapsed .list-wrap {
+            display: none;
+        }
     }
 
     .no-boilers {

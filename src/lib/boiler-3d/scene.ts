@@ -48,7 +48,6 @@ export type BuiltScene = {
     dispose: () => void;
 };
 
-
 type XY = { x: number; y: number };
 type Pt = [number, number, number];
 
@@ -159,7 +158,6 @@ const LAYOUTS: Record<GrateType, Layout> = {
     }
 };
 
-// --- palette ------------------------------------
 const C = {
     steel: '#c3c9d1',
     steelDark: '#7d8690',
@@ -470,7 +468,7 @@ type Stream = {
     samples: THREE.Vector3[];
     color: THREE.Color;
     count: number;
-    speed: number;
+    speed: number; // path lengths per second
     size: number;
     offset: number;
     jitter: number;
@@ -510,17 +508,6 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         return g;
     }
 
-    // Outer shells that turn to glass with "See-through" (chimney, fan, dust
-    // collector, drums) so the flows inside them can be seen.
-    const shells: THREE.Mesh[] = [];
-    function glassy<T extends THREE.Object3D>(o: T): T {
-        o.traverse((c) => {
-            const m = c as THREE.Mesh;
-            if (m.isMesh) shells.push(m);
-        });
-        return o;
-    }
-
     function label(text: string, unitId: string, x: number, y: number, z = 0, opt: boolean | { small?: boolean; lift?: number; primary?: boolean } = false) {
         const u = units.get(unitId);
         const o: { small?: boolean; lift?: number; primary?: boolean } = typeof opt === 'boolean' ? { small: opt } : opt;
@@ -546,7 +533,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         const g = unit('chimney', 'fan_pump', false);
         const steel = std(C.steel, { metalness: 0.55, roughness: 0.4 });
         g.add(at(cylY(L.chimney.r * 1.35, 0.35, std(C.steelDark)), L.chimney.x, 0));
-        g.add(at(glassy(cylY(L.chimney.r, L.chimney.h, steel, 36)), L.chimney.x, 0.35));
+        g.add(at(cylY(L.chimney.r, L.chimney.h, steel, 36), L.chimney.x, 0.35));
         // band rings like the drawing
         for (const f of [0.35, 0.7]) {
             const ring = mesh(new THREE.TorusGeometry(L.chimney.r * 1.01, 0.05, 8, 40), std(C.steelDark));
@@ -574,15 +561,15 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
     function centrifugalFan(parent: THREE.Group, x: number, y: number, r: number, depth: number, outletLeft: boolean) {
         const green = std(C.green, { metalness: 0.2, roughness: 0.45 });
         const greenD = std(C.greenDark, { metalness: 0.2, roughness: 0.5 });
-        const body = glassy(cylZ(r, depth, green, 40));
+        const body = cylZ(r, depth, green, 40);
         parent.add(at(body, x, y));
         // tangential scroll outlet
-        const out = glassy(box(r * 1.05, r * 0.85, depth * 0.9, green));
+        const out = box(r * 1.05, r * 0.85, depth * 0.9, green);
         parent.add(at(out, x + (outletLeft ? -r * 0.55 : r * 0.55), y + r * 0.55));
         // inlet ring + eye
         const ring = mesh(new THREE.TorusGeometry(r * 0.68, r * 0.07, 10, 40), greenD);
         parent.add(at(ring, x, y, depth / 2 + 0.02));
-        const eye = glassy(mesh(new THREE.CircleGeometry(r * 0.66, 40), std('#1b2b14', { roughness: 0.9 })));
+        const eye = mesh(new THREE.CircleGeometry(r * 0.66, 40), std('#1b2b14', { roughness: 0.9 }));
         parent.add(at(eye, x, y, depth / 2 + 0.015));
         // impeller (rotates)
         const imp = new THREE.Group();
@@ -669,11 +656,11 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         const frame = std(C.frame, { metalness: 0.2, roughness: 0.6 });
         if (col.kind === 'cyclone') {
             const bodyH = col.yTop - col.yBody;
-            g.add(at(glassy(cylY(col.r, bodyH, grey, 36)), col.x, col.yBody));
+            g.add(at(cylY(col.r, bodyH, grey, 36), col.x, col.yBody));
             g.add(at(cylY(col.r * 1.04, 0.18, std(C.steelDark)), col.x, col.yTop - 0.05));
             // cone
             const coneH = col.yBody - col.yCone;
-            const cone = glassy(mesh(new THREE.CylinderGeometry(col.r, 0.22, coneH, 36), grey));
+            const cone = mesh(new THREE.CylinderGeometry(col.r, 0.22, coneH, 36), grey);
             cone.position.set(col.x, col.yCone + coneH / 2, 0);
             g.add(cone);
             // cyclone tubes visible through the inspection band
@@ -694,7 +681,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
             label('Dust Collector', 'dust_collector', col.x, col.yTop + 0.7, 0, { primary: true });
         } else {
             const bodyH = col.yTop - col.yBody;
-            g.add(at(glassy(box(col.w, bodyH, 3.4, grey)), col.x, col.yBody + bodyH / 2));
+            g.add(at(box(col.w, bodyH, 3.4, grey), col.x, col.yBody + bodyH / 2));
             // multicyclone tubes seen through the cut-away face
             const glass = std('#8e98a3', { transparent: true, opacity: 0.25 });
             g.add(at(box(col.w * 0.9, bodyH * 0.55, 0.02, glass), col.x, col.yBody + bodyH * 0.55, 1.71));
@@ -706,7 +693,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
             // two hoppers
             const hw = col.w / 2;
             for (const dx of [-hw / 2, hw / 2]) {
-                const hp = glassy(hopper(hw * 0.98, 0.3, col.yBody - col.yCone, 3.3, grey));
+                const hp = hopper(hw * 0.98, 0.3, col.yBody - col.yCone, 3.3, grey);
                 hp.rotation.x = Math.PI;
                 hp.position.set(col.x + dx, col.yBody, 0);
                 g.add(hp);
@@ -782,6 +769,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         // glass front (cut-away)
         const front = box(B.x1 - B.x0, H, 0.02, glass);
         front.castShadow = false;
+        front.userData.op = 0.05;
         g.add(at(front, (B.x0 + B.x1) / 2, B.y0 + H / 2, zF));
         // edge frame on the glass so the volume still reads
         const edges = new THREE.LineSegments(
@@ -826,9 +814,9 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         const g = unit('steam_drum', 'steam_drum');
         const sd = L.steamDrum;
         const shell = std(C.drum, { metalness: 0.6, roughness: 0.3 });
-        g.add(at(glassy(cylZ(sd.r, D + 0.6, shell, 40)), sd.x, sd.y));
+        g.add(at(cylZ(sd.r, D + 0.6, shell, 40), sd.x, sd.y));
         for (const s of [1, -1]) {
-            const cap = glassy(mesh(new THREE.SphereGeometry(sd.r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), shell));
+            const cap = mesh(new THREE.SphereGeometry(sd.r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), shell);
             cap.rotation.x = (s * Math.PI) / 2;
             cap.scale.y = 0.35;
             g.add(at(cap, sd.x, sd.y, s * (D / 2 + 0.3)));
@@ -860,9 +848,9 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         // the whole drum, end caps included, stays inside the casing (it no longer pokes out of the front wall)
         const capH = wd.r * 0.35;
         const bodyLen = D - 0.3 - 2 * capH;
-        g.add(at(glassy(cylZ(wd.r, bodyLen, shell, 40)), wd.x, wd.y));
+        g.add(at(cylZ(wd.r, bodyLen, shell, 40), wd.x, wd.y));
         for (const s of [1, -1]) {
-            const cap = glassy(mesh(new THREE.SphereGeometry(wd.r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), shell));
+            const cap = mesh(new THREE.SphereGeometry(wd.r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), shell);
             cap.rotation.x = (s * Math.PI) / 2;
             cap.scale.y = 0.35;
             g.add(at(cap, wd.x, wd.y, (s * bodyLen) / 2));
@@ -996,7 +984,12 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
             // vibrating: one tuyere plate deck on leaf springs
             const deck = new THREE.Group();
             deck.add(box(len, 0.16, width, iron));
-            for (let i = 0; i < 24; i++) deck.add(at(box(0.04, 0.02, width * 0.95, std('#ff8c3a', { emissive: '#ff6a00', emissiveIntensity: 0.6 })), -len / 2 + (i + 0.5) * (len / 24), 0.09));
+            const slotGlow = std('#ff8c3a', { emissive: '#ff6a00', emissiveIntensity: 0.6 });
+            for (let i = 0; i < 24; i++) {
+                const slot = box(0.04, 0.02, width * 0.95, slotGlow);
+                slot.userData.fx = true; // glowing air slots belong to the fire, not the steel
+                deck.add(at(slot, -len / 2 + (i + 0.5) * (len / 24), 0.09));
+            }
             holder.add(deck);
             grateAnim.push({ obj: deck, base: deck.position.clone(), dir: new THREE.Vector3(1, 0.4, 0).normalize(), phase: 0, amp: 0.03, freq: 7 });
             for (let i = 0; i < 6; i++) {
@@ -1158,7 +1151,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
             }
         }
 
-        // ---- inside the drums (seen through the glass shells with See-through on)
+        // ---- inside the drums (seen with See-through on)
         // steam drum: water circulating along the drum, bubbles breaking at the surface,
         // steam gathering above the water and leaving by the outlet
         for (const dx of [-0.35, 0.3]) {
@@ -1185,6 +1178,50 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
                 pts.push([L.idFan.x + Math.cos(a) * rr, L.idFan.y + Math.sin(a) * rr, zf * L.idFan.r]);
             }
             curveStream('flue', pts, 8, 0.28, 0.2, '#d8b48a');
+        }
+
+        // ---- dust: carried in with the flue gas, thrown out to the collector wall,
+        // spiralling down to the outlet and dropping through the air locks
+        const lockNear = (x: number) => L.airLocks.reduce((b, a) => (Math.abs(a.x - x) < Math.abs(b.x - x) ? a : b), L.airLocks[0] ?? { x, y: 1 });
+        for (const z of [-0.25, 0.25]) {
+            stream('dust', [
+                [B.x0 + 0.9, colInY - 0.1, z],
+                [B.x0 - 0.3, colInY - 0.1, z],
+                [colX + (col.kind === 'cyclone' ? col.r : col.w / 2) - 0.2, colInY - 0.1, z]
+            ], 8, 0.09, 0.13, 0.3, 0.12);
+        }
+        if (col.kind === 'cyclone') {
+            const rWall = (y: number) => (y >= col.yBody ? col.r * 0.9 : 0.16 + (col.r * 0.9 - 0.16) * Math.max(0, (y - col.yCone) / (col.yBody - col.yCone)));
+            const lock = lockNear(colX);
+            for (const phase of [0.6, 2.7, 4.8]) {
+                const pts: Pt[] = [];
+                const n = 34;
+                for (let i = 0; i <= n; i++) {
+                    const t = i / n;
+                    const y = colInY - t * (colInY - col.yCone);
+                    const a = phase + t * Math.PI * 2 * 4;
+                    pts.push([colX + Math.cos(a) * rWall(y), y, Math.sin(a) * rWall(y)]);
+                }
+                pts.push([colX, col.yCone - 0.3, 0], [lock.x, lock.y + 0.3, 0], [lock.x, Math.max(0.15, lock.y - 0.9), 0]);
+                curveStream('dust', pts, 16, 0.045, 0.13);
+            }
+        } else {
+            const bodyH = col.yTop - col.yBody;
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 2; j++) {
+                    const tx = colX - col.w * 0.33 + i * col.w * 0.22;
+                    const tz = 0.9 - j * 1.6;
+                    const hx = colX + (tx < colX ? -col.w / 4 : col.w / 4);
+                    const lock = lockNear(hx);
+                    stream('dust', [
+                        [tx, col.yBody + bodyH * 0.3, tz],
+                        [tx, col.yBody - 0.2, tz],
+                        [hx, col.yCone + 0.1, 0],
+                        [lock.x, lock.y + 0.3, 0],
+                        [lock.x, Math.max(0.15, lock.y - 0.9), 0]
+                    ], 5, 0.1, 0.13, 0.4, 0.06);
+                }
+            }
         }
 
         // ---- inside the dust collector
@@ -1263,6 +1300,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         holder.rotation.z = Math.atan2(gr.y1 - gr.y0, len);
         const bed = new THREE.Mesh(new THREE.PlaneGeometry(Math.hypot(len, gr.y1 - gr.y0) - 0.2, fireW + 0.3), bedMat);
         bed.rotation.x = -Math.PI / 2;
+        bed.userData.fx = true;
         holder.add(bed);
         root.add(holder);
     }
@@ -1338,7 +1376,7 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
     const stackState = Array.from({ length: STACK }, (_, i) => ({ life: i / STACK, seed: Math.random() * 10, spin: (Math.random() - 0.5) * 1.4 }));
     const stackBase = L.idFan.y + L.idFan.r * 0.55;
 
-    // water held in the drums (visible through the glass shells)
+    // water held in the drums (visible with See-through on)
     const waterGlass = new THREE.MeshBasicMaterial({ color: '#2f86f0', transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide });
     const surfaceGlass = new THREE.MeshBasicMaterial({ color: '#a9d6ff', transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
     disposables.push(waterGlass, surfaceGlass);
@@ -1371,6 +1409,57 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
         wWater.position.set(wd.x, wd.y, 0);
         wWater.renderOrder = 1;
         root.add(wWater);
+    }
+
+    // Every part of the plant is grey: tinted glass with See-through on (so the
+    // fire, flows and water inside show), plain grey steel with it off. Only the
+    // fire, the flows and the water in the drums keep their colour.
+    const edgeMat = new THREE.LineBasicMaterial({ color: '#a9c1d8', transparent: true, opacity: 0.4, depthWrite: false });
+    disposables.push(edgeMat);
+    {
+        root.updateMatrixWorld(true);
+        const targets: THREE.Mesh[] = [];
+        root.traverse((o) => {
+            const m = o as THREE.Mesh;
+            if ((o as THREE.LineSegments).isLineSegments) (o as THREE.LineSegments).material = edgeMat;
+            else if (m.isMesh && !m.userData.fx && (m.material as THREE.MeshStandardMaterial).isMeshStandardMaterial) targets.push(m);
+        });
+        const sphere = new THREE.Sphere();
+        const hsl = { h: 0, s: 0, l: 0 };
+        const edgeGeos = new Map<THREE.BufferGeometry, THREE.EdgesGeometry>();
+        const made = new Map<string, THREE.MeshStandardMaterial>();
+        for (const m of targets) {
+            const src = m.material as THREE.MeshStandardMaterial;
+            if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+            sphere.copy(m.geometry.boundingSphere!).applyMatrix4(m.matrixWorld);
+            const r = sphere.radius;
+            // big shells are faint, small fittings a bit denser so they still read
+            const op: number = m.userData.op ?? (r > 2 ? 0.12 : r > 1.2 ? 0.18 : r > 0.5 ? 0.28 : 0.42);
+            src.color.getHSL(hsl);
+            const tone = Math.round(hsl.l * 10) / 10; // keeps light and dark parts apart, without colour
+            const key = `${tone}:${op}`;
+            let mat = made.get(key);
+            if (!mat) {
+                mat = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0.35, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
+                mat.userData.skin = { tone, op };
+                made.set(key, mat);
+                disposables.push(mat);
+            }
+            m.material = mat;
+            m.castShadow = false;
+            // outline the hard edges, like a wire-frame drawing
+            if (!(m as THREE.InstancedMesh).isInstancedMesh && m.geometry.attributes.position.count < 4000) {
+                let eg = edgeGeos.get(m.geometry);
+                if (!eg) {
+                    eg = new THREE.EdgesGeometry(m.geometry, 28);
+                    edgeGeos.set(m.geometry, eg);
+                    disposables.push(eg);
+                }
+                const line = new THREE.LineSegments(eg, edgeMat);
+                line.raycast = () => {};
+                m.add(line);
+            }
+        }
     }
 
     // -------------------------------------------- pickables & highlight
@@ -1486,32 +1575,38 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
     }
 
     // ----------------------------------------------- see-through
-    const glassColor = new THREE.Color('#bcd6ee');
-    const solidColor = new THREE.Color(C.casing);
-    const SHELL_OPACITY = 0.26;
-    function setSeeThrough(on: boolean) {
-        frontGlass.color.copy(on ? glassColor : solidColor);
-        frontGlass.opacity = on ? 0.08 : 1;
-        frontGlass.transparent = on;
-        frontGlass.depthWrite = !on;
-        frontGlass.roughness = on ? 0.1 : 0.7;
-        frontGlass.needsUpdate = true;
-        // chimney, fan, dust collector and drums: glass shells while See-through is on
-        for (const m of shells) {
-            const mat = m.material as THREE.MeshStandardMaterial;
-            if (m.userData.cast === undefined) m.userData.cast = m.castShadow;
-            mat.transparent = on;
-            mat.opacity = on ? SHELL_OPACITY : 1;
-            mat.depthWrite = !on;
-            mat.side = on ? THREE.DoubleSide : THREE.FrontSide;
+    const skinMats = new Set<THREE.MeshStandardMaterial>();
+    root.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        if (mat?.userData?.skin) skinMats.add(mat);
+    });
+    let seeOn = true;
+    let skinDark = true;
+    function applySkin() {
+        for (const mat of skinMats) {
+            const { tone, op } = mat.userData.skin as { tone: number; op: number };
+            // glass: pale on the dark stage, darker on the light one; solid: mid grey steel
+            const l = seeOn ? (skinDark ? 0.6 + tone * 0.28 : 0.28 + tone * 0.25) : 0.42 + tone * 0.34;
+            mat.color.setHSL(0.58, 0.06, l);
+            mat.transparent = seeOn;
+            mat.opacity = seeOn ? op : 1;
+            mat.depthWrite = !seeOn;
+            mat.side = seeOn ? THREE.DoubleSide : THREE.FrontSide;
+            mat.roughness = seeOn ? 0.35 : 0.55;
             mat.needsUpdate = true;
-            m.castShadow = on ? false : (m.userData.cast as boolean);
-            m.renderOrder = on ? 1 : 0;
         }
+        edgeMat.color.set(skinDark ? '#a9c1d8' : '#4f5d6b');
+        edgeMat.opacity = seeOn ? (skinDark ? 0.4 : 0.45) : 0.18;
+    }
+    function setSeeThrough(on: boolean) {
+        seeOn = on;
+        applySkin();
     }
 
     // ---------------------------------------------- flows on/off + theme
-    const flowOn: Record<FlowKind, boolean> = { fuel: true, flame: true, flue: true, air: true, water: true, steam: true, ash: true };
+    const flowOn: Record<FlowKind, boolean> = { fuel: true, flame: true, flue: true, air: true, water: true, steam: true, ash: true, dust: true };
     function setFlowVisible(kind: FlowKind, on: boolean) {
         flowOn[kind] = on;
         if (kind === 'flame') {
@@ -1535,6 +1630,8 @@ export function buildBoilerScene(type: GrateType): BuiltScene {
     const plumeCol = new THREE.Color();
     function setTheme(isDark: boolean) {
         dark = isDark;
+        skinDark = isDark;
+        applySkin();
         flows.setAdditive(isDark);
         smokeNear.set(isDark ? '#6f757c' : '#8d949c');
         smokeFar.set(isDark ? '#c9cfd6' : '#c3c9d0');

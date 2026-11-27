@@ -2,7 +2,6 @@
 	import type { Boiler, Component, Part } from '$lib/types';
 	import Boiler3D from '$lib/components/Boiler3D.svelte';
 	import Part3DViewer from '$lib/components/Part3DViewer.svelte';
-	import { supports3D } from '$lib/part-3d/relief';
 	import { grateFor, resolveSections } from '$lib/boiler-design';
 	import { SECTION_COLORS } from '$lib/boiler-3d/legend';
 	import { addItem } from '$lib/stores/quote';
@@ -27,7 +26,6 @@
 		onadd?: (part: Part, qty: number) => void;
 	} = $props();
 
-	// Heading shows the project (same rule as the Dashboard tab): the project in the URL, else the first by number.
 	const resolvedProject = $derived.by(() => {
 		const d = $page.data as any;
 		const ids = new Set(
@@ -140,17 +138,9 @@
 
 	const query = $derived(search.trim().toLowerCase());
 
-	const scopeParts = $derived.by((): Part[] => {
-		if (group) return group.parts;
-		if (sec) return sec.groups.flatMap((g) => g.parts);
-		return ordered;
-	});
-
-	const scopeLabel = $derived(group ? group.name : sec ? sec.label : 'all parts');
-
 	const results = $derived.by(() => {
 		if (!query) return [];
-		return scopeParts.filter((p: Part) => {
+		return ordered.filter((p: Part) => {
 			const comp = compById.get(p.component_id);
 			return (
 				(p.part_number ?? '').toLowerCase().includes(query) ||
@@ -168,6 +158,11 @@
 	async function afterNav() {
 		await tick();
 		if (bodyEl) bodyEl.scrollTop = 0;
+		const el = panelEl;
+		if (el && el.getBoundingClientRect().top < 0) {
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+		}
 	}
 
 	function goHome() {
@@ -265,7 +260,7 @@
 	function onKey(e: KeyboardEvent) {
 		if (e.key !== 'Escape' || level === 1) return;
 		const t = e.target as HTMLElement | null;
-		if (t?.closest?.('.b3d')) return; // the 3D view closes its own menus
+		if (t?.closest?.('.b3d')) return;
 		goBack();
 	}
 </script>
@@ -338,8 +333,8 @@
 					<input
 						id="pf-search"
 						type="search"
-						placeholder={`Search ${scopeLabel}…`}
-						aria-label={`Search ${scopeLabel}`}
+						placeholder="Search all parts…"
+						aria-label="Search all parts"
 						autocomplete="off"
 						bind:value={search}
 					/>
@@ -349,11 +344,11 @@
 				</div>
 			</div>
 
-			<div class="pf-body" bind:this={bodyEl}>
+			<div class="pf-body" class:fit={level === 4 && !query} bind:this={bodyEl}>
 				{#if query}
 					<div class="head">
 						<h3>Search results</h3>
-						<p>{plural(results.length, 'match')} for “{search.trim()}” in {scopeLabel}</p>
+						<p>{plural(results.length, 'match')} for “{search.trim()}” in all parts</p>
 					</div>
 					{#if results.length}
 						<ul class="list">
@@ -430,7 +425,6 @@
 				{:else if level === 4 && part}
 					{@const specs = textLines(part.specifications)}
 					{@const img = hasImage(part.image_url)}
-					{@const can3d = img && supports3D(part.image_url)}
 					<button type="button" class="back" onclick={goBack}>
 						<ArrowLeft size={14} />All {group?.name ?? ''} parts
 					</button>
@@ -442,9 +436,15 @@
 						</span>
 
 						<div class="media">
-							{#if img && can3d && mediaView === '3d'}
+							{#if mediaView === '3d'}
 								{#key part.id}
-									<Part3DViewer src={part.image_url ?? ''} alt={part.name} />
+									<Part3DViewer
+										photo={img ? part.image_url : null}
+										name={part.name}
+										description={part.description}
+										component={compById.get(part.component_id)?.name ?? ''}
+										alt={part.name}
+									/>
 								{/key}
 							{:else if img}
 								<img src={part.image_url} alt={part.name} />
@@ -452,12 +452,10 @@
 								<div class="noimg"><ImageIcon size={34} /><span>No photo available yet.</span></div>
 							{/if}
 						</div>
-						{#if can3d}
-							<div class="toggle" role="tablist" aria-label="Image view">
-								<button type="button" role="tab" aria-selected={mediaView === '3d'} class:on={mediaView === '3d'} onclick={() => (mediaView = '3d')}>3D view</button>
-								<button type="button" role="tab" aria-selected={mediaView === 'photo'} class:on={mediaView === 'photo'} onclick={() => (mediaView = 'photo')}>Photo</button>
-							</div>
-						{/if}
+						<div class="toggle" role="tablist" aria-label="Image view">
+							<button type="button" role="tab" aria-selected={mediaView === '3d'} class:on={mediaView === '3d'} onclick={() => (mediaView = '3d')}>3D view</button>
+							<button type="button" role="tab" aria-selected={mediaView === 'photo'} class:on={mediaView === 'photo'} onclick={() => (mediaView = 'photo')}>Photo</button>
+						</div>
 
 						<div class="buy">
 							<div class="qty">
@@ -475,10 +473,10 @@
 							<button type="button" class="btn-primary add" onclick={() => handleAdd(part)}>Add</button>
 						</div>
 
-						<h4>Description</h4>
+						<!-- <h4>Description</h4>
 						<p class="text" class:blank={isPlaceholder(part.description)}>
 							{isPlaceholder(part.description) ? 'No description yet.' : part.description}
-						</p>
+						</p> -->
 
 						<h4>Specifications</h4>
 						{#if specs.length}
@@ -549,8 +547,8 @@
 	}
 
 	.explorer {
-		--pf-h: 650px;
-		--b3d-h: var(--pf-h);
+		--pf-min: 560px;
+		--b3d-h: 100%;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 380px;
 		gap: 14px;
@@ -559,11 +557,12 @@
 
 	.stage {
 		min-width: 0;
+		min-height: var(--pf-min);
 	}
 
 	.pf {
-		height: var(--pf-h);
 		min-width: 0;
+		min-height: var(--pf-min);
 		display: flex;
 		flex-direction: column;
 		border: 1px solid var(--bme-border);
@@ -674,11 +673,22 @@
 	}
 
 	.pf-body {
-		flex: 1;
+		flex: 1 1 auto;
 		min-height: 0;
 		overflow: auto;
 		padding: 12px;
 		overscroll-behavior: contain;
+	}
+
+	@media (min-width: 861px) {
+		.pf-body {
+			max-height: 720px;
+		}
+
+		.pf-body.fit {
+			max-height: none;
+			overflow: visible;
+		}
 	}
 
 	.head {
@@ -1062,8 +1072,11 @@
 			grid-template-columns: 1fr;
 		}
 
+		.stage {
+			min-height: 0;
+		}
+
 		.pf {
-			height: auto;
 			max-height: 78vh;
 			min-height: 320px;
 		}

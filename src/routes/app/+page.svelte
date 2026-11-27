@@ -1,5 +1,5 @@
 <script lang="ts">
-    import BoilerList from "$lib/components/BoilerList.svelte";
+    import ProjectList from "$lib/components/ProjectList.svelte";
     import Dashboard from "$lib/components/Dashboard.svelte";
     import PartsExplorer from "$lib/components/PartsExplorer.svelte";
     import BoilerBlueprint from "$lib/components/BoilerBlueprint.svelte";
@@ -9,6 +9,7 @@
     let { data } = $props();
 
     let contentEl = $state<HTMLElement | null>(null);
+    let sidebarCollapsed = $state(false);
 
     afterNavigate(async (nav) => {
         if (nav.type !== 'link' || !data.boiler) return;
@@ -21,8 +22,8 @@
     });
 </script>
 
-<div class="layout">
-    <BoilerList
+<div class="layout" class:collapsed={sidebarCollapsed}>
+    <ProjectList
         boilers={data.boilers}
         projects={data.projects}
         boilerProjects={data.boilerProjects}
@@ -30,7 +31,8 @@
         activeProjectId={data.activeProjectId}
         customerNoBoilers={data.customerNoBoilers}
         supabase={data.supabase}
-        profile={data.profile} />
+        profile={data.profile}
+        bind:collapsed={sidebarCollapsed} />
 
     <div class="content" bind:this={contentEl}>
         {#if !data.boiler}
@@ -95,6 +97,16 @@
         gap: 10px;
         align-items: stretch;
         min-height: 63vh;
+    }
+
+    @media (min-width: 861px) {
+        .layout {
+            transition: grid-template-columns 0.2s ease;
+        }
+
+        .layout.collapsed {
+            grid-template-columns: 64px 1fr;
+        }
     }
 
     .content {

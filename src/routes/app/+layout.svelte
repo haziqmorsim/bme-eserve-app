@@ -115,6 +115,7 @@
     let skTimer: ReturnType<typeof setTimeout> | undefined;
     let dest = $derived($navigating?.to?.route?.id ?? '');
     let destTab = $derived($navigating?.to?.url?.searchParams?.get('tab') ?? '');
+    let destHasBoiler = $derived($navigating?.to?.url?.searchParams?.has('boiler') ?? true);
     $effect(() => {
         const nav = $navigating;
         clearTimeout(skTimer);
@@ -151,7 +152,7 @@
     {/if}
     <main>
         {#if showSkeleton}
-            <AppSkeleton route={dest} tab={destTab} />
+            <AppSkeleton route={dest} tab={destTab} hasBoiler={destHasBoiler} />
         {:else}
             {@render children()}
         {/if}

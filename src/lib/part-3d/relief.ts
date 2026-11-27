@@ -14,7 +14,7 @@ export function reliefKey(url: string): string {
     try {
         base = decodeURIComponent(base);
     } catch {
-        // keep as is
+        /* keep as is */
     }
     return base
         .replace(/\.[a-z0-9]+$/i, '')
@@ -47,7 +47,7 @@ function maskCanvasFrom(mask: Float32Array, size: number): HTMLCanvasElement {
     c.width = c.height = size;
     const g = c.getContext('2d')!;
     const img = g.createImageData(size, size);
-    for ( let i = 0; i < size * size; i++) {
+    for (let i = 0; i < size * size; i++) {
         const v = Math.round(mask[i] * 255);
         img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
         img.data[i * 4 + 3] = 255;
@@ -56,6 +56,7 @@ function maskCanvasFrom(mask: Float32Array, size: number): HTMLCanvasElement {
     return c;
 }
 
+/** Height map made offline (best quality). */
 export async function loadHeightMap(photoUrl: string): Promise<HeightMap> {
     const img = await loadImage(`${DEPTH_DIR}/${encodeURIComponent(reliefKey(photoUrl))}.png`, false);
     const size = img.naturalWidth;
@@ -72,6 +73,7 @@ export async function loadHeightMap(photoUrl: string): Promise<HeightMap> {
 export function estimateHeightMap(photo: CanvasImageSource, size = 256): HeightMap {
     const d = pixels(photo, size);
     const n = size * size;
+    // background colour = median of the border pixels
     const border: number[][] = [[], [], []];
     for (let i = 0; i < size; i++)
         for (const p of [i, (size - 1) * size + i, i * size, i * size + size - 1])
@@ -86,6 +88,7 @@ export function estimateHeightMap(photo: CanvasImageSource, size = 256): HeightM
         );
         inside[i] = diff > 28 ? 1 : 0;
     }
+    // chamfer distance from the outline
     const dist = new Float32Array(n);
     for (let i = 0; i < n; i++) dist[i] = inside[i] ? 1e6 : 0;
     const at = (x: number, y: number) => (x < 0 || y < 0 || x >= size || y >= size ? 0 : dist[y * size + x]);

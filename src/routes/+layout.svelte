@@ -2,7 +2,7 @@
     import '../app.css';
     import { invalidate } from '$app/navigation';
     import { onMount } from 'svelte';
-    import { page } from '$app/stores';
+    import { page, navigating } from '$app/stores';
     import Chatbot from '$lib/components/Chatbot.svelte';
     import BackToTop from '$lib/components/BackToTop.svelte';
     import PageSkeleton from '$lib/components/PageSkeleton.svelte';
@@ -12,7 +12,11 @@
     let { data, children } = $props();
     let { session, supabase, user } = $derived(data);
 
-    let chatbotEnabled = $derived(bool(toMap(($page.data as any)?.settings), 'chatbot_enabled', true));
+    let chatbotSetting = $derived(bool(toMap(($page.data as any)?.settings), 'chatbot_enabled', true));
+
+    let path = $derived($navigating?.to?.url.pathname ?? $page.url.pathname);
+    let inPortal = $derived(path === '/app' || path.startsWith('/app/'));
+    let chatbotEnabled = $derived(chatbotSetting && !!user && inPortal);
 
     onMount(() => {
         startTracking(!!user);

@@ -1,191 +1,199 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { estimateHeightMap, loadHeightMap, loadImage, type HeightMap } from '$lib/part-3d/relief';
-    import { RotateCcw } from '@lucide/svelte';
+    import { Pause, Play, RotateCcw } from '@lucide/svelte';
+    import { theme } from '$lib/theme.svelte';
 
-    let { src, alt = '' }: { src: string; alt?: string } = $props();
+    let {
+        photo = null,
+        name,
+        description = '',
+        component = '',
+        alt = ''
+    }: {
+        photo?: string | null;
+        name: string;
+        description?: string | null;
+        component?: string | null;
+        alt?: string;
+    } = $props();
 
     let host = $state<HTMLDivElement>();
     let status = $state<'loading' | 'ready' | 'failed'>('loading');
-    let reset: (() => void) | null = null;
-    let bg = $state('#ffffff');
+    let spinning = $state(true);
+    const dark = $derived(theme.current === 'dark');
 
-    const DEPTH = 0.38;
-    const BACK = 0.5;
-    const MAX_TURN = (40 * Math.PI) / 180;
-    const MAX_TILT = (30 * Math.PI) / 180;
+    let api: { reset: () => void; spin: (on: boolean) => void; theme: (dark: boolean) => void } | null = null;
 
-    function squared(img: HTMLImageElement): HTMLCanvasElement {
-        const w = img.naturalWidth, h = img.naturalHeight, n = Math.max(w, h);
-        const c = document.createElement('canvas');
-        c.width = c.height = Math.min(n, 2048);
-        const k = c.width / n;
-        const g = c.getContext('2d')!;
-        g.drawImage(img, 0, 0, 1, 1, 0, 0, c.width, c.height);
-        g.drawImage(img, ((n - w) / 2) * k, ((n - h) / 2) * k, w * k, h * k);
-        return c;
-    }
+    $effect(() => {
+        const on = spinning;
+        api?.spin(on);
+    });
+    $effect(() => {
+        const d = dark;
+        api?.theme(d);
+    });
 
     onMount(() => {
         let dead = false;
         let stop = () => {};
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) spinning = false;
 
         (async () => {
             try {
                 const THREE = await import('three');
                 const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-
-                const photo = squared(await loadImage(src, true));
-                const px = photo.getContext('2d')!.getImageData(2, 2, 1, 1).data;
-                bg = `rgb(${px[0]}, ${px[1]}, ${px[2]})`;
-                let height: HeightMap;
-                try {
-                    height = await loadHeightMap(src);
-                } catch {
-                    height = estimateHeightMap(photo);
-                }
+                const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+                const { buildPartModel } = await import('$lib/part-3d/part-models');
                 if (dead || !host) return;
 
                 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 renderer.outputColorSpace = THREE.SRGBColorSpace;
-                renderer.toneMapping = THREE.NoToneMapping;
-                renderer.setClearColor(0xffffff, 0);
+                renderer.toneMapping = THREE.NeutralToneMapping;
+                renderer.setClearColor(0x000000, 0);
                 host.prepend(renderer.domElement);
 
                 const scene = new THREE.Scene();
-                const FOV = 15;
-                const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 50);
+                const pmrem = new THREE.PMREMGenerator(renderer);
+                const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+                scene.environment = envTex;
+                scene.environmentIntensity = 0.3;
+                pmrem.dispose();
 
-                const { size, z, mask } = height;
-                const sample = (arr: Float32Array, u: number, v: number) => {
-                    const x = Math.min(size - 1, Math.max(0, u * (size - 1)));
-                    const y = Math.min(size - 1, Math.max(0, v * (size - 1)));
-                    const x0 = Math.floor(x), y0 = Math.floor(y);
-                    const x1 = Math.min(size - 1, x0 + 1), y1 = Math.min(size - 1, y0 + 1);
-                    const fx = x - x0, fy = y - y0;
-                    const a = arr[y0 * size + x0] * (1 - fx) + arr[y0 * size + x1] * fx;
-                    const b = arr[y1 * size + x0] * (1 - fx) + arr[y1 * size + x1] * fx;
-                    return a * (1 - fy) + b * fy;
-                };
+                const model = buildPartModel({ name, description, component, photo });
+                const box = new THREE.Box3().setFromObject(model.group);
+                model.group.position.sub(box.getCenter(new THREE.Vector3()));
+                const size = box.getSize(new THREE.Vector3());
+                scene.add(model.group);
+                const R = Math.max(0.5, size.length() / 2);
 
-                const G = 220;
-                const pos: number[] = [];
-                const uv: number[] = [];
-                const idx: number[] = [];
-                const used: boolean[] = [];
-                for (let j = 0; j <= G; j++)
-                    for (let i = 0; i <= G; i++) {
-                        const u = i / G, v = j / G;
-                        used.push(sample(mask, u, v) > 0.01);
-                    }
-                for (const side of [1, -BACK])
-                    for (let j = 0; j <= G; j++)
-                        for (let i = 0; i <= G; i++) {
-                            const u = i / G, v = j / G;
-                            pos.push(u * 2 - 1, 1 - v * 2, sample(z, u, v) * DEPTH * side);
-                            uv.push(u, 1 - v);
-                        }
-                const back = (G + 1) * (G + 1);
-                const vid = (i: number, j: number) => j * (G + 1) + i;
-                for (let j = 0; j < G; j++)
-                    for (let i = 0; i < G; i++) {
-                        const a = vid(i, j), b = vid(i + 1, j), c = vid(i + 1, j + 1), d = vid(i, j + 1);
-                        if (!(used[a] || used[b] || used[c] || used[d])) continue;
-                        idx.push(a, d, b, b, d, c); // front faces +z
-                        idx.push(back + a, back + b, back + d, back + b, back + c, back + d); // back faces -z
-                    }
-                const geo = new THREE.BufferGeometry();
-                geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-                geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-                geo.setIndex(idx);
-                geo.computeVertexNormals();
-                const nrm = geo.getAttribute('normal');
-                const col = new Float32Array(nrm.count * 3);
-                for (let k = 0; k < nrm.count; k++) {
-                    const s = 0.62 + 0.38 * Math.abs(nrm.getZ(k));
-                    col[k * 3] = col[k * 3 + 1] = col[k * 3 + 2] = s;
-                }
-                geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+                const hemi = new THREE.HemisphereLight(0xffffff, 0x5a6066, 1.15);
+                const key = new THREE.DirectionalLight(0xffffff, 1.6);
+                const rim = new THREE.DirectionalLight(0xffffff, 0.5);
+                key.position.set(-R * 1.5, R * 2.5, R * 3.5);
+                rim.position.set(R * 3, R, -R * 2);
+                scene.add(hemi, key, rim);
 
-                const map = new THREE.CanvasTexture(photo);
-                map.colorSpace = THREE.SRGBColorSpace;
-                map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                map.needsUpdate = true;
-                const alphaMap = new THREE.CanvasTexture(height.maskCanvas);
-                const mat = new THREE.MeshBasicMaterial({
-                    map,
-                    alphaMap,
-                    alphaTest: 0.6,
-                    vertexColors: true,
-                    side: THREE.FrontSide
-                });
-                const mesh = new THREE.Mesh(geo, mat);
-                let sum = 0, cnt = 0;
-                for (let k = 0; k < size * size; k++)
-                    if (mask[k] > 0.5) {
-                        sum += z[k];
-                        cnt++;
-                    }
-                mesh.position.z = -(cnt ? sum / cnt : 0) * DEPTH;
-                scene.add(mesh);
+                const shadowTex = (() => {
+                    const c = document.createElement('canvas');
+                    c.width = c.height = 128;
+                    const g = c.getContext('2d')!;
+                    const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+                    grd.addColorStop(0, 'rgba(0,0,0,0.5)');
+                    grd.addColorStop(1, 'rgba(0,0,0,0)');
+                    g.fillStyle = grd;
+                    g.fillRect(0, 0, 128, 128);
+                    return new THREE.CanvasTexture(c);
+                })();
+                const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.4 });
+                const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadowMat);
+                shadow.rotation.x = -Math.PI / 2;
+                shadow.position.y = -size.y / 2 - R * 0.03;
+                shadow.scale.set(Math.max(size.x, size.z) * 1.3, Math.max(size.z, size.x * 0.35) * 1.3, 1);
+                scene.add(shadow);
 
+                const FOV = 30;
+                const camera = new THREE.PerspectiveCamera(FOV, 1, R / 50, R * 60);
+                const az = (model.view.az * Math.PI) / 180;
+                const el = (Math.max(-30, Math.min(75, model.view.el)) * Math.PI) / 180;
+                const DIR = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+                let homeDist = 1;
                 const controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
                 controls.dampingFactor = 0.08;
                 controls.enablePan = false;
-                controls.rotateSpeed = 0.7;
-                controls.minAzimuthAngle = -MAX_TURN;
-                controls.maxAzimuthAngle = MAX_TURN;
-                controls.minPolarAngle = Math.PI / 2 - MAX_TILT;
-                controls.maxPolarAngle = Math.PI / 2 + MAX_TILT;
+                controls.rotateSpeed = 0.9;
+                controls.autoRotateSpeed = 3;
 
-                let fitD = 5;
-                const goHome = () => {
-                    camera.position.set(0, 0, fitD);
-                    controls.target.set(0, 0, 0);
-                    controls.update();
-                };
-                reset = goHome;
-
-                const fit = () => {
-                    if (!host) return;
-                    const w = host.clientWidth, h = host.clientHeight;
-                    if (!w || !h) return;
+                function fit() {
+                    const w = host!.clientWidth || 1;
+                    const h = host!.clientHeight || 1;
                     renderer.setSize(w, h, false);
                     camera.aspect = w / h;
+                    const vFov = (FOV * Math.PI) / 180;
+                    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+                    homeDist = (R * 1.12) / Math.sin(Math.min(vFov, hFov) / 2);
+                    controls.minDistance = homeDist * 0.35;
+                    controls.maxDistance = homeDist * 2.2;
                     camera.updateProjectionMatrix();
-                    const vHalf = Math.tan(THREE.MathUtils.degToRad(FOV) / 2);
-                    const prev = fitD;
-                    fitD = 1 / Math.min(vHalf, vHalf * camera.aspect);
-                    controls.minDistance = fitD * 0.35;
-                    controls.maxDistance = fitD * 1.8;
-                    if (prev === 5) goHome();
-                    else camera.position.multiplyScalar(fitD / prev);
-                };
-                const ro = new ResizeObserver(fit);
-                ro.observe(host);
-                fit();
+                }
 
-                renderer.setAnimationLoop(() => {
+                let resume = 0;
+                let held = false;
+                let spinningNow = spinning;
+                function holdFront() {
+                    controls.autoRotate = false;
+                    window.clearTimeout(resume);
+                    resume = window.setTimeout(() => {
+                        if (!held) controls.autoRotate = spinningNow;
+                    }, 2000);
+                }
+                function reset() {
+                    fit();
+                    controls.target.set(0, 0, 0);
+                    camera.position.copy(DIR).multiplyScalar(homeDist);
+                    controls.update();
+                    holdFront();
+                }
+                controls.addEventListener('start', () => {
+                    held = true;
+                    controls.autoRotate = false;
+                    window.clearTimeout(resume);
+                });
+                controls.addEventListener('end', () => {
+                    held = false;
+                    window.clearTimeout(resume);
+                    resume = window.setTimeout(() => (controls.autoRotate = spinningNow), 2500);
+                });
+                reset();
+
+                function applyTheme(d: boolean) {
+                    model.lines.color.set(d ? '#1b1f24' : '#252a30');
+                    model.lines.opacity = d ? 0.8 : 0.7;
+                    shadowMat.opacity = d ? 0.6 : 0.3;
+                }
+                applyTheme(dark);
+
+                const ro = new ResizeObserver(() => fit());
+                ro.observe(host);
+
+                const clock = new THREE.Clock();
+                let raf = 0;
+                const loop = () => {
+                    raf = requestAnimationFrame(loop);
+                    model.tick(clock.getElapsedTime());
                     controls.update();
                     renderer.render(scene, camera);
-                });
+                };
+                loop();
+
+                api = {
+                    reset,
+                    spin: (on) => {
+                        spinningNow = on;
+                        if (!on) controls.autoRotate = false;
+                        else if (!held) holdFront();
+                    },
+                    theme: applyTheme
+                };
                 status = 'ready';
 
                 stop = () => {
-                    renderer.setAnimationLoop(null);
+                    cancelAnimationFrame(raf);
+                    window.clearTimeout(resume);
                     ro.disconnect();
                     controls.dispose();
-                    geo.dispose();
-                    mat.dispose();
-                    map.dispose();
-                    alphaMap.dispose();
+                    model.dispose();
+                    shadow.geometry.dispose();
+                    shadowMat.dispose();
+                    shadowTex.dispose();
+                    envTex.dispose();
                     renderer.dispose();
                     renderer.domElement.remove();
+                    api = null;
                 };
             } catch (e) {
-                console.error(e);
+                console.error('3D part view failed', e);
                 if (!dead) status = 'failed';
             }
         })();
@@ -197,18 +205,31 @@
     });
 </script>
 
-<div class="viewer" bind:this={host} style:background={bg} role="img" aria-label="3D view of {alt}">
+<div
+    class="viewer"
+    class:dark
+    bind:this={host}
+    role="img"
+    aria-label={`3D view of ${alt || name}. Drag to turn it, scroll or pinch to zoom.`}
+>
     {#if status === 'loading'}
-        <img class="poster" {src} alt="" />
-        <span class="hint">Loading 3D view…</span>
+        <div class="msg">Loading 3D view…</div>
     {:else if status === 'failed'}
-        <img class="poster" {src} alt="" />
-        <span class="hint">3D view isn't available for this part. Showing the photo.</span>
+        <div class="msg">The 3D view can't be shown for this part. Switch to Photo to see it.</div>
     {:else}
-        <button type="button" class="reset" onclick={() => reset?.()} title="Reset view" aria-label="Reset view">
-            <RotateCcw size={16} />
-        </button>
-        <span class="hint">Drag to rotate, scroll or pinch to zoom</span>
+        <div class="btns">
+            <button
+                type="button"
+                onclick={() => (spinning = !spinning)}
+                aria-pressed={!spinning}
+                aria-label={spinning ? 'Stop turning' : 'Start turning'}
+                title={spinning ? 'Stop turning' : 'Start turning'}
+            >
+                {#if spinning}<Pause size={15} />{:else}<Play size={15} />{/if}
+            </button>
+            <button type="button" onclick={() => api?.reset()} aria-label="Reset view" title="Reset view"><RotateCcw size={15} /></button>
+        </div>
+        <span class="hint">Drag to turn · scroll to zoom</span>
     {/if}
 </div>
 
@@ -216,10 +237,13 @@
     .viewer {
         position: absolute;
         inset: 0;
-        background: #fff;
+        background: radial-gradient(ellipse at 50% 40%, #ffffff, #e4e8ec 78%);
         touch-action: none;
         cursor: grab;
         overflow: hidden;
+    }
+    .viewer.dark {
+        background: radial-gradient(ellipse at 50% 40%, #33424f, #121a21 78%);
     }
     .viewer:active {
         cursor: grabbing;
@@ -231,29 +255,47 @@
         width: 100% !important;
         height: 100% !important;
     }
-    .poster {
+    .msg {
         position: absolute;
         inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        text-align: center;
+        font-size: 13px;
+        color: #5d6b7a;
     }
-    .reset {
+    .dark .msg {
+        color: #9fb0c0;
+    }
+    .btns {
         position: absolute;
         top: 10px;
         right: 10px;
+        display: flex;
+        gap: 6px;
+    }
+    .btns button {
         width: 32px;
         height: 32px;
         display: grid;
         place-items: center;
-        border: 1px solid var(--bme-border, #e2e8ef);
+        border: 1px solid rgba(27, 39, 51, 0.16);
         border-radius: 8px;
-        background: #fff;
-        color: var(--bme-navy);
+        background: rgba(255, 255, 255, 0.92);
+        color: #1b2733;
         cursor: pointer;
     }
-    .reset:focus-visible {
-        outline: 2px solid var(--bme-blue, #2f7fd8);
+    .dark .btns button {
+        border-color: rgba(185, 212, 238, 0.22);
+        background: rgba(10, 16, 22, 0.8);
+        color: #e6eef5;
+    }
+    .btns button:hover {
+        filter: brightness(1.06);
+    }
+    .btns button:focus-visible {
+        outline: 2px solid var(--bme-dark-blue, #2f7fd8);
         outline-offset: 1px;
     }
     .hint {
@@ -262,15 +304,20 @@
         bottom: 10px;
         transform: translateX(-50%);
         max-width: calc(100% - 20px);
-        font-size: 12px;
-        color: var(--bme-navy);
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid var(--bme-border, #e2e8ef);
         padding: 3px 10px;
         border-radius: 999px;
+        border: 1px solid rgba(27, 39, 51, 0.12);
+        background: rgba(255, 255, 255, 0.88);
+        color: #5d6b7a;
+        font-size: 12px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         pointer-events: none;
+    }
+    .dark .hint {
+        border-color: rgba(185, 212, 238, 0.18);
+        background: rgba(10, 16, 22, 0.75);
+        color: #a9bccb;
     }
 </style>

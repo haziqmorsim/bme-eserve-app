@@ -47,6 +47,7 @@
     let hoverKey = $state<string | null>(null);
     let selectedKey = $state<string | null>(null);
 
+    // ---- toolbar state -------------------------------------------------------
     let paused = $state(false);
     let spinning = $state(false);
     let boxesOn = $state(false);
@@ -59,10 +60,11 @@
     let menu = $state<'flows' | 'dissect' | null>(null);
     const flowsShown = $derived(FLOW_LEGEND.filter((f) => flowOn[f.kind]).length);
 
+    // the section shown as selected: the parent owns it in the parts tab
     const currentKey = $derived(mode === 'parts' ? activeKey : selectedKey);
 
     const labelEls = new Map<string, HTMLElement>();
-    let extraEl = $state<HTMLElement>();
+    const EXTRA_ID = '__extra';
 
     function registerLabel(node: HTMLElement, id: string) {
         labelEls.set(id, node);
@@ -73,6 +75,8 @@
         };
     }
 
+    // A section can be clicked in the dashboard whenever it exists; in the parts
+    // tab only when it actually has components (and therefore spare parts).
     function isClickable(key: string | null): key is string {
         if (!key) return false;
         const s = sectionByKey.get(key);
@@ -86,6 +90,9 @@
         return (telemetry[key]?.state ?? 'Normal').toLowerCase();
     }
 
+    // Parts tab: the square in front of a label uses the section's own colour
+    // (the same colour as the bar in the parts list). The dashboard keeps the
+    // status colours.
     function sqColor(key: string | null): string | null {
         if (mode !== 'parts' || !key) return null;
         return SECTION_COLORS[key] ?? null;
@@ -102,6 +109,7 @@
         return { key: selectedKey, label: s.label, t: telemetry[selectedKey] ?? null };
     });
 
+    // ---- three.js plumbing (client only) -------------------------------------
     type Three = typeof import('three');
     let api: {
         focusSection: (key: string) => void;
@@ -113,6 +121,8 @@
         setSpin: (on: boolean) => void;
     } | null = null;
 
+    // the section the camera last flew to, so a selection made in the 3D view
+    // isn't flown to a second time when the parent echoes it back
     let focusedKey: string | null = null;
 
     function selectSection(key: string) {
@@ -140,6 +150,7 @@
         api?.home();
     }
 
+    // Parts tab: follow the section picked in the side panel.
     $effect(() => {
         if (mode !== 'parts') return;
         const key = activeKey;
@@ -149,6 +160,7 @@
         else api.home();
     });
 
+    // Highlight follows hover / selection / the parent's activeKey.
     $effect(() => {
         void hoverKey;
         void currentKey;
@@ -158,6 +170,7 @@
         api?.refreshHighlight();
     });
 
+    // Toolbar switches
     $effect(() => {
         void flowOn.fuel;
         void flowOn.flame;
@@ -166,21 +179,26 @@
         void flowOn.water;
         void flowOn.steam;
         void flowOn.ash;
+        void flowOn.dust;
         void seeThrough;
         void clipMode;
         void clipPct;
         api?.applyTools();
     });
     $effect(() => {
+        // read first: `api?.setSpin(spinning)` would skip reading `spinning` while api is still null
         const on = spinning;
         api?.setSpin(on);
     });
 
+    // Light / dark theme
     $effect(() => {
         const dark = theme.current === 'dark';
         api?.applyTheme(dark);
     });
 
+    // Rebuild the model when the boiler type changes (switching boilers keeps
+    // this component mounted).
     let builtType: string | null = null;
     $effect(() => {
         const t = def.type;
@@ -253,6 +271,7 @@
 
             const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 400);
 
+            // lights
             const hemi = new THREE.HemisphereLight('#d7e8ff', '#1a2532', 1.25);
             scene.add(hemi);
             const sun = new THREE.DirectionalLight('#ffffff', 2.2);
@@ -271,6 +290,7 @@
             rim.position.set(-20, 12, -18);
             scene.add(rim);
 
+            // floor + grid
             const floorMat = new THREE.MeshStandardMaterial({ color: '#13212e', roughness: 0.95, metalness: 0.05 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), floorMat);
             floor.rotation.x = -Math.PI / 2;
@@ -324,14 +344,15 @@
             const controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.screenSpacePanning = true;
+            controls.screenSpacePanning = true; // right-drag moves up/down/left/right
             controls.minDistance = 4;
             controls.maxDistance = 90;
             controls.maxPolarAngle = Math.PI * 0.495;
             controls.zoomSpeed = 0.9;
             controls.rotateSpeed = 0.8;
             controls.panSpeed = 0.9;
-            controls.autoRotateSpeed = 2.2;
+            controls.autoRotateSpeed = 2.2; // about 27 s per turn
+            // left = rotate, middle = zoom, right = pan; wheel = zoom
             controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
             controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
@@ -340,10 +361,27 @@
             let width = 1;
             let heightPx = 1;
             let pixelScale = 300;
-            let extraW = 0;
 
             const homeTarget = new THREE.Vector3();
             const homePos = new THREE.Vector3();
+
+            // Anchor of the top-right chip (a section with no part in the 3D model, e.g. Panel/Instrument).
+            // It lives in the scene like every other chip: at the top right of the boiler in the original
+            // view, and it moves with the boiler when the camera zooms into a section.
+            const extraAnchor = new THREE.Vector3();
+            const FRAME_H = 560; // the shortest stage height in the parts tab; section zoom is defined against it
+
+            function placeExtraAnchor() {
+                if (!built) return;
+                const b = built.bounds;
+                const size = new THREE.Vector3();
+                const center = new THREE.Vector3();
+                b.getSize(size);
+                b.getCenter(center);
+                // the right edge of the original view, just above the top of the boiler;
+                // placeLabels keeps the chip inside the stage if that edge is off screen
+                extraAnchor.set(center.x + size.x / 2 + 0.6, center.y + size.y / 2 + 3, 0);
+            }
 
             function computeHome() {
                 if (!built) return;
@@ -357,11 +395,13 @@
                 const halfW = size.x / 2 + 0.6;
                 const halfH = size.y / 2 + 1.2;
                 const dist = Math.max(halfW / Math.tan(hfov / 2), halfH / Math.tan(vfov / 2)) + size.z * 0.5;
+                // leave room for the toolbar along the bottom
                 homeTarget.set(center.x, center.y + 0.1, 0);
                 const dir = new THREE.Vector3(0.16, 0.24, 1).normalize();
                 homePos.copy(homeTarget).addScaledVector(dir, dist * 1.1);
             }
 
+            // ---- camera tween ----------------------------------------------------
             let tween: {
                 fromPos: InstanceType<Three['Vector3']>;
                 toPos: InstanceType<Three['Vector3']>;
@@ -390,10 +430,14 @@
                 const size = new THREE.Vector3();
                 box.getCenter(center);
                 box.getSize(size);
+                // keep some of the surrounding boiler in view for context
                 const radius = Math.max(size.length() / 2, 3.4);
+                // Framed as on a stage FRAME_H px tall and scaled to the real height, so a section is
+                // the same size on screen at every level whatever height the stage has when it is picked.
                 const vfov = THREE.MathUtils.degToRad(camera.fov);
-                const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
-                const dist = Math.max(radius / Math.sin(vfov / 2), radius / Math.sin(hfov / 2)) * 1.35;
+                const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (width / FRAME_H));
+                const dist = Math.max(radius / Math.sin(vfov / 2), radius / Math.sin(hfov / 2)) * 1.35 * (heightPx / FRAME_H);
+                // swing round to a three-quarter front view of the section
                 const side = center.x < (built.bounds.min.x + built.bounds.max.x) / 2 ? -1 : 1;
                 const dir = new THREE.Vector3(0.42 * side, 0.32, 1).normalize();
                 atHome = false;
@@ -416,6 +460,7 @@
                 atHome = false;
             });
 
+            // ---- picking -----------------------------------------------------------
             const ray = new THREE.Raycaster();
             const ndc = new THREE.Vector2();
 
@@ -475,6 +520,7 @@
             el.addEventListener('dblclick', onDbl);
             el.style.cursor = 'grab';
 
+            // ---- highlight + toolbar -------------------------------------------------
             function refreshHighlight() {
                 if (!built) return;
                 const soft = new Set<string>();
@@ -497,6 +543,7 @@
                 if (on) tween = null;
             }
 
+            // ---- build / rebuild ---------------------------------------------------
             function rebuild(type: GrateDef['type']) {
                 if (built) {
                     scene.remove(built.root);
@@ -511,10 +558,12 @@
                     if (m.isMesh && !wantShadows) m.castShadow = false;
                 });
                 built.setTheme(isDark);
+                // the base slab only reaches 1.2 units past the model (no empty floor to one side)
                 const bb = built.bounds;
                 plinth.scale.set((bb.max.x - bb.min.x + 2.4) / 32, 1, (bb.max.z - bb.min.z + 2.4) / 9);
                 plinth.position.set((bb.min.x + bb.max.x) / 2, 0.03, (bb.min.z + bb.max.z) / 2);
                 labels = built.labels;
+                placeExtraAnchor();
                 computeHome();
                 camera.position.copy(homePos);
                 controls.target.copy(homeTarget);
@@ -525,17 +574,32 @@
                 refreshHighlight();
             }
 
+            // ---- sizing ------------------------------------------------------------
+            // The stage height follows the content next to it, so it changes from level to level.
+            // On-screen size is proportional to stage height / camera distance, so when the stage
+            // grows or shrinks the camera backs off or comes in by the same ratio: the boiler (and the
+            // section the camera is on) keep the same size and only more or less of the scene shows.
+            function keepZoom(k: number) {
+                const scaleAbout = (p: InstanceType<Three['Vector3']>, t: InstanceType<Three['Vector3']>) => p.sub(t).multiplyScalar(k).add(t);
+                scaleAbout(camera.position, controls.target);
+                if (tween) {
+                    scaleAbout(tween.fromPos, tween.fromT);
+                    scaleAbout(tween.toPos, tween.toT);
+                }
+            }
+
             function resize() {
                 const r = host.getBoundingClientRect();
+                const prevH = heightPx;
                 width = Math.max(1, Math.round(r.width));
                 heightPx = Math.max(1, Math.round(r.height));
+                if (built && !atHome && prevH > 1 && heightPx !== prevH) keepZoom(heightPx / prevH);
                 renderer.setSize(width, heightPx, false);
                 renderer.domElement.style.width = `${width}px`;
                 renderer.domElement.style.height = `${heightPx}px`;
                 camera.aspect = width / heightPx;
                 camera.updateProjectionMatrix();
                 chipWidth.clear();
-                extraW = 0;
                 pixelScale = (heightPx * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
                 if (atHome && built) {
                     computeHome();
@@ -553,36 +617,39 @@
             });
             io.observe(stageEl);
 
+            // ---- loop --------------------------------------------------------------
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
             const proj = new THREE.Vector3();
             let raf = 0;
             let last = performance.now();
             let simTime = 0;
 
+            // Labels are placed in screen space every frame; a chip that would
+            // overlap one already placed is lifted on a longer leader line (or
+            // hung below its part).
             const chipWidth = new Map<string, number>();
             const lastLift = new Map<string, number>();
             const lastShift = new Map<string, number>();
             type Rect = { x0: number; y0: number; x1: number; y1: number };
+            type PlacedLabel = Pick<SceneLabel, 'id' | 'text' | 'section' | 'anchor' | 'lift'>;
             const placed: Rect[] = [];
-            const TOOLS_W = 58;
+            const TOOLS_W = 58; // collapsed toolbar column + margin
             const TOOLS_H = 280;
 
             function placeLabels() {
                 if (!built) return;
                 placed.length = 0;
-                if (extra) {
-                    if (!extraW) extraW = extraEl?.offsetWidth ?? 0;
-                    if (extraW) placed.push({ x0: width - 10 - extraW - 4, x1: width - 6, y0: 6, y1: 42 });
-                }
                 const cur = currentKey;
-                const order = [...built.labels].sort((a, b) => (a.section === cur ? -1 : 0) - (b.section === cur ? -1 : 0));
+                const order: PlacedLabel[] = [...built.labels].sort((a, b) => (a.section === cur ? -1 : 0) - (b.section === cur ? -1 : 0));
+                // the top-right chip is placed first so the other chips make room for it
+                if (extra) order.unshift({ id: EXTRA_ID, text: extra.label, section: extra.key, anchor: extraAnchor, lift: 0 });
                 for (const l of order) {
                     const node = labelEls.get(l.id);
                     if (!node) continue;
                     proj.copy(l.anchor).project(camera);
                     const behind = proj.z > 1 || proj.z < -1;
                     const off = proj.x < -1.1 || proj.x > 1.1 || proj.y < -1.1 || proj.y > 1.1;
-                    if (behind || off || !built.isVisiblePoint(l.anchor)) {
+                    if (behind || off || (l.id !== EXTRA_ID && !built.isVisiblePoint(l.anchor))) {
                         node.style.visibility = 'hidden';
                         continue;
                     }
@@ -632,6 +699,7 @@
                         }
                     }
                     if (!clear) lift = l.lift ?? 22;
+                    // keep the chip inside the stage; the leader stays on its part
                     const r = below ? under(lift) : above(lift);
                     const leftEdge = r.y0 < TOOLS_H ? TOOLS_W : 4;
                     const shift = Math.max(leftEdge + w / 2 - x, Math.min(0, width - 4 - w / 2 - x));
@@ -662,6 +730,7 @@
                 if (!visible || document.hidden) return;
 
                 if (tween) {
+                    // wall-clock based, so the fly-to lands on time even on slow GPUs
                     tween.t += Math.min(0.25, elapsed) / tween.dur;
                     const k = ease(Math.min(1, tween.t));
                     camera.position.lerpVectors(tween.fromPos, tween.toPos, k);
@@ -685,6 +754,7 @@
 
             api = { focusSection, home, refreshHighlight, rebuild, applyTheme, applyTools, setSpin };
             setSpin(spinning);
+            // the parent may already have a section selected
             if (mode === 'parts' && activeKey) {
                 focusedKey = activeKey;
                 focusSection(activeKey);
@@ -767,23 +837,24 @@
                     <span class="leader"></span>
                 </div>
             {/each}
-        </div>
 
-        {#if extra}
-            <div class="extra" bind:this={extraEl}>
-                <button
-                    type="button"
-                    class="chip"
-                    class:on={extraActive}
-                    style:--sq={extra.color}
-                    aria-pressed={extraActive}
-                    title={extra.label}
-                    onclick={() => onextra?.()}
-                >
-                    <span class="sq"></span>{extra.label}
-                </button>
-            </div>
-        {/if}
+            {#if extra}
+                <!-- a section with no part of the 3D model: a chip anchored at the top right of the original view -->
+                <div class="lbl extra-lbl" use:registerLabel={EXTRA_ID}>
+                    <button
+                        type="button"
+                        class="chip"
+                        class:on={extraActive}
+                        style:--sq={extra.color}
+                        aria-pressed={extraActive}
+                        title={extra.label}
+                        onclick={() => onextra?.()}
+                    >
+                        <span class="sq"></span>{extra.label}
+                    </button>
+                </div>
+            {/if}
+        </div>
 
         {#if ready}
             <div class="tools" role="toolbar" aria-orientation="vertical" aria-label="3D view controls">
@@ -805,7 +876,7 @@
                 <button type="button" class="tb" aria-pressed={boxesOn} onclick={() => (boxesOn = !boxesOn)} title="Show a box around each section">
                     <SquareDashed size={16} /><span class="tl">Section boxes</span>
                 </button>
-                <button type="button" class="tb" aria-pressed={seeThrough} onclick={() => (seeThrough = !seeThrough)} title="See through the front of the boiler">
+                <button type="button" class="tb" aria-pressed={seeThrough} onclick={() => (seeThrough = !seeThrough)} title="See through every part of the boiler">
                     <Eye size={16} /><span class="tl">See-through</span>
                 </button>
                 <button type="button" class="tb" onclick={resetView} title="Reset the camera">
@@ -866,6 +937,7 @@
 {/if}
 
 <style>
+    /* Colours: dark stage by default, light stage with the app's light theme. */
     .b3d {
         --st-bg: radial-gradient(120% 80% at 50% 10%, #1d3550 0%, #0e1c2a 55%, #08121b 100%);
         --st-border: #1d2f42;
@@ -956,6 +1028,7 @@
         }
     }
 
+    /* ---- section labels ---- */
     .labels {
         position: absolute;
         inset: 0;
@@ -1044,23 +1117,13 @@
         background: linear-gradient(to top, rgba(var(--st-leader), 0.75), rgba(var(--st-leader), 0.15));
     }
 
-    .extra {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 6;
-    }
-
-    .extra .chip {
-        position: static;
-        transform: none;
-    }
-
-    .extra .chip.on {
+    /* ---- top-right chip (a section with no part of the 3D model) ---- */
+    .extra-lbl .chip.on {
         background: var(--st-chip-hot);
         border-color: #4fb3ff;
     }
 
+    /* ---- toolbar: a slim icon column; hover (or keyboard focus) shows the names ---- */
     .tools {
         position: absolute;
         left: 10px;
@@ -1165,6 +1228,7 @@
         color: #ff6f64;
     }
 
+    /* ---- popovers ---- */
     .pop {
         position: absolute;
         left: calc(100% + 8px);
@@ -1300,6 +1364,7 @@
         color: var(--st-muted);
     }
 
+    /* ---- dashboard readings ---- */
     .panel {
         position: absolute;
         right: 12px;
@@ -1400,6 +1465,7 @@
     }
 
     @container (max-width: 520px) {
+        /* phones: the toolbar stays a slim icon column so its menus fit beside it */
         .tools:hover .tb .tl,
         .tools:hover .tb .cnt {
             max-width: 0;

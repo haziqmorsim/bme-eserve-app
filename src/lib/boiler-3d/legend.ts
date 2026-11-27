@@ -1,4 +1,4 @@
-export type FlowKind = 'fuel' | 'flame' | 'flue' | 'air' | 'water' | 'steam' | 'ash';
+export type FlowKind = 'fuel' | 'flame' | 'flue' | 'air' | 'water' | 'steam' | 'ash' | 'dust';
 
 export const FLOW_LEGEND: { kind: FlowKind; label: string; color: string }[] = [
     { kind: 'fuel', label: 'Biomass fuel', color: '#c99a5b' },
@@ -7,7 +7,8 @@ export const FLOW_LEGEND: { kind: FlowKind; label: string; color: string }[] = [
     { kind: 'air', label: 'Combustion air', color: '#2fd0b5' },
     { kind: 'water', label: 'Water', color: '#3b8cff' },
     { kind: 'steam', label: 'Steam', color: '#e6f4ff' },
-    { kind: 'ash', label: 'Ash', color: '#a8865c' }
+    { kind: 'ash', label: 'Ash', color: '#a8865c' },
+    { kind: 'dust', label: 'Dust', color: '#d9b98c' }
 ];
 
 export const SECTION_COLORS: Record<string, string> = {
